@@ -49,6 +49,7 @@ public class ClusterAwareScheduledTaskRunner extends ScheduledTaskRunner {
         ClusterProvider clusterProvider = session.getProvider(ClusterProvider.class);
         String taskKey = task.getClass().getSimpleName();
 
+        // 在集群范围执行任务
         ExecutionResult<Void> result = clusterProvider.executeIfNotExecuted(taskKey, intervalSecs, new Callable<Void>() {
 
             @Override

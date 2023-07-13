@@ -76,6 +76,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 实现 javax.ws.rs规范   核心接口一个是获取内部单例对象的类型 一个是获取单例对象
  */
 public class KeycloakApplication extends Application {
 
@@ -83,11 +84,14 @@ public class KeycloakApplication extends Application {
 
     private static final Logger logger = Logger.getLogger(KeycloakApplication.class);
 
+    // 维护平台相关的钩子
     protected final PlatformProvider platform = Platform.getPlatform();
 
+    // 作为application 存储相关class以及单例对象
     protected Set<Object> singletons = new HashSet<Object>();
     protected Set<Class<?>> classes = new HashSet<Class<?>>();
 
+    // 该对象用于产生会话
     protected static KeycloakSessionFactory sessionFactory;
 
     public KeycloakApplication() {
@@ -95,19 +99,27 @@ public class KeycloakApplication extends Application {
         try {
 
             logger.debugv("PlatformProvider: {0}", platform.getClass().getName());
+            // 获取SPI加载的easyRest框架
             logger.debugv("RestEasy provider: {0}", Resteasy.getProvider().getClass().getName());
 
+            // 借助SPI机制 激活configProvider对象 并设置到全局Config中  这样随时可以通过Config读取配置信息
             loadConfig();
 
             singletons.add(new RobotsResource());
+
+            // 暴露realm相关的接口
             singletons.add(new RealmsResource());
+            // 暴露admin相关的接口
             singletons.add(new AdminRoot());
+            // TODO 主题先忽略
             classes.add(ThemeResource.class);
+            // TODO 忽略js
             classes.add(JsResource.class);
 
             classes.add(KeycloakSecurityHeadersFilter.class);
             classes.add(KeycloakErrorHandler.class);
 
+            // json解析器
             singletons.add(new ObjectMapperResolver());
             singletons.add(new WelcomeResource());
 
@@ -120,20 +132,27 @@ public class KeycloakApplication extends Application {
 
     }
 
+    // web服务器的情况 需要直接触发函数
     protected void startup() {
+
+        // 初始化session工厂 其中包括了SPI加载
         this.sessionFactory = createSessionFactory();
 
         ExportImportManager[] exportImportManager = new ExportImportManager[1];
 
         KeycloakModelUtils.runJobInTransaction(sessionFactory, new KeycloakSessionTask() {
 
+            // 在事务中执行任务 通过session可以拿到事务管理器
             @Override
             public void run(KeycloakSession lockSession) {
                 DBLockManager dbLockManager = new DBLockManager(lockSession);
+                // 使用前先释放锁
                 dbLockManager.checkForcedUnlock();
+                // 获取锁启动
                 DBLockProvider dbLock = dbLockManager.getDBLock();
                 dbLock.waitForLock(DBLockProvider.Namespace.KEYCLOAK_BOOT);
                 try {
+                    // 完成引导后 产生一个导入导出对象
                     exportImportManager[0] = migrateAndBootstrap();
                 } finally {
                     dbLock.releaseLock();
@@ -142,7 +161,9 @@ public class KeycloakApplication extends Application {
 
         });
 
+        // 在上面已经完成了初始数据的加载
 
+        // TODO 先忽略导出
         if (exportImportManager[0].isRunExport()) {
             exportImportManager[0].runExport();
         }
@@ -151,6 +172,7 @@ public class KeycloakApplication extends Application {
 
             @Override
             public void run(KeycloakSession session) {
+                // 判断master realm内是否有用户
                 boolean shouldBootstrapAdmin = new ApplianceBootstrap(session).isNoMasterUser();
                 BOOTSTRAP_ADMIN_USER.set(shouldBootstrapAdmin);
             }
@@ -159,23 +181,28 @@ public class KeycloakApplication extends Application {
 
         sessionFactory.publish(new PostMigrationEvent());
 
+        // 在完成了realm的初始化后 需要开启一些定时任务
         setupScheduledTasks(sessionFactory);
     }
 
     protected void shutdown() {
+        // 当应用终止时 关闭会话工厂
         if (sessionFactory != null)
             sessionFactory.close();
     }
 
     // Migrate model, bootstrap master realm, import realms and create admin user. This is done with acquired dbLock
+    // 导入数据并完成引导
     protected ExportImportManager migrateAndBootstrap() {
         ExportImportManager exportImportManager;
         logger.debug("Calling migrateModel");
+        // 先忽略迁移
         migrateModel();
 
         logger.debug("bootstrap");
         KeycloakSession session = sessionFactory.create();
         try {
+            // 开启事务
             session.getTransactionManager().begin();
             JtaTransactionManagerLookup lookup = (JtaTransactionManagerLookup) sessionFactory.getProviderFactory(JtaTransactionManagerLookup.class);
             if (lookup != null) {
@@ -192,21 +219,26 @@ public class KeycloakApplication extends Application {
                 }
             }
 
-
+            // 进行应用的引导工作
             ApplianceBootstrap applianceBootstrap = new ApplianceBootstrap(session);
+            // 该对象内部包含导入或者导出对象
             exportImportManager = new ExportImportManager(session);
 
+            // true 代表master realm未创建  / false代表已创建
             boolean createMasterRealm = applianceBootstrap.isNewInstall();
+            // 表示exportImportManager 会负责进行数据的导入 并且导入数据包含master realm  那么就不需要创建了
             if (exportImportManager.isRunImport() && exportImportManager.isImportMasterIncluded()) {
                 createMasterRealm = false;
             }
 
+            // 创建 master realm   并且会在结束后将realm设置到session中
             if (createMasterRealm) {
                 applianceBootstrap.createMasterRealm();
             }
             session.getTransactionManager().commit();
         } catch (RuntimeException re) {
             if (session.getTransactionManager().isActive()) {
+                // 实际上创建过程涉及了各种DB操作 所以rollback可以做到回滚
                 session.getTransactionManager().rollback();
             }
             throw re;
@@ -214,9 +246,11 @@ public class KeycloakApplication extends Application {
             session.close();
         }
 
+        // 开始进行import工作
         if (exportImportManager.isRunImport()) {
             exportImportManager.runImport();
         } else {
+            // 代表没法通过exportImportManager进行导入
             importRealms();
         }
 
@@ -226,6 +260,7 @@ public class KeycloakApplication extends Application {
     }
 
 
+    // 在事务内开启迁移  迁移指的是不同版本之间数据迁移  可以先不考虑
     protected void migrateModel() {
         KeycloakSession session = sessionFactory.create();
         try {
@@ -240,8 +275,10 @@ public class KeycloakApplication extends Application {
         }
     }
 
+
     protected void loadConfig() {
 
+        // 基于SPI机制产生一个配置对象 或基于系统变量 或基于JSON文件
         ServiceLoader<ConfigProviderFactory> loader = ServiceLoader.load(ConfigProviderFactory.class, KeycloakApplication.class.getClassLoader());
 
         try {
@@ -254,20 +291,29 @@ public class KeycloakApplication extends Application {
 
     }
 
+    // 启动应用时 创建会话工厂
     public static KeycloakSessionFactory createSessionFactory() {
         DefaultKeycloakSessionFactory factory = new DefaultKeycloakSessionFactory();
         factory.init();
         return factory;
     }
 
+    /**
+     * 开启一些定时任务
+     * @param sessionFactory
+     */
     public static void setupScheduledTasks(final KeycloakSessionFactory sessionFactory) {
         long interval = Config.scope("scheduled").getLong("interval", 900L) * 1000;
 
         KeycloakSession session = sessionFactory.create();
         try {
+            // 定时任务都在事务中进行
             TimerProvider timer = session.getProvider(TimerProvider.class);
+            // ClusterAwareScheduledTaskRunner 将任务从单节点变成作用在集群上
             timer.schedule(new ClusterAwareScheduledTaskRunner(sessionFactory, new ClearExpiredEvents(), interval), interval, "ClearExpiredEvents");
+            // 通过定时扫描的方式清除过期token
             timer.schedule(new ClusterAwareScheduledTaskRunner(sessionFactory, new ClearExpiredClientInitialAccessTokens(), interval), interval, "ClearExpiredClientInitialAccessTokens");
+            // 定期清理用户会话
             timer.schedule(new ScheduledTaskRunner(sessionFactory, new ClearExpiredUserSessions()), interval, ClearExpiredUserSessions.TASK_NAME);
             new UserStorageSyncManager().bootstrapPeriodic(sessionFactory, timer);
         } finally {
@@ -289,6 +335,9 @@ public class KeycloakApplication extends Application {
         return singletons;
     }
 
+    /**
+     * 降级处理就是读取指定目录下的文件 解析成json
+     */
     public void importRealms() {
         String files = System.getProperty("keycloak.import");
         if (files != null) {

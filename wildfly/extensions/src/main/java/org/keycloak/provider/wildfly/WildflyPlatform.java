@@ -20,20 +20,24 @@ package org.keycloak.provider.wildfly;
 import org.keycloak.platform.PlatformProvider;
 import org.keycloak.services.ServicesLogger;
 
+// web应用服务器
 public class WildflyPlatform implements PlatformProvider {
 
     Runnable shutdownHook;
 
+    // 在平台启动前触发钩子
     @Override
     public void onStartup(Runnable startupHook) {
         startupHook.run();
     }
 
+    // 这里只是设置shutdown钩子
     @Override
     public void onShutdown(Runnable shutdownHook) {
         this.shutdownHook = shutdownHook;
     }
 
+    // 代表出现错误 应用在该平台上退出
     @Override
     public void exit(Throwable cause) {
         ServicesLogger.LOGGER.fatal("Error during startup", cause);

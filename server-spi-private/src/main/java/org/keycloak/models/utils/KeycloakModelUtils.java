@@ -165,6 +165,7 @@ public final class KeycloakModelUtils {
     }
 
     public static ClientModel createManagementClient(RealmModel realm, String name) {
+        // 创建一个属于realm的client  但是client的名字关联到另一个realm  一般其他realm会作为admin realm的client
         ClientModel client = createClient(realm, name);
 
         client.setBearerOnly(true);
@@ -172,6 +173,12 @@ public final class KeycloakModelUtils {
         return client;
     }
 
+    /**
+     * 创建类型为public的client
+     * @param realm
+     * @param name
+     * @return
+     */
     public static ClientModel createPublicClient(RealmModel realm, String name) {
         ClientModel client = createClient(realm, name);
 
@@ -180,6 +187,7 @@ public final class KeycloakModelUtils {
         return client;
     }
 
+    // 为realm 追加一个client
     private static ClientModel createClient(RealmModel realm, String name) {
         ClientModel client = realm.addClient(name);
 
@@ -234,12 +242,16 @@ public final class KeycloakModelUtils {
      * Wrap given runnable job into KeycloakTransaction.
      *
      * @param factory
-     * @param task
+     * @param task 需要一个会话对象才可以执行任务
      */
     public static void runJobInTransaction(KeycloakSessionFactory factory, KeycloakSessionTask task) {
+
+        // 通过工厂创建一个会话
         KeycloakSession session = factory.create();
+        // 获取事务对象
         KeycloakTransaction tx = session.getTransactionManager();
         try {
+            // 在事务中执行任务
             tx.begin();
             task.run(session);
 
@@ -363,6 +375,7 @@ public final class KeycloakModelUtils {
     public static void setupDefaultRole(RealmModel realm, String defaultRoleName) {
         RoleModel defaultRole = realm.addRole(defaultRoleName);
         defaultRole.setDescription("${role_default-roles}");
+        // 设置realm的默认角色
         realm.setDefaultRole(defaultRole);
     }
 

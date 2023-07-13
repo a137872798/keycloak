@@ -34,6 +34,7 @@ public final class Resteasy {
 
     private static ResteasyProvider provider;
 
+    // 通过SPI机制加载 提供rest服务能力的对象
     static {
         provider = ServiceLoader.load(ResteasyProvider.class, Resteasy.class.getClassLoader()).iterator().next();
     }
@@ -41,6 +42,8 @@ public final class Resteasy {
     public static ResteasyProvider getProvider() {
         return provider;
     }
+
+    // 以下都是代理模式
 
     /**
      * Push the given {@code instance} with type/key {@code type} to the Resteasy context associated with the current thread.

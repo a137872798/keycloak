@@ -30,6 +30,7 @@ import java.util.Set;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * realm数据以json格式保存 在数据导入导出时 实际上就是读取json文件 并还原
  */
 public class RealmRepresentation {
     protected String id;

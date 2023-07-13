@@ -22,6 +22,7 @@ import java.util.List;
 
 /**
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 从缓存中获取
  */
 final class DeploymentProviderLoader implements ProviderLoader {
 

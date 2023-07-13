@@ -28,6 +28,7 @@ import org.keycloak.provider.ProviderFactory;
  *
 * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
 * @version $Revision: 1 $
+ * 该接口继承自ConfigurableAuthenticatorFactory 代表认证工厂携带配置项的
 */
 public interface AuthenticatorFactory extends ProviderFactory<Authenticator>, ConfigurableAuthenticatorFactory {
 

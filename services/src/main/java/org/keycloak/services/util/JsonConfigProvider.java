@@ -25,6 +25,7 @@ import java.util.Properties;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 就是解析json文件
  */
 public class JsonConfigProvider implements Config.ConfigProvider {
 

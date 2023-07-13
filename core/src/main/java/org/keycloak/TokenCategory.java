@@ -16,6 +16,9 @@
  */
 package org.keycloak;
 
+/**
+ * 有各种类型的token 作用在不同场景
+ */
 public enum TokenCategory {
     INTERNAL,
     ACCESS,

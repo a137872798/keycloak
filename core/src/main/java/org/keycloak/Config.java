@@ -19,9 +19,11 @@ package org.keycloak;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 可以获取spi全名  或者是从系统变量中读取值
  */
 public class Config {
 
+    // 相当于默认情况  当SPI加载到拓展provider时 一般是读取某个配置文件 并获取配置值
     private static ConfigProvider configProvider = new SystemPropertiesConfigProvider();
 
     public static void init(ConfigProvider configProvider) {
@@ -32,6 +34,7 @@ public class Config {
         return configProvider.scope("admin").get("realm", "master");
     }
 
+    // 生成spi对象的全名
     public static String getProvider(String spi) {
         String provider = configProvider.getProvider(spi);
         if (provider == null || provider.trim().equals("")) {
@@ -47,8 +50,10 @@ public class Config {
 
     public static interface ConfigProvider {
 
+        // 获取spi全名
         String getProvider(String spi);
 
+        // scope会作为前缀 便于读取系统变量
         Scope scope(String... scope);
 
     }
@@ -60,6 +65,7 @@ public class Config {
             return System.getProperties().getProperty("keycloak." + spi + ".provider");
         }
 
+        // 传入scope 确定前缀名 以便从系统变量中读取配置值
         @Override
         public Scope scope(String... scope) {
             StringBuilder sb = new StringBuilder();
@@ -73,6 +79,7 @@ public class Config {
 
     }
 
+    // 从环境变量中读取配置值 需要一个前缀名进行初始化
     public static class SystemPropertiesScope implements Scope {
 
         private String prefix;
@@ -158,6 +165,7 @@ public class Config {
 
     /**
      * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+     * 采用不同的方式解释读取到的值
      */
     public static interface Scope {
 

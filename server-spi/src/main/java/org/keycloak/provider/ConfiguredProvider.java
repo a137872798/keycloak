@@ -26,5 +26,6 @@ import java.util.List;
 public interface ConfiguredProvider {
     String getHelpText();
 
+    // 代表可配置的provider 可以读取到一组配置项
     List<ProviderConfigProperty> getConfigProperties();
 }

@@ -21,9 +21,11 @@ import org.keycloak.events.admin.AdminEventQuery;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 存储事件的容器
  */
 public interface EventStoreProvider extends EventListenerProvider {
 
+    // 产生一个可以查询事件的对象
     EventQuery createQuery();
 
     AdminEventQuery createAdminQuery();

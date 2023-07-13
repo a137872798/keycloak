@@ -63,6 +63,7 @@ import javax.servlet.Filter;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 整个服务的启动入口
  */
 public class KeycloakServer {
 
@@ -76,6 +77,8 @@ public class KeycloakServer {
         private int port = 8081;
         private int portHttps = -1;
         private int workerThreads = Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8;
+
+        // 配置所在目录
         private String resourcesHome;
 
         public String getHost() {
@@ -135,8 +138,11 @@ public class KeycloakServer {
         bootstrapKeycloakServer(args);
     }
 
+    // 基于配置产生server对象
     public static KeycloakServer bootstrapKeycloakServer(String[] args) throws Throwable {
         File f = new File(System.getProperty("user.home"), ".keycloak-server.properties");
+
+        // 加载配置文件 并设置到环境变量
         if (f.isFile()) {
             Properties p = new Properties();
             try (FileInputStream is = new FileInputStream(f)) {
@@ -145,6 +151,7 @@ public class KeycloakServer {
             System.getProperties().putAll(p);
         }
 
+        // 覆盖配置
         KeycloakServerConfig config = new KeycloakServerConfig();
 
         for (int i = 0; i < args.length; i++) {
@@ -223,8 +230,10 @@ public class KeycloakServer {
             config.setWorkerThreads(undertowWorkerThreads);
         }
 
+        // 设置数据目录地址
         configureDataDirectory();
 
+        // 设置node_name
         detectNodeName(config);
 
         final KeycloakServer keycloak = new KeycloakServer(config);
@@ -241,6 +250,7 @@ public class KeycloakServer {
             keycloak.importRealm(new FileInputStream(System.getProperty("import")));
         }
 
+        // 进程结束时 触发钩子
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -256,6 +266,7 @@ public class KeycloakServer {
     }
 
     public static void configureDataDirectory() {
+        // 设置数据目录地址
         String dataPath = detectDataDirectory();
         System.setProperty(JBOSS_SERVER_DATA_DIR, dataPath);
         log.infof("Using %s %s", JBOSS_SERVER_DATA_DIR,  dataPath);
@@ -358,6 +369,9 @@ public class KeycloakServer {
         }
     }
 
+    /**
+     * 创建初始用户
+     */
     protected void setupDevConfig() {
         if (System.getProperty("keycloak.createAdminUser", "true").equals("true")) {
             KeycloakSession session = sessionFactory.create();
@@ -374,13 +388,17 @@ public class KeycloakServer {
         }
     }
 
+    // 启动服务
     public void start() throws Throwable {
         long start = System.currentTimeMillis();
 
+        // 简单理解就是web服务器
         ResteasyDeployment deployment = new ResteasyDeployment();
 
+        // 该对象会被反射实例化 生命周期由Resteasy对象管理
         deployment.setApplicationClass(KeycloakApplication.class.getName());
 
+        // 轻量级web服务器
         Builder builder = Undertow.builder()
                 .addHttpListener(config.getPort(), config.getHost())
                 .setWorkerThreads(config.getWorkerThreads())
@@ -394,6 +412,7 @@ public class KeycloakServer {
 
         server = new UndertowJaxrsServer();
         try {
+            // 这里就是启动服务器了
             server.start(builder);
 
             DeploymentInfo di = server.undertowDeployment(deployment, "");
@@ -408,6 +427,7 @@ public class KeycloakServer {
             // KEYCLOAK-14178
             deployment.setProperty(ResteasyContextParameters.RESTEASY_DISABLE_HTML_SANITIZER, true);
 
+            // 在所有请求进入前 会被filter处理
             InstanceHandle<Filter> filterInstance = new InstanceHandle<Filter>() {
                 @Override
                 public Filter getInstance() {
@@ -424,10 +444,12 @@ public class KeycloakServer {
             di.addFilter(filter);
             di.addFilterUrlMapping("SessionFilter", "/*", DispatcherType.REQUEST);
 
+            // 在这里的时候应该完成了整个应用的部署   其中会触发realm数据的初始化,旧数据的迁移,开启定时任务等等
             server.deploy(di);
 
             sessionFactory = KeycloakApplication.getSessionFactory();
 
+            // 在server启动时 还没有用户 现在创建默认用户
             setupDevConfig();
 
             if (config.getResourcesHome() != null) {

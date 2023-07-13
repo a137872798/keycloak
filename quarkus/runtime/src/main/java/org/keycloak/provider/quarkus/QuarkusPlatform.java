@@ -24,8 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.keycloak.platform.Platform;
 import org.keycloak.platform.PlatformProvider;
 
+// Quarkus 是一种运行在k8s上的开发栈
 public class QuarkusPlatform implements PlatformProvider {
 
+    // 当发现error时 先存储起来
     public static void addInitializationException(Throwable throwable) {
         QuarkusPlatform platform = (QuarkusPlatform) Platform.getPlatform();
         platform.addDeferredException(throwable);
@@ -37,6 +39,7 @@ public class QuarkusPlatform implements PlatformProvider {
      * <p>Calling this method after the server is started has no effect but just the exception being thrown.
      * 
      * @throws InitializationException the exception holding all errors during startup.
+     * 将所有error组合后 一次性返回
      */
     public static void exitOnError() throws InitializationException {
         QuarkusPlatform platform = (QuarkusPlatform) Platform.getPlatform();
@@ -66,14 +69,16 @@ public class QuarkusPlatform implements PlatformProvider {
     Runnable startupHook;
     Runnable shutdownHook;
 
+    // 代表应用已经启动
     private AtomicBoolean started = new AtomicBoolean(false);
+    // 存储error
     private List<Throwable> deferredExceptions = new CopyOnWriteArrayList<>();
 
+    // 分别在容器启动前后设置钩子
     @Override
     public void onStartup(Runnable startupHook) {
         this.startupHook = startupHook;
     }
-
     @Override
     public void onShutdown(Runnable shutdownHook) {
         this.shutdownHook = shutdownHook;

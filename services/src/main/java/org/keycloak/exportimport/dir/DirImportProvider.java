@@ -70,6 +70,12 @@ public class DirImportProvider implements ImportProvider {
         logger.infof("Importing from directory %s", this.rootDirectory.getAbsolutePath());
     }
 
+    /**
+     * 导入所有数据
+     * @param factory
+     * @param strategy
+     * @throws IOException
+     */
     @Override
     public void importModel(KeycloakSessionFactory factory, Strategy strategy) throws IOException {
         List<String> realmNames = getRealmsToImport();
@@ -120,6 +126,8 @@ public class DirImportProvider implements ImportProvider {
                 return name.matches(realmName + "-users-[0-9]+\\.json");
             }
         });
+
+        // 联合用户文件
         File[] federatedUserFiles = this.rootDirectory.listFiles(new FilenameFilter() {
 
             @Override

@@ -38,6 +38,7 @@ import java.util.Map;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 上下文对象 被包含在keycloakSession中
  */
 public class DefaultKeycloakContext implements KeycloakContext {
 
@@ -47,6 +48,7 @@ public class DefaultKeycloakContext implements KeycloakContext {
 
     private ClientConnection connection;
 
+    // 会话对象
     private KeycloakSession session;
 
     private Map<UrlType, KeycloakUriInfo> uriInfo;

@@ -19,6 +19,7 @@ package org.keycloak.provider;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 借助spi实现的provider  具备close
  */
 public interface Provider {
 

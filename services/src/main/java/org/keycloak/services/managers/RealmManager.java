@@ -95,36 +95,62 @@ public class RealmManager {
         return createRealm(name, name);
     }
 
+    /**
+     * 传入名字 产生realm数据
+     * @param id
+     * @param name
+     * @return
+     */
     public RealmModel createRealm(String id, String name) {
+        // UUID 作为id
         if (id == null) {
             id = KeycloakModelUtils.generateId();
         }
         else {
+            // 验证id有效性
             ReservedCharValidator.validate(id);
         }
         ReservedCharValidator.validate(name);
+        // 创建realm 同时发布事件
         RealmModel realm = model.createRealm(id, name);
         realm.setName(name);
 
-        // setup defaults
+        // setup defaults  填充默认属性
         setupRealmDefaults(realm);
 
+        // 为新建的realm 关联默认角色
         KeycloakModelUtils.setupDefaultRole(realm, Constants.DEFAULT_ROLES_ROLE_PREFIX + "-" + name.toLowerCase());
+
+        // 下面的逻辑就是为realm创建各种client
+
+        // 安装与admin相关的东西
         setupMasterAdminManagement(realm);
+        // 普通realm需要安装的东西
         setupRealmAdminManagement(realm);
+        // 安装账号管理
         setupAccountManagement(realm);
+        // 创建broker
         setupBrokerService(realm);
+        // security-admin-console
         setupAdminConsole(realm);
+        // 追加映射关系
         setupAdminConsoleLocaleMapper(realm);
+        // cli 也是client
         setupAdminCli(realm);
+        // 安装impersonation服务 也是client
         setupImpersonationService(realm);
+        // 设置一个鉴权流程
         setupAuthenticationFlows(realm);
+        // 配置基础行为
         setupRequiredActions(realm);
+        // 安装离线访问
         setupOfflineTokens(realm, null);
+        // TODO
         createDefaultClientScopes(realm);
         setupAuthorizationServices(realm);
         setupClientRegistrations(realm);
 
+        // 发布realm创建完毕的事件
         fireRealmPostCreate(realm);
 
         return realm;
@@ -139,6 +165,7 @@ public class RealmManager {
     }
 
     private void setupOfflineTokens(RealmModel realm, RealmRepresentation realmRep) {
+        // 为realm设置一个offline角色
         RoleModel offlineRole = KeycloakModelUtils.setupOfflineRole(realm);
 
         if (realmRep != null && hasRealmRole(realmRep, Constants.OFFLINE_ACCESS_ROLE)) {
@@ -153,6 +180,7 @@ public class RealmManager {
         }
 
         if (realmRep == null || !hasClientScope(realmRep, Constants.OFFLINE_ACCESS_ROLE)) {
+            // TODO 追加一个离线访问 client scope
             DefaultClientScopes.createOfflineAccessClientScope(realm, offlineRole);
         }
     }
@@ -181,6 +209,7 @@ public class RealmManager {
         adminConsole.setAttribute(OIDCConfigAttributes.PKCE_CODE_CHALLENGE_METHOD, "S256");
     }
 
+    // 为client绑定mapper关系
     protected void setupAdminConsoleLocaleMapper(RealmModel realm) {
         ClientModel adminConsole = session.clients().getClientByClientId(realm, Constants.ADMIN_CONSOLE_CLIENT_ID);
         ProtocolMapperModel localeMapper = adminConsole.getProtocolMapperByName(OIDCLoginProtocol.LOGIN_PROTOCOL, OIDCLoginProtocolFactory.LOCALE);
@@ -207,6 +236,9 @@ public class RealmManager {
         }
 
     }
+
+
+    // 把角色从DB中取出来 加到内存中
     public void addQueryCompositeRoles(ClientModel realmAccess) {
         RoleModel queryClients = realmAccess.getRole(AdminRoles.QUERY_CLIENTS);
         RoleModel queryUsers = realmAccess.getRole(AdminRoles.QUERY_USERS);
@@ -295,10 +327,16 @@ public class RealmManager {
     }
 
 
+    /**
+     * 安装与admin相关的东西
+     * @param realm
+     */
     public void setupMasterAdminManagement(RealmModel realm) {
-        // Need to refresh masterApp for current realm
+        // Need to refresh masterApp for current realm    master
         String adminRealmId = Config.getAdminRealm();
+        // 获取adminRealm
         RealmModel adminRealm = model.getRealm(adminRealmId);
+        // 每个realm 会自动变成 主realm的client
         ClientModel masterApp = adminRealm.getClientByClientId(KeycloakModelUtils.getMasterRealmAdminApplicationClientId(realm.getName()));
         if (masterApp == null) {
             createMasterAdminManagement(realm);
@@ -307,34 +345,47 @@ public class RealmManager {
         realm.setMasterAdminClient(masterApp);
     }
 
+    /**
+     * 将新的realm 作为adminRealm的client
+     * @param realm
+     */
     private void createMasterAdminManagement(RealmModel realm) {
         RealmModel adminRealm;
         RoleModel adminRole;
 
+        // 代表本次新建的就是adminRealm
         if (realm.getName().equals(Config.getAdminRealm())) {
             adminRealm = realm;
 
+            // 给realm追加 admin角色
             adminRole = realm.addRole(AdminRoles.ADMIN);
 
+            // 只有master才具备创建其他realm的能力
             RoleModel createRealmRole = realm.addRole(AdminRoles.CREATE_REALM);
+            // 叠加角色信息
             adminRole.addCompositeRole(createRealmRole);
             createRealmRole.setDescription("${role_" + AdminRoles.CREATE_REALM + "}");
         } else {
+            // 这里获取 admin realm/role
             adminRealm = model.getRealm(Config.getAdminRealm());
             adminRole = adminRealm.getRole(AdminRoles.ADMIN);
         }
         adminRole.setDescription("${role_"+AdminRoles.ADMIN+"}");
 
+        // 将本次的realm作为一个client 绑定到admin realm上   注意realm此时可能跟admin realm是一样的
         ClientModel realmAdminApp = KeycloakModelUtils.createManagementClient(adminRealm, KeycloakModelUtils.getMasterRealmAdminApplicationClientId(realm.getName()));
         // No localized name for now
         realmAdminApp.setName(realm.getName() + " Realm");
         realm.setMasterAdminClient(realmAdminApp);
 
+        // 此时 realmAdminApp是一个新的client 为它添加角色
         for (String r : AdminRoles.ALL_REALM_ROLES) {
             RoleModel role = realmAdminApp.addRole(r);
             role.setDescription("${role_"+r+"}");
+            // 这些client role 都会被追加到admin role中
             adminRole.addCompositeRole(role);
         }
+        // 分配角色
         addQueryCompositeRoles(realmAdminApp);
     }
 
@@ -353,11 +404,18 @@ public class RealmManager {
     }
 
 
+    /**
+     * 安装普通realm相关的管理器
+     * @param realm
+     */
     private void setupRealmAdminManagement(RealmModel realm) {
+        // 主realm不需要处理
         if (realm.getName().equals(Config.getAdminRealm())) { return; } // don't need to do this for master realm
 
         String realmAdminClientId = getRealmAdminClientId(realm);
+        // 每个域会初始化一个固定的client name为"realm-management"
         ClientModel realmAdminClient = realm.getClientByClientId(realmAdminClientId);
+        // 创建client
         if (realmAdminClient == null) {
             realmAdminClient = KeycloakModelUtils.createManagementClient(realm, realmAdminClientId);
             realmAdminClient.setName("${client_" + realmAdminClientId + "}");
@@ -368,6 +426,7 @@ public class RealmManager {
         realmAdminClient.setFullScopeAllowed(false);
         realmAdminClient.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
 
+        // 为client 添加client role
         for (String r : AdminRoles.ALL_REALM_ROLES) {
             addAndSetAdminRole(r, realmAdminClient, adminRole);
         }
@@ -404,7 +463,12 @@ public class RealmManager {
     }
 
 
+    /**
+     * 安装账号管理
+     * @param realm
+     */
     private void setupAccountManagement(RealmModel realm) {
+        // 账号管理 也是个client
         ClientModel accountClient = realm.getClientByClientId(Constants.ACCOUNT_MANAGEMENT_CLIENT_ID);
         if (accountClient == null) {
             accountClient = KeycloakModelUtils.createPublicClient(realm, Constants.ACCOUNT_MANAGEMENT_CLIENT_ID);
@@ -437,8 +501,10 @@ public class RealmManager {
             manageConsentRole.setDescription("${role_" + AccountRoles.MANAGE_CONSENT + "}");
             manageConsentRole.addCompositeRole(viewConsentRole);
 
+            // 为client追加一个"删除账户"的角色
             KeycloakModelUtils.setupDeleteAccount(accountClient);
 
+            // 还要添加一个account_console client
             ClientModel accountConsoleClient = realm.getClientByClientId(Constants.ACCOUNT_CONSOLE_CLIENT_ID);
             if (accountConsoleClient == null) {
                 accountConsoleClient = KeycloakModelUtils.createPublicClient(realm, Constants.ACCOUNT_CONSOLE_CLIENT_ID);
@@ -472,6 +538,10 @@ public class RealmManager {
         ImpersonationConstants.setupImpersonationService(session, realm);
     }
 
+    /**
+     * 创建 broker服务
+     * @param realm
+     */
     public void setupBrokerService(RealmModel realm) {
         ClientModel client = realm.getClientByClientId(Constants.BROKER_SERVICE_CLIENT_ID);
         if (client == null) {
@@ -496,6 +566,7 @@ public class RealmManager {
 
     /**
      * if "skipUserDependent" is true, then import of any models, which needs users already imported in DB, will be skipped. For example authorization
+     * 导入某个realm数据
      */
     public RealmModel importRealm(RealmRepresentation rep, boolean skipUserDependent) {
         String id = rep.getId();

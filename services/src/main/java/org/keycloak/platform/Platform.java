@@ -20,13 +20,16 @@ package org.keycloak.platform;
 import java.util.NoSuchElementException;
 import java.util.ServiceLoader;
 
+// 获取当前运行环境的
 public class Platform {
 
     private static PlatformProvider INSTANCE;
 
+    // 基于spi机制加载搭配当前平台使用的钩子
     public static PlatformProvider getPlatform() {
 
         if (INSTANCE == null) {
+            // 通过SPI机制
             ServiceLoader<PlatformProvider> loader = ServiceLoader.load(PlatformProvider.class, Platform.class.getClassLoader());
             try {
                 INSTANCE = loader.iterator().next();

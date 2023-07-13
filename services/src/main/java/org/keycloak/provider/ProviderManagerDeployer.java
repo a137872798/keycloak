@@ -19,6 +19,7 @@ package org.keycloak.provider;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 可以给某个对象安装provider管理器 或者卸载
  */
 public interface ProviderManagerDeployer {
     void deploy(ProviderManager pm);

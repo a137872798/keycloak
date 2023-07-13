@@ -18,6 +18,9 @@ package org.keycloak;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+/**
+ * 看来 keycloak中不止一种token类型
+ */
 public interface Token {
 
     @JsonIgnore

@@ -33,6 +33,9 @@ import org.keycloak.storage.role.RoleStorageProviderFactory;
 import org.keycloak.storage.role.RoleStorageProviderModel;
 import org.keycloak.utils.ServicesUtils;
 
+/**
+ * 使用该对象维护 role信息
+ */
 public class RoleStorageManager implements RoleProvider {
     private static final Logger logger = Logger.getLogger(RoleStorageManager.class);
 
@@ -112,6 +115,12 @@ public class RoleStorageManager implements RoleProvider {
                 .map(model -> type.cast(getStorageProviderInstance(session, model, getRoleStorageProviderFactory(model, session))));
     }
 
+    /**
+     * 将某个角色追加到 realm中
+     * @param realm Realm owning this role.
+     * @param name String name of the role.
+     * @return
+     */
     @Override
     public RoleModel addRealmRole(RealmModel realm, String name) {
         return session.roleLocalStorage().addRealmRole(realm, name);

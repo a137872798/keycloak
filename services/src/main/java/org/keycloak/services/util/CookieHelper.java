@@ -36,6 +36,7 @@ import static org.keycloak.common.util.ServerCookie.SameSiteAttributeValue;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 从请求头提取cookie
  */
 public class CookieHelper {
 
@@ -139,6 +140,7 @@ public class CookieHelper {
         return values;
     }
 
+    // 返回name匹配的cookie
     public static Cookie getCookie(Map<String, Cookie> cookies, String name) {
         Cookie cookie = cookies.get(name);
         if (cookie != null) {

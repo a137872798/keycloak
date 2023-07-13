@@ -21,6 +21,7 @@ import java.util.List;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 具备加载SPI对象的能力
  */
 public interface ProviderLoader {
 

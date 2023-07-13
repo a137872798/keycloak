@@ -26,12 +26,12 @@ import org.keycloak.sessions.AuthenticationSessionModel;
  * RequiredAction provider.  Required actions are one-time actions that a user must perform before they are logged in.
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
- * @version $Revision: 1 $
+ * @version $Revision: 1 $   在用户登录前必须完成的action
  */
 public interface RequiredActionProvider extends Provider {
     /**
      * Determines what type of support is provided for application-initiated
-     * actions.
+     * actions.   是否支持在初始化时做一些动作
      * 
      * @return InititatedActionsSupport
      */
@@ -45,7 +45,7 @@ public interface RequiredActionProvider extends Provider {
      * 
      * @param session The Keycloak session.
      * @param authSession The authentication session.
-     * 
+     * 当初始化时的行为被取消时触发
      */
     default void initiatedActionCanceled(KeycloakSession session, AuthenticationSessionModel authSession) {
         return;

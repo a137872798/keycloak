@@ -22,27 +22,33 @@ import java.util.Map;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 用户会话实体
  */
 public interface UserSessionModel {
 
+    // 会话id
     String getId();
+    // 所在领域
     RealmModel getRealm();
 
     /**
      * If created via a broker external login, this is an identifier that can be
      * used to match external broker backchannel logout requests to a UserSession
-     *
      * @return
+     * 如果是通过代理人(外部系统) 完成登录的 会需要额外维护外部系统的会话id 以及用户id
      */
     String getBrokerSessionId();
     String getBrokerUserId();
 
+    // 获取关联用户
     UserModel getUser();
 
     String getLoginUsername();
 
+    // 获取用户ip地址
     String getIpAddress();
 
+    // 用户使用的认证方式
     String getAuthMethod();
 
     boolean isRememberMe();
@@ -93,6 +99,7 @@ public interface UserSessionModel {
 
     /**
      * Flag used when creating user session
+     * 瞬时会话 还是持久会话
      */
     enum SessionPersistenceState {
 

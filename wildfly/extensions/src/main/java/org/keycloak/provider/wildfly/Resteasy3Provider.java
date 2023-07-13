@@ -4,6 +4,7 @@ import org.jboss.resteasy.core.Dispatcher;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.keycloak.common.util.ResteasyProvider;
 
+// 该rest服务对应wildfly服务器   简单来看是一个map
 public class Resteasy3Provider implements ResteasyProvider {
 
     @Override

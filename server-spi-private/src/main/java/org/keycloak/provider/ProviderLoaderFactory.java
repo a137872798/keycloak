@@ -22,8 +22,10 @@ package org.keycloak.provider;
  */
 public interface ProviderLoaderFactory {
 
+    // 代表工厂是否支持某种类型
     boolean supports(String type);
 
+    // 生成实例对象
     ProviderLoader create(KeycloakDeploymentInfo info, ClassLoader baseClassLoader, String resource);
 
 }

@@ -25,6 +25,7 @@ import java.util.Map;
  * for configuration options and properties specifics to a identity provider.</p>
  *
  * @author Pedro Igor
+ * 身份提供者模型
  */
 public class IdentityProviderModel implements Serializable {
 

@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 通过该对象维护client
  */
 public class ClientStorageManager implements ClientProvider {
     private static final Logger logger = Logger.getLogger(ClientStorageManager.class);
@@ -129,6 +130,13 @@ public class ClientStorageManager implements ClientProvider {
         return provider.getClientById(realm, id);
     }
 
+    /**
+     * 查询该领域下 该clientId对应的客户端
+     * @param realm Realm to limit the search for clients.
+     * @param clientId String that identifies the client to the external parties.
+     *   Maps to {@code client_id} in OIDC or {@code entityID} in SAML.
+     * @return
+     */
     @Override
     public ClientModel getClientByClientId(RealmModel realm, String clientId) {
         ClientModel client = session.clientLocalStorage().getClientByClientId(realm, clientId);
@@ -160,6 +168,13 @@ public class ClientStorageManager implements ClientProvider {
         return Stream.concat(local, ext);
     }
 
+    /**
+     * 为realm追加一个client
+     * @param realm Realm owning this client.
+     * @param clientId String that identifies the client to the external parties.
+     *   Maps to {@code client_id} in OIDC or {@code entityID} in SAML.
+     * @return
+     */
     @Override
     public ClientModel addClient(RealmModel realm, String clientId) {
         return session.clientLocalStorage().addClient(realm, clientId);

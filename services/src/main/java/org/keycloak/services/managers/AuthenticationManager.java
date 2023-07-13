@@ -108,6 +108,7 @@ import static org.keycloak.services.util.CookieHelper.getCookie;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 处理认证相关的逻辑  并且是无状态对象
  */
 public class AuthenticationManager {
     public static final String SET_REDIRECT_URI_AFTER_REQUIRED_ACTIONS= "SET_REDIRECT_URI_AFTER_REQUIRED_ACTIONS";
@@ -141,20 +142,32 @@ public class AuthenticationManager {
     public static final String KEYCLOAK_LOGOUT_PROTOCOL = "KEYCLOAK_LOGOUT_PROTOCOL";
     private static final TokenTypeCheck VALIDATE_IDENTITY_COOKIE = new TokenTypeCheck(TokenUtil.TOKEN_TYPE_KEYCLOAK_ID);
 
+    /**
+     * 判断当前session是否有效
+     * @param realm  领域实体
+     * @param userSession  用户会话实体
+     * @return
+     */
     public static boolean isSessionValid(RealmModel realm, UserSessionModel userSession) {
+        // 会话为空 会话无效
         if (userSession == null) {
             logger.debug("No user session");
             return false;
         }
+
+        //
         int currentTime = Time.currentTime();
 
         // Additional time window is added for the case when session was updated in different DC and the update to current DC was postponed
+        // 如果设置了 rememberme 使用的是不同的时间
         int maxIdle = userSession.isRememberMe() && realm.getSsoSessionIdleTimeoutRememberMe() > 0 ?
             realm.getSsoSessionIdleTimeoutRememberMe() : realm.getSsoSessionIdleTimeout();
         int maxLifespan = userSession.isRememberMe() && realm.getSsoSessionMaxLifespanRememberMe() > 0 ?
                 realm.getSsoSessionMaxLifespanRememberMe() : realm.getSsoSessionMaxLifespan();
 
+        // 判断session是否还有效  代表当前时间距离上次刷新时间 在idle之内 session还有效
         boolean sessionIdleOk = maxIdle > currentTime - userSession.getLastSessionRefresh() - SessionTimeoutHelper.IDLE_TIMEOUT_WINDOW_SECONDS;
+        // 当前时间-started时间 小于 lifespan
         boolean sessionMaxOk = maxLifespan > currentTime - userSession.getStarted();
         return sessionIdleOk && sessionMaxOk;
     }
@@ -774,18 +787,23 @@ public class AuthenticationManager {
         CookieHelper.addCookie(cookieName, "", path, null, "Expiring cookie", 0, secureOnly, httpOnly, sameSite);
     }
 
+    // 核心方法 验证会话
     public AuthResult authenticateIdentityCookie(KeycloakSession session, RealmModel realm) {
         return authenticateIdentityCookie(session, realm, true);
     }
 
     public static AuthResult authenticateIdentityCookie(KeycloakSession session, RealmModel realm, boolean checkActive) {
+        // 请求头中允许多个cookie 这里根据key锁定唯一一个
         Cookie cookie = CookieHelper.getCookie(session.getContext().getRequestHeaders().getCookies(), KEYCLOAK_IDENTITY_COOKIE);
+        // 无法从请求头中提取出cookie 认为认证失败
         if (cookie == null || "".equals(cookie.getValue())) {
             logger.debugv("Could not find cookie: {0}", KEYCLOAK_IDENTITY_COOKIE);
             return null;
         }
 
+        // 这里的cookie是一个token值
         String tokenString = cookie.getValue();
+        // 验证token有效性
         AuthResult authResult = verifyIdentityToken(session, realm, session.getContext().getUri(), session.getContext().getConnection(), checkActive, false, null, true, tokenString, session.getContext().getRequestHeaders(), VALIDATE_IDENTITY_COOKIE);
         if (authResult == null) {
             expireIdentityCookie(realm, session.getContext().getUri(), session.getContext().getConnection());
@@ -1270,6 +1288,21 @@ public class AuthenticationManager {
         return factory;
     }
 
+    /**
+     * 验证token有效性
+     * @param session  存储本次交互需要的各种信息
+     * @param realm    本次相关的领域  会关联领域配置  用户/角色
+     * @param uriInfo
+     * @param connection
+     * @param checkActive
+     * @param checkTokenType
+     * @param checkAudience
+     * @param isCookie
+     * @param tokenString
+     * @param headers
+     * @param additionalChecks
+     * @return
+     */
     public static AuthResult verifyIdentityToken(KeycloakSession session, RealmModel realm, UriInfo uriInfo, ClientConnection connection, boolean checkActive, boolean checkTokenType,
                                                  String checkAudience, boolean isCookie, String tokenString, HttpHeaders headers, Predicate<? super AccessToken>... additionalChecks) {
         try {

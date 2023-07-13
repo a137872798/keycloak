@@ -25,6 +25,7 @@ import org.keycloak.timer.ScheduledTask;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 定期清理过期事件
  */
 public class ClearExpiredEvents implements ScheduledTask {
 
@@ -34,8 +35,10 @@ public class ClearExpiredEvents implements ScheduledTask {
     public void run(KeycloakSession session) {
         long currentTimeMillis = Time.currentTimeMillis();
 
+        // 默认实现是JpaEventStoreProvider 代表通过jpa存储事件
         EventStoreProvider eventStore = session.getProvider(EventStoreProvider.class);
         if (eventStore != null) {
+            // 每隔一定事件清理一次过期事件
             eventStore.clearExpiredEvents();
         }
 

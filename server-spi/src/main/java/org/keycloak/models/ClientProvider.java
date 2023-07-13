@@ -28,6 +28,7 @@ import java.util.stream.Stream;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 提供查询客户端的能力
  */
 public interface ClientProvider extends ClientLookupProvider, Provider {
 
@@ -103,6 +104,7 @@ public interface ClientProvider extends ClientLookupProvider, Provider {
      * Returns number of clients in the given realm
      * @param realm Realm.
      * @return Number of the clients in the given realm.
+     * 返回某个realm下所有client
      */
     long getClientsCount(RealmModel realm);
 

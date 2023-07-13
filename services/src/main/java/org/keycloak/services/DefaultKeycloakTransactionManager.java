@@ -29,14 +29,18 @@ import java.util.List;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 默认事务管理器
  */
 public class DefaultKeycloakTransactionManager implements KeycloakTransactionManager {
 
     private static final Logger logger = Logger.getLogger(DefaultKeycloakTransactionManager.class);
 
+    // 存储不同状态的事务
     private List<KeycloakTransaction> prepare = new LinkedList<KeycloakTransaction>();
     private List<KeycloakTransaction> transactions = new LinkedList<KeycloakTransaction>();
     private List<KeycloakTransaction> afterCompletion = new LinkedList<KeycloakTransaction>();
+
+    // manager还处于可用状态
     private boolean active;
     private boolean rollback;
     private KeycloakSession session;
@@ -44,10 +48,12 @@ public class DefaultKeycloakTransactionManager implements KeycloakTransactionMan
     // Used to prevent double committing/rollback if there is an uncaught exception
     protected boolean completed;
 
+    // 每个会话借助一个事务管理器来管理事务
     public DefaultKeycloakTransactionManager(KeycloakSession session) {
         this.session = session;
     }
 
+    // active = true 代表管理器已经开启 后加入的事务直接begin就好 否则要先搁置 等待manager启动
     @Override
     public void enlist(KeycloakTransaction transaction) {
         if (active && !transaction.isActive()) {
@@ -56,7 +62,6 @@ public class DefaultKeycloakTransactionManager implements KeycloakTransactionMan
 
         transactions.add(transaction);
     }
-
     @Override
     public void enlistAfterCompletion(KeycloakTransaction transaction) {
         if (active && !transaction.isActive()) {
@@ -65,7 +70,6 @@ public class DefaultKeycloakTransactionManager implements KeycloakTransactionMan
 
         afterCompletion.add(transaction);
     }
-
     @Override
     public void enlistPrepare(KeycloakTransaction transaction) {
         if (active && !transaction.isActive()) {
@@ -86,6 +90,7 @@ public class DefaultKeycloakTransactionManager implements KeycloakTransactionMan
 
     }
 
+    // 事务管理器 本身就是一个大事务
     @Override
     public void begin() {
         if (active) {
@@ -97,6 +102,7 @@ public class DefaultKeycloakTransactionManager implements KeycloakTransactionMan
         if (jtaPolicy == JTAPolicy.REQUIRES_NEW) {
             JtaTransactionManagerLookup jtaLookup = session.getProvider(JtaTransactionManagerLookup.class);
             if (jtaLookup != null) {
+                // 产生一个jta事务 并加入到list中
                 TransactionManager tm = jtaLookup.getTransactionManager();
                 if (tm != null) {
                    enlist(new JtaTransactionWrapper(session.getKeycloakSessionFactory(), tm));
@@ -119,6 +125,7 @@ public class DefaultKeycloakTransactionManager implements KeycloakTransactionMan
             completed = true;
         }
 
+        // 触发各个事务的commit 如果发现异常 触发rollback
         RuntimeException exception = null;
         for (KeycloakTransaction tx : prepare) {
             try {

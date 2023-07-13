@@ -38,7 +38,6 @@ public class JpaRealmProviderFactory implements RealmProviderFactory {
 
     @Override
     public void postInit(KeycloakSessionFactory factory) {
-
     }
 
     @Override
@@ -46,6 +45,7 @@ public class JpaRealmProviderFactory implements RealmProviderFactory {
         return "jpa";
     }
 
+    // 简单理解返回一个持久层对象
     @Override
     public RealmProvider create(KeycloakSession session) {
         EntityManager em = session.getProvider(JpaConnectionProvider.class).getEntityManager();

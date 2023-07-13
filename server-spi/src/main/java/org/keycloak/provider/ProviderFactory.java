@@ -28,6 +28,7 @@ import org.keycloak.models.KeycloakSessionFactory;
  * Only one instance of a factory exists per server.
  *
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 产生SPI提供者
  */
 public interface ProviderFactory<T extends Provider> {
 

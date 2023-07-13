@@ -27,11 +27,13 @@ import java.io.IOException;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 导入导出管理器
  */
 public class ExportImportManager {
 
     private static final Logger logger = Logger.getLogger(ExportImportManager.class);
 
+    // 会话工厂
     private KeycloakSessionFactory sessionFactory;
 
     private final String realmName;
@@ -47,6 +49,7 @@ public class ExportImportManager {
         String providerId = ExportImportConfig.getProvider();
         String exportImportAction = ExportImportConfig.getAction();
 
+        // 产生导入或导出对象
         if (ExportImportConfig.ACTION_EXPORT.equals(exportImportAction)) {
             exportProvider = session.getProvider(ExportProvider.class, providerId);
             if (exportProvider == null) {
@@ -79,13 +82,17 @@ public class ExportImportManager {
         return exportProvider != null;
     }
 
+    // 执行导入工作
     public void runImport() {
         try {
+            // 导入策略  已存在选择覆盖 or 忽略
             Strategy strategy = ExportImportConfig.getStrategy();
+            // 代表导入全部数据
             if (realmName == null) {
                 ServicesLogger.LOGGER.fullModelImport(strategy.toString());
                 importProvider.importModel(sessionFactory, strategy);
             } else {
+                // 有指定realm的情况下 仅加载某个realm数据
                 ServicesLogger.LOGGER.realmImportRequested(realmName, strategy.toString());
                 importProvider.importRealm(sessionFactory, realmName, strategy);
             }

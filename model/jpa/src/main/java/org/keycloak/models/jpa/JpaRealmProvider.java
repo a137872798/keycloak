@@ -64,9 +64,11 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 不只是realm 还有领域相关的所有对象的crud 都包含在里面
  */
 public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientScopeProvider, GroupProvider, RoleProvider {
     protected static final Logger logger = Logger.getLogger(JpaRealmProvider.class);
+    // 借助会话可以访问很多东西
     private final KeycloakSession session;
     protected EntityManager em;
 
@@ -85,14 +87,17 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
         return createRealm(KeycloakModelUtils.generateId(), name);
     }
 
+    // 产生一个realm对象
     @Override
     public RealmModel createRealm(String id, String name) {
         RealmEntity realm = new RealmEntity();
         realm.setName(name);
         realm.setId(id);
+        // 存储到DB
         em.persist(realm);
         em.flush();
         final RealmModel adapter = new RealmAdapter(session, em, realm);
+        // 发布realm创建事件
         session.getKeycloakSessionFactory().publish(new RealmModel.RealmCreationEvent() {
             @Override
             public RealmModel getCreatedRealm() {
@@ -106,10 +111,17 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
         return adapter;
     }
 
+    /**
+     * 根据名字查询领域
+     * @param id
+     * @return
+     */
     @Override
     public RealmModel getRealm(String id) {
+        // 对应一个表实体
         RealmEntity realm = em.find(RealmEntity.class, id);
         if (realm == null) return null;
+        // 对表实体进行包装
         RealmAdapter adapter = new RealmAdapter(session, em, realm);
         return adapter;
     }
@@ -196,11 +208,25 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
     public void close() {
     }
 
+    /**
+     * 将name对应的role 加入到realm中
+     * @param realm Realm owning this role.
+     * @param name String name of the role.
+     * @return
+     */
     @Override
     public RoleModel addRealmRole(RealmModel realm, String name) {
        return addRealmRole(realm, KeycloakModelUtils.generateId(), name);
 
     }
+
+    /**
+     * 为realm追加一个角色
+     * @param realm Realm owning this role.
+     * @param id Internal ID of the role or {@code null} if one is to be created by the underlying store
+     * @param name String name of the role.
+     * @return
+     */
     @Override
     public RoleModel addRealmRole(RealmModel realm, String id, String name) {
         if (getRealmRole(realm, name) != null) {
@@ -214,6 +240,7 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
         entity.setRealmId(realm.getId());
         em.persist(entity);
         em.flush();
+        // 包装角色对象
         RoleAdapter adapter = new RoleAdapter(session, realm, em, entity);
         return adapter;
 
@@ -592,6 +619,14 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
         return addClient(realm, KeycloakModelUtils.generateId(), clientId);
     }
 
+    /**
+     * 为某个realm 追加一个client
+     * @param realm Realm owning this client.
+     * @param id Internal ID of the client or {@code null} if one is to be created by the underlying store
+     * @param clientId String that identifies the client to the external parties.
+     *   Maps to {@code client_id} in OIDC or {@code entityID} in SAML.
+     * @return
+     */
     @Override
     public ClientModel addClient(RealmModel realm, String id, String clientId) {
         if (id == null) {
@@ -610,6 +645,7 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
         entity.setEnabled(true);
         entity.setStandardFlowEnabled(true);
         RealmEntity realmRef = em.getReference(RealmEntity.class, realm.getId());
+        // 设置client所属的realm
         entity.setRealm(realmRef);
         em.persist(entity);
 
@@ -655,6 +691,13 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
 
     }
 
+    /**
+     * 操作DB
+     * @param realm Realm to limit the search for clients.
+     * @param clientId String that identifies the client to the external parties.
+     *   Maps to {@code client_id} in OIDC or {@code entityID} in SAML.
+     * @return
+     */
     @Override
     public ClientModel getClientByClientId(RealmModel realm, String clientId) {
         logger.tracef("getClientByClientId(%s, %s)%s", realm, clientId, getShortStackTrace());
@@ -853,6 +896,9 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
         return closing(query.getResultStream().map(this::entityToModel));
     }
 
+    /**
+     * 定期清理过期的token
+     */
     @Override
     public void removeExpiredClientInitialAccess() {
         int currentTime = Time.currentTime();

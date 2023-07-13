@@ -63,12 +63,15 @@ import java.util.stream.Collectors;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 会话对象
  */
 public class DefaultKeycloakSession implements KeycloakSession {
 
     private final DefaultKeycloakSessionFactory factory;
     private final Map<Integer, Provider> providers = new HashMap<>();
     private final List<Provider> closable = new LinkedList<>();
+
+    // 会话关联一个事务管理器  通过它可以创建事务
     private final DefaultKeycloakTransactionManager transactionManager;
     private final Map<String, Object> attributes = new HashMap<>();
     private RealmProvider model;
@@ -92,6 +95,7 @@ public class DefaultKeycloakSession implements KeycloakSession {
     private VaultTranscriber vaultTranscriber;
     private ClientPolicyManager clientPolicyManager;
 
+    // 初始化会话对象
     public DefaultKeycloakSession(DefaultKeycloakSessionFactory factory) {
         this.factory = factory;
         this.transactionManager = new DefaultKeycloakTransactionManager(this);
@@ -103,7 +107,9 @@ public class DefaultKeycloakSession implements KeycloakSession {
         return context;
     }
 
+    // 很多属性都是按需加载
     private RealmProvider getRealmProvider() {
+        // 优先获取缓存对象
         CacheRealmProvider cache = getProvider(CacheRealmProvider.class);
         if (cache != null) {
             return cache;
@@ -112,6 +118,7 @@ public class DefaultKeycloakSession implements KeycloakSession {
         }
     }
 
+    // 用于产生客户端对象
     private ClientProvider getClientProvider() {
         // TODO: Extract ClientProvider from CacheRealmProvider and use that instead
         ClientProvider cache = getProvider(CacheRealmProvider.class);
@@ -142,6 +149,10 @@ public class DefaultKeycloakSession implements KeycloakSession {
         }
     }
 
+    /**
+     * 获取提供角色的对象
+     * @return
+     */
     private RoleProvider getRoleProvider() {
         // TODO: Extract RoleProvider from CacheRealmProvider and use that instead
         RoleProvider cache = getProvider(CacheRealmProvider.class);

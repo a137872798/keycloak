@@ -37,8 +37,11 @@ import java.util.stream.Stream;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 领域模型 提供接口查找领域下所有的角色
  */
 public interface RealmModel extends RoleContainerModel {
+
+    // 对应realm相关的各种事件
     interface RealmCreationEvent extends ProviderEvent {
         RealmModel getCreatedRealm();
         KeycloakSession getKeycloakSession();
@@ -54,6 +57,7 @@ public interface RealmModel extends RoleContainerModel {
         KeycloakSession getKeycloakSession();
     }
 
+    // 身份提供者相关事件
     interface IdentityProviderUpdatedEvent extends ProviderEvent {
         RealmModel getRealm();
         IdentityProviderModel getUpdatedIdentityProvider();
@@ -66,34 +70,23 @@ public interface RealmModel extends RoleContainerModel {
         KeycloakSession getKeycloakSession();
     }
 
+    // 领域基础信息
     String getId();
-
     String getName();
-
     void setName(String name);
-
     String getDisplayName();
-
     void setDisplayName(String displayName);
-
     String getDisplayNameHtml();
-
     void setDisplayNameHtml(String displayNameHtml);
 
+    // 领域下的各种配置 或者说属性
     boolean isEnabled();
-
     void setEnabled(boolean enabled);
-
     SslRequired getSslRequired();
-
     void setSslRequired(SslRequired sslRequired);
-
     boolean isRegistrationAllowed();
-
     void setRegistrationAllowed(boolean registrationAllowed);
-
     boolean isRegistrationEmailAsUsername();
-
     void setRegistrationEmailAsUsername(boolean registrationEmailAsUsername);
 
     boolean isRememberMe();

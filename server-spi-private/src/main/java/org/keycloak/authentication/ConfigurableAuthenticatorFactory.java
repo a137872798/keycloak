@@ -23,13 +23,18 @@ import org.keycloak.provider.ConfiguredProvider;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 可配置的认证工厂
  */
 public interface ConfigurableAuthenticatorFactory extends ConfiguredProvider {
 
+    /**
+     * 描述认证流程 必填、可选、禁用
+     */
     AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
             AuthenticationExecutionModel.Requirement.REQUIRED,
             AuthenticationExecutionModel.Requirement.ALTERNATIVE,
-            AuthenticationExecutionModel.Requirement.DISABLED};
+            AuthenticationExecutionModel.Requirement.DISABLED
+    };
 
     /**
      * Friendly name for the authenticator

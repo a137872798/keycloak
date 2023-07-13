@@ -46,18 +46,26 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
+// 当应用启动后就会初始化该对象
 public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, ProviderManagerDeployer {
 
     private static final Logger logger = Logger.getLogger(DefaultKeycloakSessionFactory.class);
 
+    // 存储加载到的所有SPI对象
     protected Set<Spi> spis = new HashSet<>();
+    // 存储不同类型提供者实现类的名字
     protected Map<Class<? extends Provider>, String> provider = new HashMap<>();
+    // 提供者关联的工厂 看来可能存在不止一个工厂
     protected volatile Map<Class<? extends Provider>, Map<String, ProviderFactory>> factoriesMap = new HashMap<>();
+
+    // 维护所有监听器
     protected CopyOnWriteArrayList<ProviderEventListener> listeners = new CopyOnWriteArrayList<>();
 
+    // TODO 忽略主题
     private final DefaultThemeManagerFactory themeManagerFactory = new DefaultThemeManagerFactory();
 
     // TODO: Likely should be changed to int and use Time.currentTime() to be compatible with all our "time" reps
+    // 工厂初始化时间 也可以理解为应用启动时间
     protected long serverStartupTimestamp;
 
     /**
@@ -67,17 +75,15 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
     private Long clientStorageProviderTimeout;
     private Long roleStorageProviderTimeout;
 
-    
+    // 事件机制相关
     @Override
     public void register(ProviderEventListener listener) {
         listeners.add(listener);
     }
-
     @Override
     public void unregister(ProviderEventListener listener) {
         listeners.remove(listener);
     }
-
     @Override
     public void publish(ProviderEvent event) {
         for (ProviderEventListener listener : listeners) {
@@ -85,11 +91,15 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
         }
     }
 
+    // 会话工厂进行初始化 启动时 进行初始化操作
     public void init() {
         serverStartupTimestamp = System.currentTimeMillis();
 
+        // 该对象负责加载各种provider
         ProviderManager pm = new ProviderManager(KeycloakDeploymentInfo.create().services(), getClass().getClassLoader(), Config.scope().getArray("providers"));
         spis.addAll(pm.loadSpis());
+
+        // 有关SPI加载的
         factoriesMap = loadFactories(pm);
 
         synchronized (ProviderManagerRegistry.SINGLETON) {
@@ -223,6 +233,7 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
         }
     }
 
+    // 获取可以产生该对象的所有工厂
     protected Map<Class<? extends Provider>, Map<String, ProviderFactory>> loadFactories(ProviderManager pm) {
         Map<Class<? extends Provider>, Map<String, ProviderFactory>> factoryMap = new HashMap<>();
         Set<Spi> spiList = spis;
@@ -232,6 +243,7 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
             Map<String, ProviderFactory> factories = new HashMap<String, ProviderFactory>();
             factoryMap.put(spi.getProviderClass(), factories);
 
+            // 在配置中指定了使用的工厂
             String provider = Config.getProvider(spi.getName());
             if (provider != null) {
 
@@ -272,16 +284,19 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
         return factoryMap;
     }
 
+    // 判断某个配置项是否可用
     protected boolean isEnabled(ProviderFactory factory, Config.Scope scope) {
         if (!scope.getBoolean("enabled", true)) {
             return false;
         }
+        // 判断在当前环境下工厂能否起作用
         if (factory instanceof EnvironmentDependentProviderFactory) {
             return ((EnvironmentDependentProviderFactory) factory).isSupported();
         }
         return true;
     }
 
+    // 产生一个会话对象
     public KeycloakSession create() {
         KeycloakSession session =  new DefaultKeycloakSession(this);
         return session;

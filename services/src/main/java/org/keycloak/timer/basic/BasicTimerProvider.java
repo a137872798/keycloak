@@ -28,6 +28,7 @@ import java.util.TimerTask;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 通过java原生定时器 调度任务
  */
 public class BasicTimerProvider implements TimerProvider {
 

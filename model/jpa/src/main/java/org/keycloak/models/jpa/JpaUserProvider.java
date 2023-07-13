@@ -97,6 +97,15 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
         credentialStore = new JpaUserCredentialStore(session, em);
     }
 
+    /**
+     * 添加用户
+     * @param realm the realm that user will be created in
+     * @param id id of the new user. Should be generated to a random value if {@code null}.
+     * @param username username
+     * @param addDefaultRoles if {@code true}, the user should join all realm default roles
+     * @param addDefaultRequiredActions if {@code true}, all default required actions are added to the created user
+     * @return
+     */
     @Override
     public UserModel addUser(RealmModel realm, String id, String username, boolean addDefaultRoles, boolean addDefaultRequiredActions) {
         if (id == null) {
@@ -116,6 +125,7 @@ public class JpaUserProvider implements UserProvider.Streams, UserCredentialStor
             userModel.grantRole(realm.getDefaultRole());
 
             // No need to check if user has group as it's new user
+            // 用户会自动加入到默认组
             realm.getDefaultGroupsStream().forEach(userModel::joinGroupImpl);
         }
 
