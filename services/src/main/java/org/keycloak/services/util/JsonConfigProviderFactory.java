@@ -40,6 +40,7 @@ public abstract class JsonConfigProviderFactory implements ConfigProviderFactory
         JsonNode node = null;
 
         try {
+            // 读取指定目录下的配置文件
             String configDir = System.getProperty("jboss.server.config.dir");
             if (configDir != null) {
                 File f = new File(configDir + File.separator + "keycloak-server.json");

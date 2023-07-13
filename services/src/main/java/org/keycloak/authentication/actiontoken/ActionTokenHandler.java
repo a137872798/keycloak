@@ -32,6 +32,7 @@ import javax.ws.rs.core.Response;
  * @param <T> Class implementing the action token
  *
  *  @author hmlnarik
+ * 该处理器针对 JWT
  */
 public interface ActionTokenHandler<T extends JsonWebToken> extends Provider {
 
@@ -42,6 +43,7 @@ public interface ActionTokenHandler<T extends JsonWebToken> extends Provider {
      * @param token
      * @param tokenContext
      * @return
+     * 处理传入的token 产生httpResult
      */
     Response handleToken(T token, ActionTokenContext<T> tokenContext);
 
@@ -56,6 +58,7 @@ public interface ActionTokenHandler<T extends JsonWebToken> extends Provider {
      * for token to be handled. The returned array must not be {@code null}.
      * @param tokenContext
      * @return Verifiers or an empty array. The returned array must not be {@code null}.
+     * 在处理前允许使用一组校验器
      */
     default Predicate<? super T>[] getVerifiers(ActionTokenContext<T> tokenContext) {
         return new Predicate[] {};

@@ -73,7 +73,6 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
     private Long clientStorageProviderTimeout;
     private Long roleStorageProviderTimeout;
 
-    protected ComponentFactoryProviderFactory componentFactoryPF;
     
     @Override
     public void register(ProviderEventListener listener) {
@@ -96,12 +95,7 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
         serverStartupTimestamp = System.currentTimeMillis();
 
         ProviderManager pm = new ProviderManager(KeycloakDeploymentInfo.create().services(), getClass().getClassLoader(), Config.scope().getArray("providers"));
-        for (Spi spi : pm.loadSpis()) {
-            if (spi.isEnabled()) {
-                spis.add(spi);
-            }
-        }
-
+        spis.addAll(pm.loadSpis());
         factoriesMap = loadFactories(pm);
 
         synchronized (ProviderManagerRegistry.SINGLETON) {

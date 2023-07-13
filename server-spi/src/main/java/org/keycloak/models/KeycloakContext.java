@@ -29,11 +29,14 @@ import java.util.Locale;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 提供各种上下文信息
  */
 public interface KeycloakContext {
 
+    // 认证服务地址
     URI getAuthServerUrl();
 
+    //
     String getContextPath();
 
     /**

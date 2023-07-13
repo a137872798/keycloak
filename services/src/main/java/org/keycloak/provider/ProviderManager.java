@@ -29,28 +29,39 @@ import java.util.ServiceLoader;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 通过该对象管理所有的提供者
  */
 public class ProviderManager {
 
     private static final Logger logger = Logger.getLogger(ProviderManager.class);
 
     private final KeycloakDeploymentInfo info;
+
+    // 每个Loader对象都可以加载SPI对象
     private List<ProviderLoader> loaders = new LinkedList<ProviderLoader>();
     private MultivaluedHashMap<Class<? extends Provider>, ProviderFactory> cache = new MultivaluedHashMap<>();
 
 
+    /**
+     * @param info  存储provider的容器
+     * @param baseClassLoader
+     * @param resources  相关提供者名字
+     */
     public ProviderManager(KeycloakDeploymentInfo info, ClassLoader baseClassLoader, String... resources) {
         this.info = info;
         List<ProviderLoaderFactory> factories = new LinkedList<ProviderLoaderFactory>();
+        // 获取加载器的工厂 加载器创建加载对象 加载对象负责加载SPI对象
         for (ProviderLoaderFactory f : ServiceLoader.load(ProviderLoaderFactory.class, getClass().getClassLoader())) {
             factories.add(f);
         }
 
         logger.debugv("Provider loaders {0}", factories);
 
+        // 存入2个默认的
         loaders.add(new DefaultProviderLoader(info, baseClassLoader));
         loaders.add(new DeploymentProviderLoader(info));
 
+        // 代表从外部指定了 provider名字
         if (resources != null) {
             for (String r : resources) {
                 String type = r.substring(0, r.indexOf(':'));
@@ -71,6 +82,8 @@ public class ProviderManager {
             }
         }
     }
+
+    // 加载所有spi对象
     public synchronized List<Spi> loadSpis() {
         // Use a map to prevent duplicates, since the loaders may have overlapping classpaths.
         Map<String, Spi> spiMap = new HashMap<>();

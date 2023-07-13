@@ -24,6 +24,7 @@ import org.keycloak.timer.ScheduledTask;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 在应用启动时会触发 每隔一定时间清理过期会话
  */
 public class ClearExpiredUserSessions implements ScheduledTask {
 
@@ -35,6 +36,7 @@ public class ClearExpiredUserSessions implements ScheduledTask {
     public void run(KeycloakSession session) {
         long currentTimeMillis = Time.currentTimeMillis();
 
+        // 这里删除2类过期会话
         session.authenticationSessions().removeAllExpired();
         session.sessions().removeAllExpired();
 

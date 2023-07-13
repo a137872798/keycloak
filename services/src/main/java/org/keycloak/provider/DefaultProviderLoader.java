@@ -29,6 +29,7 @@ import java.util.ServiceLoader;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 每次都会触发加载
  */
 public class DefaultProviderLoader implements ProviderLoader {
 
@@ -57,16 +58,17 @@ public class DefaultProviderLoader implements ProviderLoader {
     public List<ProviderFactory> load(Spi spi) {
         List<ProviderFactory> list = new LinkedList<>();
         if (info.hasServices()) {
+            // 加载出关联的factory对象
             for (ProviderFactory f : ServiceLoader.load(spi.getProviderFactoryClass(), classLoader)) {
                 list.add(f);
             }
         }
 
+        // TODO
         if (spi.getClass().equals(ThemeResourceSpi.class) && info.hasThemeResources()) {
             ClasspathThemeResourceProviderFactory resourceProviderFactory = new ClasspathThemeResourceProviderFactory(info.getName(), classLoader);
             list.add(resourceProviderFactory);
         }
-
         if (spi.getClass().equals(ThemeSpi.class) && info.hasThemes()) {
             ClasspathThemeProviderFactory themeProviderFactory = new ClasspathThemeProviderFactory(info.getName(), classLoader);
             list.add(themeProviderFactory);

@@ -20,6 +20,7 @@ package org.keycloak.provider;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * SPI提供者支持事件机制
  */
 public interface ProviderEvent {
 }

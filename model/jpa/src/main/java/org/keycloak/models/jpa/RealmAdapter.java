@@ -45,9 +45,11 @@ import static org.keycloak.utils.StreamsUtil.closing;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 在应用中被使用的realm实例
  */
 public class RealmAdapter implements LegacyRealmModel, JpaModel<RealmEntity> {
     protected static final Logger logger = Logger.getLogger(RealmAdapter.class);
+    // 对应持久层中的领域实体
     protected RealmEntity realm;
     protected EntityManager em;
     protected KeycloakSession session;
@@ -781,6 +783,11 @@ public class RealmAdapter implements LegacyRealmModel, JpaModel<RealmEntity> {
         return session.clients().getClientById(this, id);
     }
 
+    /**
+     * 通过id 查询client
+     * @param clientId
+     * @return
+     */
     @Override
     public ClientModel getClientByClientId(String clientId) {
         return session.clients().getClientByClientId(this, clientId);

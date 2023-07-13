@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 工厂产生定时器对象
  */
 public class BasicTimerProviderFactory implements TimerProviderFactory {
 

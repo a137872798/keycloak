@@ -22,6 +22,7 @@ import org.keycloak.models.KeycloakSession;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 数据库锁管理器
  */
 public class DBLockManager {
 

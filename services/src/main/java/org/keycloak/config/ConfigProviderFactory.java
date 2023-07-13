@@ -20,6 +20,7 @@ package org.keycloak.config;
 import java.util.Optional;
 import org.keycloak.Config;
 
+// 工厂用于产生提供者
 public interface ConfigProviderFactory {
 
     Optional<Config.ConfigProvider> create();

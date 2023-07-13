@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// 存储provider信息的容器
 public class KeycloakDeploymentInfo {
 
     private String name;

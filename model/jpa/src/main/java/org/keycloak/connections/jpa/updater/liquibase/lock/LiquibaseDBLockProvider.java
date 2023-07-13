@@ -86,6 +86,7 @@ public class LiquibaseDBLockProvider implements DBLockProvider {
         lazyInit();
     }
 
+    // 获取某一namespace的锁
     @Override
     public void waitForLock(Namespace lock) {
         KeycloakModelUtils.suspendJtaTransaction(session.getKeycloakSessionFactory(), () -> {

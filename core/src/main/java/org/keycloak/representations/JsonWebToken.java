@@ -38,6 +38,7 @@ import java.util.Map;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * JWT 内部还包含了用户信息
  */
 public class JsonWebToken implements Serializable, Token {
     @JsonProperty("jti")

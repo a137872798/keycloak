@@ -43,7 +43,7 @@ public class ApplianceBootstrap {
     }
 
     public boolean isNewInstall() {
-        if (session.realms().getRealmByName(Config.getAdminRealm()) != null) {
+        if (session.realms().getRealm(Config.getAdminRealm()) != null) {
             return false;
         } else {
             return true;
@@ -64,7 +64,7 @@ public class ApplianceBootstrap {
         ServicesLogger.LOGGER.initializingAdminRealm(adminRealmName);
 
         RealmManager manager = new RealmManager(session);
-        RealmModel realm = manager.createRealm(adminRealmName);
+        RealmModel realm = manager.createRealm(adminRealmName, adminRealmName);
         realm.setName(adminRealmName);
         realm.setDisplayName(Version.NAME);
         realm.setDisplayNameHtml(Version.NAME_HTML);
@@ -104,7 +104,7 @@ public class ApplianceBootstrap {
         adminUser.setEnabled(true);
 
         UserCredentialModel usrCredModel = UserCredentialModel.password(password);
-        adminUser.credentialManager().updateCredential(usrCredModel);
+        session.userCredentialManager().updateCredential(realm, adminUser, usrCredModel);
 
         RoleModel adminRole = realm.getRole(AdminRoles.ADMIN);
         adminUser.grantRole(adminRole);

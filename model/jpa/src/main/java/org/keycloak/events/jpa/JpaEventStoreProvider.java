@@ -87,12 +87,16 @@ public class JpaEventStoreProvider implements EventStoreProvider {
         em.createQuery("delete from EventEntity where realmId = :realmId and time < :time").setParameter("realmId", realm.getId()).setParameter("time", olderThan).executeUpdate();
     }
 
+    /**
+     * 清理过期事件
+     */
     @Override
     public void clearExpiredEvents() {
         // By default, realm provider is always "jpa", so we can optimize and delete all events in single SQL, assuming that realms are saved in the DB as well.
         // Fallback to model API just with different realm provider than "jpa" (This is never the case in standard Keycloak installations)
         int numDeleted = 0;
         long currentTimeMillis = Time.currentTimeMillis();
+        // 代表只有一个realm操作对象
         if (KeycloakModelUtils.isRealmProviderJpa(session)) {
 
             // Group realms by expiration times. This will be effective if different realms have same/similar event expiration times, which will probably be the case in most environments

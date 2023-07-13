@@ -20,11 +20,13 @@ package org.keycloak.provider;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 提供事件机制 允许注册监听器
  */
 public interface ProviderEventManager {
     void register(ProviderEventListener listener);
 
     void unregister(ProviderEventListener listener);
 
+    // 代表触发了某个事件  之后会触发监听器的方法
     void publish(ProviderEvent event);
 }

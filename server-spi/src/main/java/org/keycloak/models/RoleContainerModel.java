@@ -31,23 +31,31 @@ import java.util.stream.Stream;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
- * @version $Revision: 1 $
+ * @version $Revision: 1 $    该接口代表模型包含角色概念
  */
 public interface RoleContainerModel {
 
+    // 当角色被移除的事件
     interface RoleRemovedEvent extends ProviderEvent {
+        // 哪个角色被移除
         RoleModel getRole();
+        // 会话管理器 可以通过该对象获取各种需要的信息
         KeycloakSession getKeycloakSession();
     }
 
+    // model id
     String getId();
 
+    // 因为是角色容器 可以通过name直接查找
     RoleModel getRole(String name);
 
+    // 追加角色
     RoleModel addRole(String name);
 
+    // 追加角色 并自带role id
     RoleModel addRole(String id, String name);
 
+    // 删除某个角色
     boolean removeRole(RoleModel role);
 
     /**
@@ -61,6 +69,7 @@ public interface RoleContainerModel {
      * @param firstResult {@code Integer} Index of the first desired role. Ignored if negative or {@code null}.
      * @param maxResults {@code Integer} Maximum number of returned roles. Ignored if negative or {@code null}.
      * @return Stream of {@link RoleModel}. Never returns {@code null}.
+     * 返回角色流 从某个开始 并指定获取数量
      */
     Stream<RoleModel> getRolesStream(Integer firstResult, Integer maxResults);
 
@@ -70,6 +79,7 @@ public interface RoleContainerModel {
      * @param first {@code Integer} Index of the first desired role. Ignored if negative or {@code null}.
      * @param max {@code Integer} Maximum number of returned roles. Ignored if negative or {@code null}.
      * @return Stream of {@link RoleModel}. Never returns {@code null}.
+     * 条件查询
      */
     Stream<RoleModel> searchForRolesStream(String search, Integer first, Integer max);
 

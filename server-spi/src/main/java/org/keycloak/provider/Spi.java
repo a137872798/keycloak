@@ -19,12 +19,17 @@ package org.keycloak.provider;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 细化SPI的定义
  */
 public interface Spi {
 
+    // 是否是内部spi
     boolean isInternal();
+    // 获取名称
     String getName();
+    // spi实现类
     Class<? extends Provider> getProviderClass();
+    // 通过工厂类提供实现类
     Class<? extends ProviderFactory> getProviderFactoryClass();
     default boolean isEnabled() {
         return true;

@@ -30,13 +30,17 @@ import java.util.Objects;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 代理模式
  */
 public class JtaTransactionWrapper implements KeycloakTransaction {
     private static final Logger logger = Logger.getLogger(JtaTransactionWrapper.class);
+
+    // JTA
     protected TransactionManager tm;
     protected Transaction ut;
     protected Transaction suspended;
     protected Exception ended;
+
     protected KeycloakSessionFactory factory;
 
     public JtaTransactionWrapper(KeycloakSessionFactory factory, TransactionManager tm) {
@@ -44,6 +48,7 @@ public class JtaTransactionWrapper implements KeycloakTransaction {
         this.factory = factory;
         try {
 
+            // 开启事务管理器, 产生事务
             suspended = tm.suspend();
             logger.debug("new JtaTransactionWrapper");
             logger.debugv("was existing? {0}", suspended != null);

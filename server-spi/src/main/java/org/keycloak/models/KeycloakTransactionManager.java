@@ -20,6 +20,7 @@ package org.keycloak.models;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 事务管理器
  */
 public interface KeycloakTransactionManager extends KeycloakTransaction {
 
@@ -36,6 +37,7 @@ public interface KeycloakTransactionManager extends KeycloakTransaction {
         REQUIRES_NEW,
     }
 
+    // JTA策略描述了 事务策略 比如不支持事务 或者会产生一个新事务
     JTAPolicy getJTAPolicy();
     void setJTAPolicy(JTAPolicy policy);
     void enlist(KeycloakTransaction transaction);

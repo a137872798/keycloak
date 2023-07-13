@@ -30,6 +30,7 @@ import java.util.stream.Stream;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 具备通过clientId 查询client的能力
  */
 public interface ClientLookupProvider {
     
@@ -38,6 +39,7 @@ public interface ClientLookupProvider {
      * @param realm Realm to limit the search.
      * @param id Internal ID
      * @return Model of the client, or {@code null} if no client is found.
+     * 在某个域下查找
      */
     ClientModel getClientById(RealmModel realm, String id);
 
