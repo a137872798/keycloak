@@ -21,6 +21,7 @@ import org.keycloak.provider.ProviderFactory;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 用户会话 存在普通模式和离线模式
  */
 public interface UserSessionPersisterProviderFactory extends ProviderFactory<UserSessionPersisterProvider> {
 }

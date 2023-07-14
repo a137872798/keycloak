@@ -21,6 +21,7 @@ import org.keycloak.models.sessions.infinispan.entities.AuthenticatedClientSessi
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 用于更新client级别会话
  */
 public abstract class ClientSessionUpdateTask implements SessionUpdateTask<AuthenticatedClientSessionEntity> {
 

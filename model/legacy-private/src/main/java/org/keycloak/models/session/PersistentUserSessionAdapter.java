@@ -34,6 +34,7 @@ import java.util.Map;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 离线用户会话 对应DB数据
  */
 public class PersistentUserSessionAdapter implements OfflineUserSessionModel {
 

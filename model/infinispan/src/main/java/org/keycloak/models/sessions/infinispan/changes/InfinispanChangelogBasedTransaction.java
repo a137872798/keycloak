@@ -152,6 +152,8 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     public SessionEntityWrapper<V> get(K key) {
         SessionUpdatesList<V> myUpdates = updates.get(key);
         if (myUpdates == null) {
+
+            // 还没有加载到内存的情况下 先从缓存服务器读取
             SessionEntityWrapper<V> wrappedEntity = cache.get(key);
             if (wrappedEntity == null) {
                 return null;
@@ -167,10 +169,9 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
             V entity = myUpdates.getEntityWrapper().getEntity();
 
             // If entity is scheduled for remove, we don't return it.
+            // 检查有没有remove操作
             boolean scheduledForRemove = myUpdates.getUpdateTasks().stream().filter((SessionUpdateTask task) -> {
-
                 return task.getOperation(entity) == SessionUpdateTask.CacheOperation.REMOVE;
-
             }).findFirst().isPresent();
 
             return scheduledForRemove ? null : myUpdates.getEntityWrapper();
@@ -178,17 +179,25 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     }
 
 
+    /**
+     * 将变更信息推送到缓存服务器
+     */
     @Override
     protected void commitImpl() {
+
+        // 遍历维护在内存中的所有会话信息 相当于本地内存是一级缓存 缓存服务器是二级缓存
         for (Map.Entry<K, SessionUpdatesList<V>> entry : updates.entrySet()) {
             SessionUpdatesList<V> sessionUpdates = entry.getValue();
             SessionEntityWrapper<V> sessionWrapper = sessionUpdates.getEntityWrapper();
 
             // Don't save transient entities to infinispan. They are valid just for current transaction
+            // 瞬时会话 不需要提交到远端服务器
             if (sessionUpdates.getPersistenceState() == UserSessionModel.SessionPersistenceState.TRANSIENT) continue;
 
+            // 该会话用户所在领域
             RealmModel realm = sessionUpdates.getRealm();
 
+            // 计算2个时间信息
             long lifespanMs = lifespanMsLoader.apply(realm, sessionWrapper.getEntity());
             long maxIdleTimeMs = maxIdleTimeMsLoader.apply(realm, sessionWrapper.getEntity());
 
@@ -196,15 +205,23 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
 
             if (merged != null) {
                 // Now run the operation in our cluster
+                // 会话写入到缓存服务器
                 runOperationInCluster(entry.getKey(), merged, sessionWrapper);
 
                 // Check if we need to send message to second DC
+                // 这里是写入到另一个组件
                 remoteCacheInvoker.runTask(kcSession, realm, cacheName, entry.getKey(), merged, sessionWrapper);
             }
         }
     }
 
 
+    /**
+     * 将新任务提交到集群
+     * @param key
+     * @param task
+     * @param sessionWrapper
+     */
     private void runOperationInCluster(K key, MergedUpdate<V> task,  SessionEntityWrapper<V> sessionWrapper) {
         V session = sessionWrapper.getEntity();
         SessionUpdateTask.CacheOperation operation = task.getOperation(session);
@@ -215,11 +232,13 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
         switch (operation) {
             case REMOVE:
                 // Just remove it
+                // 操作缓存服务器 移除某个缓存 
                 CacheDecorators.skipCacheStore(cache)
                         .getAdvancedCache().withFlags(Flag.IGNORE_RETURN_VALUES)
                         .remove(key);
                 break;
             case ADD:
+                // 因为此时的session已经是updateTask作用后的对象了 所以直接写入即可 不需要考虑task 
                 CacheDecorators.skipCacheStore(cache)
                         .getAdvancedCache().withFlags(Flag.IGNORE_RETURN_VALUES)
                         .put(key, sessionWrapper, task.getLifespanMs(), TimeUnit.MILLISECONDS, task.getMaxIdleTimeMs(), TimeUnit.MILLISECONDS);
@@ -227,6 +246,7 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
                 logger.tracef("Added entity '%s' to the cache '%s' . Lifespan: %d ms, MaxIdle: %d ms", key, cache.getName(), task.getLifespanMs(), task.getMaxIdleTimeMs());
                 break;
             case ADD_IF_ABSENT:
+                // 代表在写入前发现已经存在会话了  那么将本地维护的更新操作作用到从缓存服务器加载到的会话上
                 SessionEntityWrapper<V> existing = CacheDecorators.skipCacheStore(cache).putIfAbsent(key, sessionWrapper, task.getLifespanMs(), TimeUnit.MILLISECONDS, task.getMaxIdleTimeMs(), TimeUnit.MILLISECONDS);
                 if (existing != null) {
                     logger.debugf("Existing entity in cache for key: %s . Will update it", key);
@@ -234,12 +254,14 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
                     // Apply updates on the existing entity and replace it
                     task.runUpdate(existing.getEntity());
 
+                    // 然后替换掉服务器上的会话
                     replace(key, task, existing, task.getLifespanMs(), task.getMaxIdleTimeMs());
                 } else {
                     logger.tracef("Add_if_absent successfully called for entity '%s' to the cache '%s' . Lifespan: %d ms, MaxIdle: %d ms", key, cache.getName(), task.getLifespanMs(), task.getMaxIdleTimeMs());
                 }
                 break;
             case REPLACE:
+                // 直接替换 无需考虑之前的会话
                 replace(key, task, sessionWrapper, task.getLifespanMs(), task.getMaxIdleTimeMs());
                 break;
             default:
@@ -249,6 +271,14 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     }
 
 
+    /**
+     * 使用新会话替换旧会话
+     * @param key
+     * @param task
+     * @param oldVersionEntity
+     * @param lifespanMs
+     * @param maxIdleTimeMs
+     */
     private void replace(K key, MergedUpdate<V> task, SessionEntityWrapper<V> oldVersionEntity, long lifespanMs, long maxIdleTimeMs) {
         boolean replaced = false;
         int iteration = 0;
@@ -257,6 +287,7 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
         while (!replaced && iteration < InfinispanUtil.MAXIMUM_REPLACE_RETRIES) {
             iteration++;
 
+            // 将作用后的会话与本地元数据集合在一起
             SessionEntityWrapper<V> newVersionEntity = generateNewVersionAndWrapEntity(session, oldVersionEntity.getLocalMetadata());
 
             // Atomic cluster-aware replace
@@ -268,6 +299,7 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
                     logger.debugf("Replace failed for entity: %s, old version %s, new version %s. Will try again", key, oldVersionEntity.getVersion(), newVersionEntity.getVersion());
                 }
 
+                // 失败代表缓存服务器又被更新了 重新执行一次操作
                 oldVersionEntity = cache.get(key);
 
                 if (oldVersionEntity == null) {
@@ -292,6 +324,9 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     }
 
 
+    /**
+     * 实际上有关缓存服务器的读写 无法回滚
+     */
     @Override
     protected void rollbackImpl() {
     }

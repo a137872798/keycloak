@@ -28,8 +28,8 @@ import org.infinispan.commons.marshall.Externalizer;
 import org.infinispan.commons.marshall.SerializeWith;
 
 /**
- *
  * @author hmlnarik
+ * 用户会话被创建后 会自动携带一个该对象   简单来看就是个map UUID应该是某个clientId
  */
 @SerializeWith(AuthenticatedClientSessionStore.ExternalizerImpl.class)
 public class AuthenticatedClientSessionStore {
