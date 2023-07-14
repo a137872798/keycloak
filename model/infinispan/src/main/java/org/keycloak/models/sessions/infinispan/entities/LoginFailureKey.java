@@ -26,6 +26,7 @@ import org.infinispan.commons.marshall.SerializeWith;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 记录某个用户登录失败的信息
  */
 @SerializeWith(LoginFailureKey.ExternalizerImpl.class)
 public class LoginFailureKey {

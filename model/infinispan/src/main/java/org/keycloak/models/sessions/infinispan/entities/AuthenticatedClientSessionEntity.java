@@ -34,6 +34,7 @@ import java.util.UUID;
 /**
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 会话本身分成多种类型 有基于用户的 基于client的 还有登录失败会话
  */
 @SerializeWith(AuthenticatedClientSessionEntity.ExternalizerImpl.class)
 public class AuthenticatedClientSessionEntity extends SessionEntity {

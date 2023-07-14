@@ -59,6 +59,7 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
     private static final Logger logger = Logger.getLogger(JpaUserSessionPersisterProvider.class);
 
     private final KeycloakSession session;
+    // 关联到DB
     private final EntityManager em;
 
     public JpaUserSessionPersisterProvider(KeycloakSession session, EntityManager em) {
@@ -92,11 +93,15 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
 
     @Override
     public void createClientSession(AuthenticatedClientSessionModel clientSession, boolean offline) {
+
+        // 使用clientSession 更新model数据
         PersistentAuthenticatedClientSessionAdapter adapter = new PersistentAuthenticatedClientSessionAdapter(session, clientSession);
         PersistentClientSessionModel model = adapter.getUpdatedModel();
 
         PersistentClientSessionEntity entity = new PersistentClientSessionEntity();
         StorageId clientStorageId = new StorageId(clientSession.getClient().getId());
+
+        // 代表存储在本地
         if (clientStorageId.isLocal()) {
             entity.setClientId(clientStorageId.getId());
             entity.setClientStorageProvider(PersistentClientSessionEntity.LOCAL);
@@ -110,6 +115,7 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         entity.setTimestamp(clientSession.getTimestamp());
         String offlineStr = offlineToString(offline);
         entity.setOffline(offlineStr);
+        // 意味着某个用户在某个client完成认证
         entity.setUserSessionId(clientSession.getUserSession().getId());
         entity.setData(model.getData());
         em.persist(entity);
@@ -132,6 +138,12 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         }
     }
 
+    /**
+     * 删除某个client 会话
+     * @param userSessionId
+     * @param clientUUID
+     * @param offline
+     */
     @Override
     public void removeClientSession(String userSessionId, String clientUUID, boolean offline) {
         String offlineStr = offlineToString(offline);
@@ -139,6 +151,8 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         String clientId = PersistentClientSessionEntity.EXTERNAL;
         String clientStorageProvider = PersistentClientSessionEntity.LOCAL;
         String externalId = PersistentClientSessionEntity.LOCAL;
+
+        // 观察id 可以知道是本地还是远端
         if (clientStorageId.isLocal()) {
             clientId = clientUUID;
         } else {
@@ -148,12 +162,14 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         }
         PersistentClientSessionEntity sessionEntity = em.find(PersistentClientSessionEntity.class, new PersistentClientSessionEntity.Key(userSessionId, clientId, clientStorageProvider, externalId, offlineStr), LockModeType.PESSIMISTIC_WRITE);
         if (sessionEntity != null) {
+            // 删除client会话
             em.remove(sessionEntity);
 
-            // Remove userSession if it was last clientSession
+            // Remove userSession if it was last clientSession 删除关联数据
             List<PersistentClientSessionEntity> clientSessions = getClientSessionsByUserSession(sessionEntity.getUserSessionId(), offline);
             if (clientSessions.size() == 0) {
                 offlineStr = offlineToString(offline);
+                // 如果该用户没有任何的client 会话 那么这个会话实际上就是无效的 可以将用户会话删除  也就是说用户认证至少会关联一个client
                 PersistentUserSessionEntity userSessionEntity = em.find(PersistentUserSessionEntity.class, new PersistentUserSessionEntity.Key(sessionEntity.getUserSessionId(), offlineStr), LockModeType.PESSIMISTIC_WRITE);
                 if (userSessionEntity != null) {
                     em.remove(userSessionEntity);
@@ -231,6 +247,10 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         logger.debugf("Updated lastSessionRefresh of %d user sessions in realm '%s'", us, realm.getName());
     }
 
+    /**
+     * 删除所有 超时的用户会话
+     * @param realm
+     */
     @Override
     public void removeExpired(RealmModel realm) {
         int expiredOffline = Time.currentTime() - realm.getOfflineSessionIdleTimeout() - SessionTimeoutHelper.PERIODIC_CLEANER_IDLE_TIMEOUT_WINDOW_SECONDS;
@@ -255,6 +275,16 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
 
     }
 
+    /**
+     * 根据条件查询会话
+     * @param firstResult {@code Integer} Index of the first desired user session. Ignored if negative or {@code null}.
+     * @param maxResults {@code Integer} Maximum number of returned user sessions. Ignored if negative or {@code null}.
+     * @param offline {@code boolean} Flag to include offline sessions.
+     * @param lastCreatedOn {@code Integer} Timestamp when the user session was created. It will return only user sessions created later.
+     * @param lastUserSessionId {@code String} Id of the user session. In case of equal {@code lastCreatedOn}
+     * it will compare the id in dictionary order and takes only those created later.
+     * @return
+     */
     @Override
     public Stream<UserSessionModel> loadUserSessionsStream(Integer firstResult, Integer maxResults, boolean offline,
                                                            Integer lastCreatedOn, String lastUserSessionId) {
@@ -276,6 +306,7 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
 
         Set<String> removedClientUUIDs = new HashSet<>();
 
+        // 查询用户关联的client
         if (!userSessionIds.isEmpty()) {
             TypedQuery<PersistentClientSessionEntity> query2 = em.createNamedQuery("findClientSessionsByUserSessions", PersistentClientSessionEntity.class);
             query2.setParameter("userSessionIds", userSessionIds);

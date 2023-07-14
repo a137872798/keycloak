@@ -24,6 +24,7 @@ import org.keycloak.models.sessions.infinispan.entities.LoginFailureKey;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 代表用户登录失败的信息
  */
 public class UserLoginFailureAdapter implements UserLoginFailureModel {
 

@@ -28,6 +28,7 @@ import org.keycloak.models.KeycloakSession;
  * Postpone sending notifications of session events to the commit of Keycloak transaction
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * TODO 有关跨DataCenter的操作可以搁置
  */
 public class SessionEventsSenderTransaction extends AbstractKeycloakTransaction {
 

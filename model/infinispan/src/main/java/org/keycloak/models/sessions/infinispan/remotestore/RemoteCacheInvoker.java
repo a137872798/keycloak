@@ -72,13 +72,13 @@ public class RemoteCacheInvoker {
      * @param realm
      * @param cacheName
      * @param key
-     * @param task  代表一个更新会话信息的任务
-     * @param sessionWrapper  会话对象会被包装
+     * @param task  记录了对本地会话的所有更新操作
+     * @param sessionWrapper  已经作用了本地UpdateTask
      * @param <K>
      * @param <V>
      */
     public <K, V extends SessionEntity> void runTask(KeycloakSession kcSession, RealmModel realm, String cacheName, K key, MergedUpdate<V> task, SessionEntityWrapper<V> sessionWrapper) {
-        // 根据名字获取缓存对象
+        // 当没有为该缓存创建 RemoteCacheContext 时 不需要处理
         RemoteCacheContext context = remoteCaches.get(cacheName);
         if (context == null) {
             return;
@@ -90,7 +90,7 @@ public class RemoteCacheInvoker {
         SessionUpdateTask.CacheOperation operation = task.getOperation(session);
         SessionUpdateTask.CrossDCMessageStatus status = task.getCrossDCMessageStatus(sessionWrapper);
 
-        // TODO
+        // RemoteCacheInvoker 本身就是为了DC服务的  所以Not_Needed 就不需要继续处理了
         if (status == SessionUpdateTask.CrossDCMessageStatus.NOT_NEEDED) {
             if (logger.isTraceEnabled()) {
                 logger.tracef("Skip writing to remoteCache for entity '%s' of cache '%s' and operation '%s'", key, cacheName, operation);
@@ -113,6 +113,7 @@ public class RemoteCacheInvoker {
         Retry.executeWithBackoff((int iteration) -> {
 
             try {
+                // 将会话信息同步到远端服务器
                 runOnRemoteCache(topology, context.remoteCache, maxIdleTimeMs, key, task, sessionWrapper);
             } catch (HotRodClientException re) {
                 if (logger.isDebugEnabled()) {
@@ -129,7 +130,7 @@ public class RemoteCacheInvoker {
 
 
     /**
-     * 在缓存服务器上执行写入操作
+     * 将会话同步到远端服务器
      * @param topology
      * @param remoteCache
      * @param maxIdleMs
@@ -149,7 +150,7 @@ public class RemoteCacheInvoker {
             case REMOVE:
                 remoteCache.remove(key);
                 break;
-                // 添加缓存
+                // 这种情况 要是existing应该会报错
             case ADD:
                 remoteCache.put(key, sessionWrapper.forTransport(),
                         InfinispanUtil.toHotrodTimeMs(remoteCache, task.getLifespanMs()), TimeUnit.MILLISECONDS,
@@ -162,6 +163,7 @@ public class RemoteCacheInvoker {
                 if (existing != null) {
                     logger.debugf("Existing entity in remote cache for key: %s . Will update it", key);
 
+                    // 将task作用在返回的existing 并再次推送
                     replace(topology, remoteCache, task.getLifespanMs(), maxIdleMs, key, task);
                 }
                 break;
@@ -175,6 +177,17 @@ public class RemoteCacheInvoker {
     }
 
 
+    /**
+     * 替换会话信息
+     * @param topology
+     * @param remoteCache
+     * @param lifespanMs
+     * @param maxIdleMs
+     * @param key
+     * @param task
+     * @param <K>
+     * @param <V>
+     */
     private <K, V extends SessionEntity> void replace(TopologyInfo topology, RemoteCache<K, SessionEntityWrapper<V>> remoteCache, long lifespanMs, long maxIdleMs, K key, SessionUpdateTask<V> task) {
         // Adjust based on the hotrod protocol
         lifespanMs = InfinispanUtil.toHotrodTimeMs(remoteCache, lifespanMs);
@@ -185,7 +198,7 @@ public class RemoteCacheInvoker {
         while (!replaced && replaceIteration < InfinispanUtil.MAXIMUM_REPLACE_RETRIES) {
             replaceIteration++;
 
-            // 获取该缓存值的元数据信息
+            // 获取此时服务器上已经存在的值
             VersionedValue<SessionEntityWrapper<V>> versioned = remoteCache.getWithMetadata(key);
             if (versioned == null) {
                 logger.warnf("Not found entity to replace for key '%s'", key);
@@ -195,7 +208,7 @@ public class RemoteCacheInvoker {
             SessionEntityWrapper<V> sessionWrapper = versioned.getValue();
             final V session = sessionWrapper.getEntity();
 
-            // Run task on the remote session
+            // Run task on the remote session   将本地的更新操作作用在远端缓存数据上
             task.runUpdate(session);
 
             if (logger.isTraceEnabled()) {
@@ -203,6 +216,7 @@ public class RemoteCacheInvoker {
                         versioned.getVersion(), session);
             }
 
+            // 发起提交操作
             replaced = remoteCache.replaceWithVersion(key, SessionEntityWrapper.forTransport(session), versioned.getVersion(), lifespanMs, TimeUnit.MILLISECONDS, maxIdleMs, TimeUnit.MILLISECONDS);
 
             if (!replaced) {

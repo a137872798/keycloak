@@ -47,7 +47,7 @@ import static org.keycloak.models.sessions.infinispan.changes.sessions.CrossDCLa
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
- * 用户会话实体
+ * 用户会话被包装成该对象后 可以提供更多能力
  */
 public class UserSessionAdapter implements UserSessionModel {
 
@@ -65,6 +65,9 @@ public class UserSessionAdapter implements UserSessionModel {
 
     private final boolean offline;
 
+    /**
+     * 描述会话是否可以被持久化
+     */
     private SessionPersistenceState persistenceState;
 
     public UserSessionAdapter(KeycloakSession session, InfinispanUserSessionProvider provider, 
@@ -80,6 +83,10 @@ public class UserSessionAdapter implements UserSessionModel {
         this.offline = offline;
     }
 
+    /**
+     * 获取该用户关联的所有client会话
+     * @return
+     */
     @Override
     public Map<String, AuthenticatedClientSessionModel> getAuthenticatedClientSessions() {
         AuthenticatedClientSessionStore clientSessionEntities = entity.getAuthenticatedClientSessions();
@@ -88,9 +95,13 @@ public class UserSessionAdapter implements UserSessionModel {
         List<String> removedClientUUIDS = new LinkedList<>();
 
         if (clientSessionEntities != null) {
+
+            // key是clientId  value是sessionId
             clientSessionEntities.forEach((String key, UUID value) -> {
                 // Check if client still exists
                 ClientModel client = realm.getClientById(key);
+
+                // 该用户包含了client的登录信息  将其包装成客户端会话
                 if (client != null) {
                     final AuthenticatedClientSessionAdapter clientSession = provider.getClientSession(this, client, value, offline);
                     if (clientSession != null) {
@@ -102,11 +113,17 @@ public class UserSessionAdapter implements UserSessionModel {
             });
         }
 
+        // 这些client已经从realm移除 相关的会话数据也一并清理
         removeAuthenticatedClientSessions(removedClientUUIDS);
 
         return Collections.unmodifiableMap(result);
     }
 
+    /**
+     * 获取某个client的会话信息
+     * @param clientUUID
+     * @return
+     */
     @Override
     public AuthenticatedClientSessionModel getAuthenticatedClientSessionByClient(String clientUUID) {
         AuthenticatedClientSessionStore clientSessionEntities = entity.getAuthenticatedClientSessions();
@@ -128,6 +145,10 @@ public class UserSessionAdapter implements UserSessionModel {
 
     private static final int MINIMUM_INACTIVE_CLIENT_SESSIONS_TO_CLEANUP = 5;
 
+    /**
+     * 需要移除这些client关联的会话信息
+     * @param removedClientUUIDS
+     */
     @Override
     public void removeAuthenticatedClientSessions(Collection<String> removedClientUUIDS) {
         if (removedClientUUIDS == null || removedClientUUIDS.isEmpty()) {
@@ -136,6 +157,7 @@ public class UserSessionAdapter implements UserSessionModel {
 
         // Performance: do not remove the clientUUIDs from the user session until there is enough of them;
         // an invalid session is handled as nonexistent in UserSessionAdapter.getAuthenticatedClientSessions()
+        // 产生一个用户更新任务  就是移除userSession关联的 client会话
         if (removedClientUUIDS.size() >= MINIMUM_INACTIVE_CLIENT_SESSIONS_TO_CLEANUP) {
             // Update user session
             UserSessionUpdateTask task = new UserSessionUpdateTask() {
@@ -149,11 +171,13 @@ public class UserSessionAdapter implements UserSessionModel {
 
         // do not iterate the removedClientUUIDS and remove the clientSession directly as the addTask can manipulate
         // the collection being iterated, and that can lead to unpredictable behaviour (e.g. NPE)
+        //
         List<UUID> clientSessionUuids = removedClientUUIDS.stream()
           .map(entity.getAuthenticatedClientSessions()::get)
           .filter(Objects::nonNull)
           .collect(Collectors.toList());
 
+        // 影响也要作用到client会话上
         clientSessionUuids.forEach(clientSessionId -> this.clientSessionUpdateTx.addTask(clientSessionId, Tasks.removeSync()));
     }
 
@@ -212,11 +236,18 @@ public class UserSessionAdapter implements UserSessionModel {
         return entity.getLastSessionRefresh();
     }
 
+
+    /**
+     * 获取session最后一次访问时间
+     * @param lastSessionRefresh
+     */
     public void setLastSessionRefresh(int lastSessionRefresh) {
         if (offline) {
             // Received the message from the other DC that we should update the lastSessionRefresh in local cluster. Don't update DB in that case.
             // The other DC already did.
+            // 离线会话更新操作 代表是从其他DC获取的  那么就不再需要将本次操作同步到DC上了 只需要更新缓存数据
             Boolean ignoreRemoteCacheUpdate = (Boolean) session.getAttribute(CrossDCLastSessionRefreshListener.IGNORE_REMOTE_CACHE_UPDATE);
+            // 没有忽略 还是要写入到refresh对象上 更新会话有效时间
             if (ignoreRemoteCacheUpdate == null || !ignoreRemoteCacheUpdate) {
                 provider.getPersisterLastSessionRefreshStore().putLastSessionRefresh(session, entity.getId(), realm.getId(), lastSessionRefresh);
             }
@@ -229,6 +260,7 @@ public class UserSessionAdapter implements UserSessionModel {
                 entity.setLastSessionRefresh(lastSessionRefresh);
             }
 
+            // TODO 有关DC的可以先不考虑
             @Override
             public CrossDCMessageStatus getCrossDCMessageStatus(SessionEntityWrapper<UserSessionEntity> sessionWrapper) {
                 return new CrossDCLastSessionRefreshChecker(provider.getLastSessionRefreshStore(), provider.getOfflineLastSessionRefreshStore())
@@ -254,6 +286,11 @@ public class UserSessionAdapter implements UserSessionModel {
         return entity.getNotes() != null ? entity.getNotes().get(name) : null;
     }
 
+    /**
+     * 为session 增加note数据
+     * @param name
+     * @param value
+     */
     @Override
     public void setNote(String name, String value) {
         UserSessionUpdateTask task = new UserSessionUpdateTask() {
@@ -320,6 +357,17 @@ public class UserSessionAdapter implements UserSessionModel {
         this.persistenceState = persistenceState;
     }
 
+    /**
+     * 重置会话数据
+     * @param realm
+     * @param user
+     * @param loginUsername
+     * @param ipAddress
+     * @param authMethod
+     * @param rememberMe
+     * @param brokerSessionId
+     * @param brokerUserId
+     */
     @Override
     public void restartSession(RealmModel realm, UserModel user, String loginUsername, String ipAddress, String authMethod, boolean rememberMe, String brokerSessionId, String brokerUserId) {
         UserSessionUpdateTask task = new UserSessionUpdateTask() {
@@ -328,6 +376,7 @@ public class UserSessionAdapter implements UserSessionModel {
             public void runUpdate(UserSessionEntity entity) {
                 provider.updateSessionEntity(entity, realm, user, loginUsername, ipAddress, authMethod, rememberMe, brokerSessionId, brokerUserId);
 
+                // 清除client会话
                 entity.setState(null);
                 entity.getNotes().clear();
                 entity.getAuthenticatedClientSessions().clear();
