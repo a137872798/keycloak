@@ -28,6 +28,7 @@ import org.keycloak.models.sessions.infinispan.entities.SessionEntity;
  * tracks all changes to the underlying session in this transaction
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 维护一组更新任务
  */
 class SessionUpdatesList<S extends SessionEntity> {
 

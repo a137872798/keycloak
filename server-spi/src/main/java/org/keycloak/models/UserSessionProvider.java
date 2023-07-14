@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 该对象可以创建用户会话
  */
 public interface UserSessionProvider extends Provider {
 

@@ -47,6 +47,7 @@ import static org.keycloak.models.sessions.infinispan.changes.sessions.CrossDCLa
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 用户会话实体
  */
 public class UserSessionAdapter implements UserSessionModel {
 

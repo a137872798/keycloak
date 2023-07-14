@@ -30,9 +30,18 @@ import org.keycloak.models.KeycloakSession;
  */
 public abstract class AbstractLastSessionRefreshStore {
 
+    /**
+     * 2次消息间最大间隔时间
+     */
     private final int maxIntervalBetweenMessagesSeconds;
+    /**
+     * 最大次数
+     */
     private final int maxCount;
 
+    /**
+     * 维护每个会话最后一次访问时间
+     */
     private volatile Map<String, SessionData> lastSessionRefreshes = new ConcurrentHashMap<>();
 
     private volatile int lastRun = Time.currentTime();
@@ -52,7 +61,13 @@ public abstract class AbstractLastSessionRefreshStore {
     }
 
 
+    /**
+     * 判断是否需要将最新的session访问信息上报到缓存服务器
+     * @param kcSession
+     * @param currentTime
+     */
     void checkSendingMessage(KeycloakSession kcSession, int currentTime) {
+        // 当本地维护的缓存数过多  或者距离上次发送超过了时间间隔
         if (lastSessionRefreshes.size() >= maxCount || lastRun + maxIntervalBetweenMessagesSeconds <= currentTime) {
             Map<String, SessionData> refreshesToSend = prepareSendingMessage();
 
@@ -65,6 +80,7 @@ public abstract class AbstractLastSessionRefreshStore {
 
 
     // synchronized manipulation with internal object instances. Will return map if message should be sent. Otherwise return null
+    // 产生一个会话副本
     private synchronized Map<String, SessionData> prepareSendingMessage() {
         // Safer to retrieve currentTime to avoid race conditions during testsuite
         int currentTime = Time.currentTime();

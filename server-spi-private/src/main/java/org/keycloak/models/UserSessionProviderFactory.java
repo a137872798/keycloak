@@ -22,6 +22,7 @@ import org.keycloak.provider.ProviderFactory;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 用户会话provider 通过provider工厂创建
  */
 public interface UserSessionProviderFactory<T extends UserSessionProvider> extends ProviderFactory<T> {
 

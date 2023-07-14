@@ -35,11 +35,13 @@ import org.keycloak.models.utils.SessionTimeoutHelper;
  * of time. The updates are sent to UserSessionPersisterProvider (DB)
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 将会话信息存储到持久层中
  */
 public class PersisterLastSessionRefreshStore extends AbstractLastSessionRefreshStore {
 
     protected static final Logger logger = Logger.getLogger(PersisterLastSessionRefreshStore.class);
 
+    // 是否是离线会话
     private final boolean offline;
 
     protected PersisterLastSessionRefreshStore(int maxIntervalBetweenMessagesSeconds, int maxCount, boolean offline) {
@@ -47,14 +49,21 @@ public class PersisterLastSessionRefreshStore extends AbstractLastSessionRefresh
         this.offline = offline;
     }
 
-
+    /**
+     * 会话最新访问时间 通过UserSessionPersisterProvider写入到持久层
+     * @param kcSession
+     * @param refreshesToSend Key is userSession ID, SessionData are data about the session
+     */
     protected void sendMessage(KeycloakSession kcSession, Map<String, SessionData> refreshesToSend) {
+
+        // 按realm分组
         Map<String, Set<String>> sessionIdsByRealm =
                 refreshesToSend.entrySet().stream().collect(
                         Collectors.groupingBy(entry -> entry.getValue().getRealmId(),
                                 Collectors.mapping(Map.Entry::getKey, Collectors.toSet())));
 
         // Update DB with a bit lower value than current time to ensure 'revokeRefreshToken' will work correctly taking server
+        // 使用一个统一的时间 作为session的最新访问时间
         int lastSessionRefresh = Time.currentTime() - SessionTimeoutHelper.PERIODIC_TASK_INTERVAL_SECONDS;
 
         if (logger.isDebugEnabled()) {

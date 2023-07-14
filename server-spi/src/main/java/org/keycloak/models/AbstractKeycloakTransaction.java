@@ -23,6 +23,7 @@ import org.jboss.logging.Logger;
  * Handles some common transaction logic related to start, rollback-only etc.
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 一个事务模版
  */
 public abstract class AbstractKeycloakTransaction implements KeycloakTransaction {
 

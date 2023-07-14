@@ -36,6 +36,7 @@ import java.util.stream.Stream;
  * among server restart. Offline sessions / offline tokens will be invalid after server restart as well,
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 代表用户session能力被禁用了
  */
 public class DisabledUserSessionPersisterProvider implements UserSessionPersisterProviderFactory, UserSessionPersisterProvider {
 

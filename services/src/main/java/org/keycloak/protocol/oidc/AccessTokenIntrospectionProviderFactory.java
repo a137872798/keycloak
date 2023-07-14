@@ -23,6 +23,7 @@ import org.keycloak.models.KeycloakSessionFactory;
 
 /**
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 一个产生TokenIntrospectionProvider的工厂
  */
 public class AccessTokenIntrospectionProviderFactory implements TokenIntrospectionProviderFactory {
 

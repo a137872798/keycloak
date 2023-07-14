@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 代表用户会话数据被缓存的格式
  */
 @SerializeWith(UserSessionEntity.ExternalizerImpl.class)
 public class UserSessionEntity extends SessionEntity {

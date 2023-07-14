@@ -25,6 +25,7 @@ import org.keycloak.TokenCategory;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 在jwt基础上增加了一堆字段 这里包含了用户的各种信息
  */
 public class IDToken extends JsonWebToken {
     public static final String NONCE = "nonce";

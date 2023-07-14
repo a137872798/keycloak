@@ -28,6 +28,7 @@ import org.keycloak.models.sessions.infinispan.changes.SessionEntityWrapper;
  * and {@link #equals(java.lang.Object)} is <b>mandatory</b> in descendants.
  *
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 在远端声明了缓存的数据格式
  */
 public abstract class SessionEntity implements Serializable {
 

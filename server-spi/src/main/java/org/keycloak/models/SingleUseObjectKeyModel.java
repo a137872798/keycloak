@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
- *
+ * 通过这些字段可以确定唯一的token  也就是作为token的key
  * @author hmlnarik
  */
 public interface SingleUseObjectKeyModel {
@@ -38,11 +38,13 @@ public interface SingleUseObjectKeyModel {
 
     /**
      * Returns absolute number of seconds since the epoch in UTC timezone when the token expires.
+     * 可以获取token的过期时间
      */
     int getExpiration();
 
     /**
      * @return Single-use random value used for verification whether the relevant action is allowed.
+     * 一串随机数字
      */
     UUID getActionVerificationNonce();
 

@@ -26,6 +26,11 @@ public class RefreshTokenIntrospectionProviderFactory extends AccessTokenIntrosp
 
     private static final String REFRESH_TOKEN_TYPE = "refresh_token";
 
+    /**
+     * 覆盖provider对象
+     * @param session
+     * @return
+     */
     @Override
     public TokenIntrospectionProvider create(KeycloakSession session) {
         return new RefreshTokenIntrospectionProvider(session);

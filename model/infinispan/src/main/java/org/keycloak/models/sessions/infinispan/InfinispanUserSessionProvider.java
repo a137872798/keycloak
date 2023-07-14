@@ -88,6 +88,7 @@ import static org.keycloak.utils.StreamsUtil.paginatedStream;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 通过缓存维护用户会话
  */
 public class InfinispanUserSessionProvider implements UserSessionProvider {
 
@@ -95,6 +96,7 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
 
     protected final KeycloakSession session;
 
+    // 访问缓存的句柄
     protected final Cache<String, SessionEntityWrapper<UserSessionEntity>> sessionCache;
     protected final Cache<String, SessionEntityWrapper<UserSessionEntity>> offlineSessionCache;
     protected final Cache<UUID, SessionEntityWrapper<AuthenticatedClientSessionEntity>> clientSessionCache;
@@ -109,8 +111,10 @@ public class InfinispanUserSessionProvider implements UserSessionProvider {
 
     protected final CrossDCLastSessionRefreshStore lastSessionRefreshStore;
     protected final CrossDCLastSessionRefreshStore offlineLastSessionRefreshStore;
+    // 每隔一定时间将会话最后的访问时间更新到DB
     protected final PersisterLastSessionRefreshStore persisterLastSessionRefreshStore;
 
+    // 该对象可以将会话数据写入远端缓存
     protected final RemoteCacheInvoker remoteCacheInvoker;
     protected final InfinispanKeyGenerator keyGenerator;
 

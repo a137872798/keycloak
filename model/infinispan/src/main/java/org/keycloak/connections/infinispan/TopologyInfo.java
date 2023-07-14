@@ -39,6 +39,7 @@ import org.keycloak.Config;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 拓扑信息
  */
 public class TopologyInfo {
 

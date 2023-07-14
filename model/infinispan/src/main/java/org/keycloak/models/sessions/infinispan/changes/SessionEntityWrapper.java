@@ -34,6 +34,7 @@ import org.jboss.logging.Logger;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 会话包装对象
  */
 @SerializeWith(SessionEntityWrapper.ExternalizerImpl.class)
 public class SessionEntityWrapper<S extends SessionEntity> {
@@ -42,6 +43,7 @@ public class SessionEntityWrapper<S extends SessionEntity> {
 
     private UUID version;
     private final S entity;
+    // 额外添加了一些元数据
     private final Map<String, String> localMetadata;
 
     protected SessionEntityWrapper(UUID version, Map<String, String> localMetadata, S entity) {
