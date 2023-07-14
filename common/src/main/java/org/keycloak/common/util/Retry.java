@@ -21,6 +21,7 @@ import java.util.Random;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 支持错误重试的对象
  */
 public class Retry {
 
@@ -33,6 +34,7 @@ public class Retry {
      * @param attemptsCount Total number of attempts to execute the {@code runnable}
      * @param intervalMillis
      * @return Index of the first successful invocation, starting from 0.
+     * 正常执行任务 包含重试次数和等待时间
      */
     public static int execute(Runnable runnable, int attemptsCount, long intervalMillis) {
         int iteration = 0;
@@ -88,6 +90,7 @@ public class Retry {
                 return iteration;
             } catch (RuntimeException | AssertionError e) {
 
+                // 允许使用一个回调对象处理异常
                 if (throwableCallback != null) {
                     throwableCallback.handleThrowable(iteration, e);
                 }

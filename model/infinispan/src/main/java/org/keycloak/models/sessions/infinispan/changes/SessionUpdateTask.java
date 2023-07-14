@@ -21,13 +21,28 @@ import org.keycloak.models.sessions.infinispan.entities.SessionEntity;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 更新会话信息的任务
  */
 public interface SessionUpdateTask<S extends SessionEntity> {
 
+    /**
+     * 执行更新任务
+     * @param entity
+     */
     void runUpdate(S entity);
 
+    /**
+     * 描述操作细节
+     * @param entity
+     * @return
+     */
     CacheOperation getOperation(S entity);
 
+    /**
+     * TODO
+     * @param sessionWrapper
+     * @return
+     */
     CrossDCMessageStatus getCrossDCMessageStatus(SessionEntityWrapper<S> sessionWrapper);
 
     enum CacheOperation {
@@ -38,6 +53,7 @@ public interface SessionUpdateTask<S extends SessionEntity> {
         REPLACE;
 
         CacheOperation merge(CacheOperation other, SessionEntity entity) {
+            // 移除
             if (this == REMOVE || other == REMOVE) {
                 return REMOVE;
             }

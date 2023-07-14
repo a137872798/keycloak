@@ -33,6 +33,7 @@ import java.util.Set;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * AccessToken 又额外增加了其他字段
  */
 public class AccessToken extends IDToken {
     public static class Access implements Serializable {

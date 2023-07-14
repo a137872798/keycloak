@@ -43,6 +43,7 @@ public class JsonWebToken implements Serializable, Token {
     @JsonProperty("jti")
     protected String id;
 
+    // 过期时间
     protected Long exp;
     protected Long nbf;
     protected Long iat;
@@ -53,9 +54,9 @@ public class JsonWebToken implements Serializable, Token {
     @JsonSerialize(using = StringOrArraySerializer.class)
     @JsonDeserialize(using = StringOrArrayDeserializer.class)
     protected String[] audience;
-    @JsonProperty("sub")
+    @JsonProperty("sub")  // userid
     protected String subject;
-    @JsonProperty("typ")
+    @JsonProperty("typ")  // actionid
     protected String type;
     @JsonProperty("azp")
     public String issuedFor;

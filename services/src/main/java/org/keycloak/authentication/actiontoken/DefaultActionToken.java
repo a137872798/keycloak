@@ -33,11 +33,13 @@ import javax.ws.rs.core.UriInfo;
  * The token encapsulates user, expected action and its time of expiry.
  *
  * @author hmlnarik
+ * token 同时实现了 KeyModel/ValueModel接口
  */
 public class DefaultActionToken extends DefaultActionTokenKey implements ActionTokenValueModel {
 
     public static final String JSON_FIELD_AUTHENTICATION_SESSION_ID = "asid";
 
+    // 在检验token有效性前 必须要求设置了随机数
     public static final Predicate<DefaultActionTokenKey> ACTION_TOKEN_BASIC_CHECKS = t -> {
         if (t.getActionVerificationNonce() == null) {
             throw new VerificationException("Nonce not present.");
@@ -47,6 +49,7 @@ public class DefaultActionToken extends DefaultActionTokenKey implements ActionT
     };
 
     /**
+     * 这种初始化方式啥也没
      * Single-use random value used for verification whether the relevant action is allowed.
      */
     public DefaultActionToken() {
@@ -54,7 +57,7 @@ public class DefaultActionToken extends DefaultActionTokenKey implements ActionT
     }
 
     /**
-     *
+     * 设置id/过期时间 和随机数
      * @param userId User ID
      * @param actionId Action ID
      * @param absoluteExpirationInSecs Absolute expiration time in seconds in timezone of Keycloak.
@@ -81,11 +84,19 @@ public class DefaultActionToken extends DefaultActionTokenKey implements ActionT
         return (String) getOtherClaims().get(JSON_FIELD_AUTHENTICATION_SESSION_ID);
     }
 
+    /**
+     * 设置sessionId
+     * @param authenticationSessionId
+     */
     @JsonProperty(value = JSON_FIELD_AUTHENTICATION_SESSION_ID)
     public final void setCompoundAuthenticationSessionId(String authenticationSessionId) {
         setOtherClaims(JSON_FIELD_AUTHENTICATION_SESSION_ID, authenticationSessionId);
     }
 
+    /**
+     * 返回的notes 就是 sessionId
+     * @return
+     */
     @JsonIgnore
     @Override
     public Map<String, String> getNotes() {
@@ -105,6 +116,7 @@ public class DefaultActionToken extends DefaultActionTokenKey implements ActionT
     /**
      * Sets value of the given note
      * @return original value (or {@code null} when no value was present)
+     * note就存储在 otherClaims中
      */
     public final String setNote(String name, String value) {
         Object res = value == null

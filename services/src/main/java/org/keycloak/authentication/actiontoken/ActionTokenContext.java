@@ -36,6 +36,7 @@ import org.keycloak.sessions.RootAuthenticationSessionModel;
 /**
  *
  * @author hmlnarik
+ * token上下文
  */
 public class ActionTokenContext<T extends JsonWebToken> {
 

@@ -40,14 +40,23 @@ import org.keycloak.models.sessions.infinispan.util.InfinispanUtil;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 缓存在Infinispan服务器上 不在本地  所以需要借助一个remote对象
  */
 public class RemoteCacheInvoker {
 
     public static final Logger logger = Logger.getLogger(RemoteCacheInvoker.class);
 
+    /**
+     * 每个名字对应一个缓存对象
+     */
     private final Map<String, RemoteCacheContext> remoteCaches =  new HashMap<>();
 
-
+    /**
+     * 增加一个缓存对象
+     * @param cacheName  缓存名
+     * @param remoteCache  拉取缓存数据的对象
+     * @param maxIdleLoader  最大等待时间
+     */
     public void addRemoteCache(String cacheName, RemoteCache remoteCache, MaxIdleTimeLoader maxIdleLoader) {
         RemoteCacheContext ctx = new RemoteCacheContext(remoteCache, maxIdleLoader);
         remoteCaches.put(cacheName, ctx);
@@ -57,18 +66,31 @@ public class RemoteCacheInvoker {
         return Collections.unmodifiableSet(remoteCaches.keySet());
     }
 
-
+    /**
+     * 执行任务
+     * @param kcSession
+     * @param realm
+     * @param cacheName
+     * @param key
+     * @param task  代表一个更新会话信息的任务
+     * @param sessionWrapper  会话对象会被包装
+     * @param <K>
+     * @param <V>
+     */
     public <K, V extends SessionEntity> void runTask(KeycloakSession kcSession, RealmModel realm, String cacheName, K key, MergedUpdate<V> task, SessionEntityWrapper<V> sessionWrapper) {
+        // 根据名字获取缓存对象
         RemoteCacheContext context = remoteCaches.get(cacheName);
         if (context == null) {
             return;
         }
 
+        // 获取会话数据
         V session = sessionWrapper.getEntity();
 
         SessionUpdateTask.CacheOperation operation = task.getOperation(session);
         SessionUpdateTask.CrossDCMessageStatus status = task.getCrossDCMessageStatus(sessionWrapper);
 
+        // TODO
         if (status == SessionUpdateTask.CrossDCMessageStatus.NOT_NEEDED) {
             if (logger.isTraceEnabled()) {
                 logger.tracef("Skip writing to remoteCache for entity '%s' of cache '%s' and operation '%s'", key, cacheName, operation);
@@ -85,6 +107,7 @@ public class RemoteCacheInvoker {
             logger.tracef("Running task '%s' on remote cache '%s' . Key is '%s'", operation, cacheName, key);
         }
 
+        // 获取网络拓扑信息
         TopologyInfo topology = InfinispanUtil.getTopologyInfo(kcSession);
 
         Retry.executeWithBackoff((int iteration) -> {
@@ -105,14 +128,28 @@ public class RemoteCacheInvoker {
     }
 
 
+    /**
+     * 在缓存服务器上执行写入操作
+     * @param topology
+     * @param remoteCache
+     * @param maxIdleMs
+     * @param key  存储到缓存时 还需要带一个key
+     * @param task
+     * @param sessionWrapper
+     * @param <K>
+     * @param <V>
+     */
     private <K, V extends SessionEntity> void runOnRemoteCache(TopologyInfo topology, RemoteCache<K, SessionEntityWrapper<V>> remoteCache, long maxIdleMs, K key, MergedUpdate<V> task, SessionEntityWrapper<V> sessionWrapper) {
         final V session = sessionWrapper.getEntity();
+        // 会话转换成operation
         SessionUpdateTask.CacheOperation operation = task.getOperation(session);
 
         switch (operation) {
+            // 移除缓存
             case REMOVE:
                 remoteCache.remove(key);
                 break;
+                // 添加缓存
             case ADD:
                 remoteCache.put(key, sessionWrapper.forTransport(),
                         InfinispanUtil.toHotrodTimeMs(remoteCache, task.getLifespanMs()), TimeUnit.MILLISECONDS,
@@ -128,6 +165,7 @@ public class RemoteCacheInvoker {
                     replace(topology, remoteCache, task.getLifespanMs(), maxIdleMs, key, task);
                 }
                 break;
+                // 替换缓存的值
             case REPLACE:
                 replace(topology, remoteCache, task.getLifespanMs(), maxIdleMs, key, task);
                 break;
@@ -147,6 +185,7 @@ public class RemoteCacheInvoker {
         while (!replaced && replaceIteration < InfinispanUtil.MAXIMUM_REPLACE_RETRIES) {
             replaceIteration++;
 
+            // 获取该缓存值的元数据信息
             VersionedValue<SessionEntityWrapper<V>> versioned = remoteCache.getWithMetadata(key);
             if (versioned == null) {
                 logger.warnf("Not found entity to replace for key '%s'", key);
@@ -186,6 +225,9 @@ public class RemoteCacheInvoker {
     }
 
 
+    /**
+     * 包含从远端拉取缓存数据的对象
+     */
     private static class RemoteCacheContext {
 
         private final RemoteCache remoteCache;

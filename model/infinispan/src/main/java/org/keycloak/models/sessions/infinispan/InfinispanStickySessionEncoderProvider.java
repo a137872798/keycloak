@@ -25,6 +25,7 @@ import org.keycloak.sessions.StickySessionEncoderProvider;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 描述该会话是否应该有粘性
  */
 public class InfinispanStickySessionEncoderProvider implements StickySessionEncoderProvider {
 
@@ -42,6 +43,7 @@ public class InfinispanStickySessionEncoderProvider implements StickySessionEnco
             return sessionId;
         }
 
+        // 就是在sessionId上 关联一个route
         String route = getRoute(sessionId);
         if (route != null) {
             return sessionId + '.' + route;
@@ -67,7 +69,11 @@ public class InfinispanStickySessionEncoderProvider implements StickySessionEnco
 
     }
 
-
+    /**
+     * 获得该sessionId 对应的route
+     * @param sessionId
+     * @return
+     */
     private String getRoute(String sessionId) {
         InfinispanConnectionProvider ispnProvider = session.getProvider(InfinispanConnectionProvider.class);
         Cache cache = ispnProvider.getCache(InfinispanConnectionProvider.AUTHENTICATION_SESSIONS_CACHE_NAME);

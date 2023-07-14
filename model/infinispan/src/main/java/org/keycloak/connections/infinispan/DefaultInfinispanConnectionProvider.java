@@ -23,6 +23,7 @@ import org.infinispan.manager.EmbeddedCacheManager;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 每个对象底层共用一个连接
  */
 public class DefaultInfinispanConnectionProvider implements InfinispanConnectionProvider {
 

@@ -21,6 +21,7 @@ import org.keycloak.provider.ProviderFactory;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 用于获取Infinispan连接的工厂
  */
 public interface InfinispanConnectionProviderFactory extends ProviderFactory<InfinispanConnectionProvider> {
 }

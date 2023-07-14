@@ -55,6 +55,11 @@ public class InfinispanUtil {
     }
 
 
+    /**
+     * 获取拓扑信息
+     * @param session
+     * @return
+     */
     public static TopologyInfo getTopologyInfo(KeycloakSession session) {
         return session.getProvider(InfinispanConnectionProvider.class).getTopologyInfo();
     }

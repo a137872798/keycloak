@@ -50,6 +50,7 @@ import org.infinispan.persistence.remote.configuration.RemoteStoreConfigurationB
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 产生连接对象  TODO 跟缓存的交互不细看了
  */
 public class DefaultInfinispanConnectionProviderFactory implements InfinispanConnectionProviderFactory {
 
@@ -65,6 +66,11 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
 
     private TopologyInfo topologyInfo;
 
+    /**
+     * 当需要创建缓存连接时 惰性初始化
+     * @param session
+     * @return
+     */
     @Override
     public InfinispanConnectionProvider create(KeycloakSession session) {
         lazyInit();
@@ -98,6 +104,9 @@ public class DefaultInfinispanConnectionProviderFactory implements InfinispanCon
 
     }
 
+    /**
+     * 进行连接的准备工作
+     */
     protected void lazyInit() {
         if (cacheManager == null) {
             synchronized (this) {

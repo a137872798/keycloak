@@ -35,6 +35,7 @@ import java.io.IOException;
 
 /**
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 该对象的职责是处理accessToken
  */
 public class AccessTokenIntrospectionProvider implements TokenIntrospectionProvider {
 

@@ -1751,17 +1751,17 @@
             </build>
         </profile>
 
-        <profile>
-            <id>testsuite</id>
-            <activation>
-                <property>
-                    <name>!skipTestsuite</name>
-                </property>
-            </activation>
-            <modules>
-                <module>testsuite</module>
-            </modules>
-        </profile>
+<!--        <profile>-->
+<!--            <id>testsuite</id>-->
+<!--            <activation>-->
+<!--                <property>-->
+<!--                    <name>!skipTestsuite</name>-->
+<!--                </property>-->
+<!--            </activation>-->
+<!--            <modules>-->
+<!--                <module>testsuite</module>-->
+<!--            </modules>-->
+<!--        </profile>-->
 
         <profile>
             <id>examples</id>

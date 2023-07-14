@@ -36,6 +36,7 @@ import org.keycloak.models.sessions.infinispan.util.InfinispanUtil;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 拓展了事务模版
  */
 public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> extends AbstractKeycloakTransaction {
 
@@ -44,13 +45,23 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     private final KeycloakSession kcSession;
     private final String cacheName;
     private final Cache<K, SessionEntityWrapper<V>> cache;
+    // 与缓存交互
     private final RemoteCacheInvoker remoteCacheInvoker;
 
+    // 记录所有更新动作
     private final Map<K, SessionUpdatesList<V>> updates = new HashMap<>();
 
     private final BiFunction<RealmModel, V, Long> lifespanMsLoader;
     private final BiFunction<RealmModel, V, Long> maxIdleTimeMsLoader;
 
+    /**
+     * 初始化时 需要传入cache对象  意味着这个事务是针对缓存的
+     * @param kcSession
+     * @param cache
+     * @param remoteCacheInvoker
+     * @param lifespanMsLoader
+     * @param maxIdleTimeMsLoader
+     */
     public InfinispanChangelogBasedTransaction(KeycloakSession kcSession, Cache<K, SessionEntityWrapper<V>> cache, RemoteCacheInvoker remoteCacheInvoker,
                                                BiFunction<RealmModel, V, Long> lifespanMsLoader, BiFunction<RealmModel, V, Long> maxIdleTimeMsLoader) {
         this.kcSession = kcSession;
@@ -62,7 +73,13 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     }
 
 
+    /**
+     * 追加一个事务更新任务
+     * @param key
+     * @param task
+     */
     public void addTask(K key, SessionUpdateTask<V> task) {
+        // 获取对应的任务列表
         SessionUpdatesList<V> myUpdates = updates.get(key);
         if (myUpdates == null) {
             // Lookup entity from cache
@@ -74,17 +91,20 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
 
             RealmModel realm = kcSession.realms().getRealm(wrappedEntity.getEntity().getRealmId());
 
+            // 初始化一个新的更新任务列表
             myUpdates = new SessionUpdatesList<>(realm, wrappedEntity);
             updates.put(key, myUpdates);
         }
 
         // Run the update now, so reader in same transaction can see it (TODO: Rollback may not work correctly. See if it's an issue..)
+        // 已经将更新作用在session上了
         task.runUpdate(myUpdates.getEntityWrapper().getEntity());
         myUpdates.add(task);
     }
 
 
     // Create entity and new version for it
+    // 产生一个新的对象 并将更新任务作用上去
     public void addTask(K key, SessionUpdateTask<V> task, V entity, UserSessionModel.SessionPersistenceState persistenceState) {
         if (entity == null) {
             throw new IllegalArgumentException("Null entity not allowed");
@@ -101,6 +121,12 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     }
 
 
+    /**
+     * 基于最新的缓存数据 重新生成会话
+     * @param realm
+     * @param key
+     * @param entity
+     */
     public void reloadEntityInCurrentTransaction(RealmModel realm, K key, SessionEntityWrapper<V> entity) {
         if (entity == null) {
             throw new IllegalArgumentException("Null entity not allowed");
@@ -122,6 +148,7 @@ public class InfinispanChangelogBasedTransaction<K, V extends SessionEntity> ext
     }
 
 
+    // 获取某个会话
     public SessionEntityWrapper<V> get(K key) {
         SessionUpdatesList<V> myUpdates = updates.get(key);
         if (myUpdates == null) {

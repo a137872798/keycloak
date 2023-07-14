@@ -69,6 +69,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
+/**
+ * 有关用户会话的工厂 只有这一种默认实现 Infinispan是一个缓存框架
+ */
 public class InfinispanUserSessionProviderFactory implements UserSessionProviderFactory {
 
     private static final Logger log = Logger.getLogger(InfinispanUserSessionProviderFactory.class);
@@ -85,21 +88,35 @@ public class InfinispanUserSessionProviderFactory implements UserSessionProvider
 
     private Config.Scope config;
 
+    // 可以通过它将会话信息传到缓存服务器
     private RemoteCacheInvoker remoteCacheInvoker;
+    // TODO
     private CrossDCLastSessionRefreshStore lastSessionRefreshStore;
     private CrossDCLastSessionRefreshStore offlineLastSessionRefreshStore;
+    // 每当会话被重新触发 就会存储在该对象中 并在一定时间后写入DB
     private PersisterLastSessionRefreshStore persisterLastSessionRefreshStore;
+    // 通过该对象产生cacheKey
     private InfinispanKeyGenerator keyGenerator;
 
+    /**
+     * 产生一个存储用户会话的对象
+     * @param session
+     * @return
+     */
     @Override
     public InfinispanUserSessionProvider create(KeycloakSession session) {
+
+        // 得到通往缓存服务器的连接
         InfinispanConnectionProvider connections = session.getProvider(InfinispanConnectionProvider.class);
+
+        // 获取各个纬度不同的缓存
         Cache<String, SessionEntityWrapper<UserSessionEntity>> cache = connections.getCache(InfinispanConnectionProvider.USER_SESSION_CACHE_NAME);
         Cache<String, SessionEntityWrapper<UserSessionEntity>> offlineSessionsCache = connections.getCache(InfinispanConnectionProvider.OFFLINE_USER_SESSION_CACHE_NAME);
         Cache<UUID, SessionEntityWrapper<AuthenticatedClientSessionEntity>> clientSessionCache = connections.getCache(InfinispanConnectionProvider.CLIENT_SESSION_CACHE_NAME);
         Cache<UUID, SessionEntityWrapper<AuthenticatedClientSessionEntity>> offlineClientSessionsCache = connections.getCache(InfinispanConnectionProvider.OFFLINE_CLIENT_SESSION_CACHE_NAME);
         Cache<LoginFailureKey, SessionEntityWrapper<LoginFailureEntity>> loginFailures = connections.getCache(InfinispanConnectionProvider.LOGIN_FAILURE_CACHE_NAME);
 
+        // 在生成用户有管的会话时 以上数据都是必要的
         return new InfinispanUserSessionProvider(session, remoteCacheInvoker, lastSessionRefreshStore, offlineLastSessionRefreshStore,
                 persisterLastSessionRefreshStore, keyGenerator,
           cache, offlineSessionsCache, clientSessionCache, offlineClientSessionsCache, loginFailures);
@@ -110,18 +127,26 @@ public class InfinispanUserSessionProviderFactory implements UserSessionProvider
         this.config = config;
     }
 
+
     @Override
     public void postInit(final KeycloakSessionFactory factory) {
 
         factory.register(new ProviderEventListener() {
 
+            /**
+             * 注册事件监听器
+             * @param event
+             */
             @Override
             public void onEvent(ProviderEvent event) {
+
+                // TODO 代表完成数据迁移
                 if (event instanceof PostMigrationEvent) {
 
                     int preloadTransactionTimeout = getTimeoutForPreloadingSessionsSeconds();
                     log.debugf("Will preload sessions with transaction timeout %d seconds", preloadTransactionTimeout);
 
+                    // 在执行会话前  添加一个超时时间
                     KeycloakModelUtils.runJobInTransactionWithTimeout(factory, (KeycloakSession session) -> {
 
                         keyGenerator = new InfinispanKeyGenerator();
@@ -132,11 +157,15 @@ public class InfinispanUserSessionProviderFactory implements UserSessionProvider
 
                     }, preloadTransactionTimeout);
 
+                    // 当某个用户被删除时 可以清理相关的会话了
                 } else if (event instanceof UserModel.UserRemovedEvent) {
                     UserModel.UserRemovedEvent userRemovedEvent = (UserModel.UserRemovedEvent) event;
 
                     InfinispanUserSessionProvider provider = (InfinispanUserSessionProvider) userRemovedEvent.getKeycloakSession().getProvider(UserSessionProvider.class, getId());
+                    // 移除某个用户相关会话
                     provider.onUserRemoved(userRemovedEvent.getRealm(), userRemovedEvent.getUser());
+
+                    // 之前可能会话刷新时间 以便更新到数据库 以及延长会话时间  这时会清理掉之前的会话数据
                 } else if (event instanceof ResetTimeOffsetEvent) {
                     if (persisterLastSessionRefreshStore != null) {
                         persisterLastSessionRefreshStore.reset();
@@ -168,6 +197,12 @@ public class InfinispanUserSessionProviderFactory implements UserSessionProvider
     }
 
 
+    /**
+     * TODO
+     * @param sessionFactory
+     * @param maxErrors
+     * @param sessionsPerSegment
+     */
     @Override
     public void loadPersistentSessions(final KeycloakSessionFactory sessionFactory, final int maxErrors, final int sessionsPerSegment) {
         log.debug("Start pre-loading userSessions from persistent storage");

@@ -32,7 +32,13 @@ import org.keycloak.models.sessions.infinispan.util.KeycloakMarshallUtil;
 @SerializeWith(SessionData.ExternalizerImpl.class)
 public class SessionData {
 
+    /**
+     * 该会话关联的领域
+     */
     private final String realmId;
+    /**
+     * 该会话最后一次刷新时间
+     */
     private final int lastSessionRefresh;
 
     public SessionData(String realmId, int lastSessionRefresh) {

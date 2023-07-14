@@ -26,12 +26,14 @@ import org.keycloak.models.sessions.infinispan.util.SessionTimeouts;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 代表会话更新任务
  */
 public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<S> {
 
     private static final Logger logger = Logger.getLogger(MergedUpdate.class);
 
     private final List<SessionUpdateTask<S>> childUpdates = new LinkedList<>();
+    // 对应merge后的操作
     private CacheOperation operation;
     private CrossDCMessageStatus crossDCMessageStatus;
     private final long lifespanMs;
@@ -47,6 +49,7 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
 
     @Override
     public void runUpdate(S session) {
+        // 批量执行任务
         for (SessionUpdateTask<S> child : childUpdates) {
             child.runUpdate(session);
         }
@@ -71,6 +74,15 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
     }
 
 
+    /**
+     * 将一组更新任务 包装成一个merge任务
+     * @param childUpdates
+     * @param sessionWrapper
+     * @param lifespanMs
+     * @param maxIdleTimeMs
+     * @param <S>
+     * @return
+     */
     public static <S extends SessionEntity> MergedUpdate<S> computeUpdate(List<SessionUpdateTask<S>> childUpdates, SessionEntityWrapper<S> sessionWrapper, long lifespanMs, long maxIdleTimeMs) {
         if (childUpdates == null || childUpdates.isEmpty()) {
             return null;
@@ -79,6 +91,8 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
         MergedUpdate<S> result = null;
         S session = sessionWrapper.getEntity();
         for (SessionUpdateTask<S> child : childUpdates) {
+
+            // 首次调用 初始化result对象
             if (result == null) {
                 CacheOperation operation = child.getOperation(session);
 
@@ -93,6 +107,7 @@ public class MergedUpdate<S extends SessionEntity> implements SessionUpdateTask<
 
                 // Merge the operations. REMOVE is special case as other operations are not needed then.
                 CacheOperation mergedOp = result.getOperation(session).merge(child.getOperation(session), session);
+                // 一旦发现remove 后面的不需要执行了
                 if (mergedOp == CacheOperation.REMOVE) {
                     result = new MergedUpdate<>(child.getOperation(session), child.getCrossDCMessageStatus(sessionWrapper), lifespanMs, maxIdleTimeMs);
                     result.childUpdates.add(child);

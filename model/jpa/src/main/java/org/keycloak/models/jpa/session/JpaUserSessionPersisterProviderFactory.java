@@ -28,6 +28,7 @@ import javax.persistence.EntityManager;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 通过DB持久化会话信息
  */
 public class JpaUserSessionPersisterProviderFactory implements UserSessionPersisterProviderFactory {
 
@@ -35,6 +36,7 @@ public class JpaUserSessionPersisterProviderFactory implements UserSessionPersis
 
     @Override
     public UserSessionPersisterProvider create(KeycloakSession session) {
+        // 通过EntityManager 可以与DB通信
         EntityManager em = session.getProvider(JpaConnectionProvider.class).getEntityManager();
         return new JpaUserSessionPersisterProvider(session, em);
     }

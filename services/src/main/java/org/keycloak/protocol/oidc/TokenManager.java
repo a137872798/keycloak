@@ -99,15 +99,24 @@ import static org.keycloak.representations.IDToken.PHONE_NUMBER;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * token管理器 包含创建和验证逻辑
  */
 public class TokenManager {
     private static final Logger logger = Logger.getLogger(TokenManager.class);
     private static final String JWT = "JWT";
 
+    /**
+     * token验证器
+     */
     public static class TokenValidation {
+
+        // 提供用户信息的对象
         public final UserModel user;
+        // 用户会话相关的对象
         public final UserSessionModel userSession;
+        // 维护client会话相关的
         public final ClientSessionContext clientSessionCtx;
+        // 在原有token上拓展了很多字段
         public final AccessToken newToken;
 
         public TokenValidation(UserModel user, UserSessionModel userSession, ClientSessionContext clientSessionCtx, AccessToken newToken) {
@@ -118,9 +127,22 @@ public class TokenManager {
         }
     }
 
+    /**
+     * 从客户端收到token后 进行验证
+     * @param session
+     * @param uriInfo  描述请求url信息
+     * @param connection  描述local/remote地址信息
+     * @param realm    领域信息
+     * @param oldToken  外表与access一致
+     * @param headers   请求头
+     * @return
+     * @throws OAuthErrorException
+     */
     public TokenValidation validateToken(KeycloakSession session, UriInfo uriInfo, ClientConnection connection, RealmModel realm,
                                          RefreshToken oldToken, HttpHeaders headers) throws OAuthErrorException {
         UserSessionModel userSession = null;
+
+        // token是下线状态
         boolean offline = TokenUtil.TOKEN_TYPE_OFFLINE.equals(oldToken.getType());
 
         if (offline) {

@@ -53,6 +53,7 @@ import static org.keycloak.utils.StreamsUtil.closing;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * keycloak的用户会话信息  通过DB进行持久化
  */
 public class JpaUserSessionPersisterProvider implements UserSessionPersisterProvider {
     private static final Logger logger = Logger.getLogger(JpaUserSessionPersisterProvider.class);
@@ -65,8 +66,14 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
         this.em = em;
     }
 
+    /**
+     * 创建用户会话
+     * @param userSession
+     * @param offline
+     */
     @Override
     public void createUserSession(UserSessionModel userSession, boolean offline) {
+        // UserSessionAdapter会被包装成可持久化的userSession对象
         PersistentUserSessionAdapter adapter = new PersistentUserSessionAdapter(userSession);
         PersistentUserSessionModel model = adapter.getUpdatedModel();
 
@@ -203,6 +210,13 @@ public class JpaUserSessionPersisterProvider implements UserSessionPersisterProv
     }
 
 
+    /**
+     * 将session最后的访问时间写入到DB中
+     * @param realm
+     * @param lastSessionRefresh
+     * @param userSessionIds
+     * @param offline  是否是离线会话
+     */
     @Override
     public void updateLastSessionRefreshes(RealmModel realm, int lastSessionRefresh, Collection<String> userSessionIds, boolean offline) {
         String offlineStr = offlineToString(offline);

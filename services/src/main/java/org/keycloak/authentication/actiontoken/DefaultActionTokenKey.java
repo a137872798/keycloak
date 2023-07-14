@@ -27,7 +27,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- *
+ * JWT中包含了基础信息 通过ActionTokenKeyModel将某些字段暴露出来
  * @author hmlnarik
  */
 public class DefaultActionTokenKey extends JsonWebToken implements ActionTokenKeyModel {
@@ -37,12 +37,20 @@ public class DefaultActionTokenKey extends JsonWebToken implements ActionTokenKe
 
     public static final String JSON_FIELD_ACTION_VERIFICATION_NONCE = "nonce";
 
+    // 随机数
     @JsonProperty(value = JSON_FIELD_ACTION_VERIFICATION_NONCE, required = true)
     private UUID actionVerificationNonce;
 
     public DefaultActionTokenKey() {
     }
 
+    /**
+     * 设置过期时间 id 随机数字
+     * @param userId
+     * @param actionId
+     * @param absoluteExpirationInSecs
+     * @param actionVerificationNonce
+     */
     public DefaultActionTokenKey(String userId, String actionId, int absoluteExpirationInSecs, UUID actionVerificationNonce) {
         this.subject = userId;
         this.type = actionId;
