@@ -34,11 +34,18 @@ import org.keycloak.sessions.RootAuthenticationSessionModel;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * root认证会话对象  可以基于不同的client产生子会话
  */
 public class RootAuthenticationSessionAdapter implements RootAuthenticationSessionModel {
 
+    /**
+     * 通过该对象可以获取其他对象   类似与一个大的上下文
+     */
     private KeycloakSession session;
     private InfinispanAuthenticationSessionProvider provider;
+    /**
+     * 可以通过它检索其他用户的认证会话信息
+     */
     private Cache<String, RootAuthenticationSessionEntity> cache;
     private RealmModel realm;
     private RootAuthenticationSessionEntity entity;
@@ -53,6 +60,9 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
         this.entity = entity;
     }
 
+    /**
+     * 更新本root认证会话的有效时间
+     */
     void update() {
         int expirationSeconds = RealmInfoUtil.getDettachedClientSessionLifespan(realm);
         provider.tx.replace(cache, entity.getId(), entity, expirationSeconds, TimeUnit.SECONDS);
@@ -80,6 +90,10 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
         update();
     }
 
+    /**
+     * 返回该root 关联的所有子认证会话
+     * @return
+     */
     @Override
     public Map<String, AuthenticationSessionModel> getAuthenticationSessions() {
         Map<String, AuthenticationSessionModel> result = new HashMap<>();
@@ -92,6 +106,12 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
         return result;
     }
 
+    /**
+     * root认证会话对应某个用户  每个用户会话可以关联到多个client上      相对的 每个root认证会话 可以关联多个子认证会话  一个子认证会话对应一个client
+     * @param client {@code ClientModel} If {@code null} is provided the method will return {@code null}.
+     * @param tabId {@code String} If {@code null} is provided the method will return {@code null}.
+     * @return
+     */
     @Override
     public AuthenticationSessionModel getAuthenticationSession(ClientModel client, String tabId) {
         if (client == null || tabId == null) {
@@ -99,6 +119,8 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
         }
 
         AuthenticationSessionModel authSession = getAuthenticationSessions().get(tabId);
+
+        // 要求client匹配
         if (authSession != null && client.equals(authSession.getClient())) {
             session.getContext().setAuthenticationSession(authSession);
             return authSession;
@@ -107,6 +129,11 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
         }
     }
 
+    /**
+     * 在root认证会话下  产生一个关于某client的子会话
+     * @param client {@code ClientModel} Can't be {@code null}.
+     * @return
+     */
     @Override
     public AuthenticationSessionModel createAuthenticationSession(ClientModel client) {
         AuthenticationSessionEntity authSessionEntity = new AuthenticationSessionEntity();
@@ -118,6 +145,7 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
         // Update our timestamp when adding new authenticationSession
         entity.setTimestamp(Time.currentTime());
 
+        // 因为该root下增加了一个新的子认证 需要更新到缓存服务器上
         update();
 
         AuthenticationSessionAdapter authSession = new AuthenticationSessionAdapter(session, this, tabId, authSessionEntity);
@@ -128,16 +156,20 @@ public class RootAuthenticationSessionAdapter implements RootAuthenticationSessi
     @Override
     public void removeAuthenticationSessionByTabId(String tabId) {
         if (entity.getAuthenticationSessions().remove(tabId) != null) {
+            // 当root会话下没有子认证会话时  该root也就没有存在必要了   也就是需要创建root会话时 一般至少会关联一个子认证会话  和user session/client session的关系一样
             if (entity.getAuthenticationSessions().isEmpty()) {
                 provider.tx.remove(cache, entity.getId());
             } else {
                 entity.setTimestamp(Time.currentTime());
-
                 update();
             }
         }
     }
 
+    /**
+     * 清除root下所有子认证会话
+     * @param realm {@code RealmModel} Associated realm to the root authentication session.
+     */
     @Override
     public void restartSession(RealmModel realm) {
         entity.getAuthenticationSessions().clear();

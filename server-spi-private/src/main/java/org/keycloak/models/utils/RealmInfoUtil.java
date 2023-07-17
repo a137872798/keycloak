@@ -24,7 +24,14 @@ import org.keycloak.models.RealmModel;
  */
 public class RealmInfoUtil {
 
+    /**
+     * 获取 realm 层面的会话存活时间
+     * @param realm
+     * @return
+     */
     public static int getDettachedClientSessionLifespan(RealmModel realm) {
+
+        // 取下面3个中最长的
         int lifespan = realm.getAccessCodeLifespanLogin();
         if (realm.getAccessCodeLifespanUserAction() > lifespan) {
             lifespan = realm.getAccessCodeLifespanUserAction();

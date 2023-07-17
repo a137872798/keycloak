@@ -268,6 +268,12 @@ public class OIDCLoginProtocol implements LoginProtocol {
     }
 
 
+    /**
+     * 通过该对象构建response
+     * @param authSession
+     * @param error
+     * @return
+     */
     @Override
     public Response sendError(AuthenticationSessionModel authSession, Error error) {
         String responseTypeParam = authSession.getClientNote(OIDCLoginProtocol.RESPONSE_TYPE_PARAM);

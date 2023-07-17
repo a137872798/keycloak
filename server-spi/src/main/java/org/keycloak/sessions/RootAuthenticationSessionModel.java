@@ -28,9 +28,13 @@ import org.keycloak.storage.SearchableModelField;
  * {@link AuthenticationSessionModel} of different client.
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 可以理解为一个总会话 可以关联多个子会话
  */
 public interface RootAuthenticationSessionModel {
 
+    /**
+     * 代表可作为检索条件的字段
+     */
     public static class SearchableFields {
         public static final SearchableModelField<RootAuthenticationSessionModel> ID              = new SearchableModelField<>("id", String.class);
         public static final SearchableModelField<RootAuthenticationSessionModel> REALM_ID        = new SearchableModelField<>("realmId", String.class);
@@ -66,6 +70,8 @@ public interface RootAuthenticationSessionModel {
      * Key is tabId, Value is AuthenticationSessionModel.
      * @return {@code Map<String, AuthenticationSessionModel>} authentication sessions or empty map if no
      * authentication sessions are present. Never return null.
+     *
+     * 返回关联的认证会话信息
      */
     Map<String, AuthenticationSessionModel> getAuthenticationSessions();
 
@@ -74,6 +80,7 @@ public interface RootAuthenticationSessionModel {
      * @param client {@code ClientModel} If {@code null} is provided the method will return {@code null}.
      * @param tabId {@code String} If {@code null} is provided the method will return {@code null}.
      * @return {@code AuthenticationSessionModel} or {@code null} in no authentication session is found.
+     * 检索某个client的认证会话
      */
     AuthenticationSessionModel getAuthenticationSession(ClientModel client, String tabId);
 
@@ -81,6 +88,7 @@ public interface RootAuthenticationSessionModel {
      * Create a new authentication session and returns it. Overwrites existing session for particular client if already exists.
      * @param client {@code ClientModel} Can't be {@code null}.
      * @return {@code AuthenticationSessionModel} non-null fresh authentication session. Never returns {@code null}.
+     * 在root认证会话下 产生跟某个client挂钩的子认证会话
      */
     AuthenticationSessionModel createAuthenticationSession(ClientModel client);
 
@@ -88,12 +96,14 @@ public interface RootAuthenticationSessionModel {
      * Removes the authentication session specified by tab id from the root authentication session.
      * If there's no child authentication session left in the root authentication session, it's removed as well.
      * @param tabId {@code String} Can't be {@code null}.
+     *                            移除tabId 对应的会话
      */
     void removeAuthenticationSessionByTabId(String tabId);
 
     /**
      * Will completely restart whole state of authentication session. It will just keep same ID. It will setup it with provided realm.
      * @param realm {@code RealmModel} Associated realm to the root authentication session.
+     * 完全重启某个realm下的所有会话
      */
     void restartSession(RealmModel realm);
 

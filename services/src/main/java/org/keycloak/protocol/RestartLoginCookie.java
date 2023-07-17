@@ -128,8 +128,10 @@ public class RestartLoginCookie implements Token {
     }
 
     public static void expireRestartCookie(RealmModel realm, ClientConnection connection, UriInfo uriInfo) {
+        // uri 拼接 realm 生成一个path
         String path = AuthenticationManager.getRealmCookiePath(realm, uriInfo);
         boolean secureOnly = realm.getSslRequired().isRequired(connection);
+        // 在该路径下设置一个cookie值
         CookieHelper.addCookie(KC_RESTART, "", path, null, null, 0, secureOnly, true);
     }
 

@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 该对象可以进行一些认证会话相关的操作
  */
 public class AuthenticationSessionManager {
 
@@ -63,8 +64,11 @@ public class AuthenticationSessionManager {
      * @return
      */
     public RootAuthenticationSessionModel createAuthenticationSession(RealmModel realm, boolean browserCookie) {
+
+        // 生成一个新的root认证会话  与user是一一对应的
         RootAuthenticationSessionModel rootAuthSession = session.authenticationSessions().createRootAuthenticationSession(realm);
 
+        // 需要设置浏览器cookie   对应的值是加密后的root会话id
         if (browserCookie) {
             setAuthSessionCookie(rootAuthSession.getId(), realm);
         }
@@ -73,9 +77,17 @@ public class AuthenticationSessionManager {
     }
 
 
+    /**
+     * 根据realm 查询当前root会话
+     * @param realm
+     * @return
+     */
     public RootAuthenticationSessionModel getCurrentRootAuthenticationSession(RealmModel realm) {
+
+        // 至多会返回3个认证会话id
         List<String> authSessionCookies = getAuthSessionCookies(realm);
 
+        // 解析后去缓存服务器 反查会话信息
         return authSessionCookies.stream().map(oldEncodedId -> {
             AuthSessionId authSessionId = decodeAuthSessionId(oldEncodedId);
             String sessionId = authSessionId.getDecodedId();
@@ -83,15 +95,23 @@ public class AuthenticationSessionManager {
             RootAuthenticationSessionModel rootAuthSession = session.authenticationSessions().getRootAuthenticationSession(realm, sessionId);
 
             if (rootAuthSession != null) {
+                // 当发现sessionid 变化后 重新设置到cookie中
                 reencodeAuthSessionCookie(oldEncodedId, authSessionId, realm);
                 return rootAuthSession;
             }
 
+            // 找不到会话了 无法返回
             return null;
+            // 只返回第一个
         }).filter(authSession -> Objects.nonNull(authSession)).findFirst().orElse(null);
     }
 
 
+    /**
+     * 解析cookie的sessionId 并查询会话  注意这里查询的是用户会话   用户会话是关联client会话的
+     * @param realm
+     * @return
+     */
     public UserSessionModel getUserSessionFromAuthCookie(RealmModel realm) {
         List<String> authSessionCookies = getAuthSessionCookies(realm);
 
@@ -123,6 +143,7 @@ public class AuthenticationSessionManager {
             AuthSessionId authSessionId = decodeAuthSessionId(oldEncodedId);
             String sessionId = authSessionId.getDecodedId();
 
+            // 上面的方法中返回的是root认证会话    当增加了client tabid 条件后    就可以检索到某个认证会话 对应的维度为 user->client
             AuthenticationSessionModel authSession = getAuthenticationSessionByIdAndClient(realm, sessionId, client, tabId);
 
             if (authSession != null) {
@@ -136,18 +157,25 @@ public class AuthenticationSessionManager {
 
 
     /**
+     * 生成认证会话时  需要设置cookie的值
      * @param authSessionId decoded authSessionId (without route info attached)
      * @param realm
      */
     public void setAuthSessionCookie(String authSessionId, RealmModel realm) {
+        // 生成cookie相关的路径
         UriInfo uriInfo = session.getContext().getUri();
+
+        // 得到应当关联cookie的uri
         String cookiePath = AuthenticationManager.getRealmCookiePath(realm, uriInfo);
 
+        // TODO 先忽略ssl
         boolean sslRequired = realm.getSslRequired().isRequired(session.getContext().getConnection());
 
+        // 如果会话应当有粘性 在sessionId上关联一个节点名
         StickySessionEncoderProvider encoder = session.getProvider(StickySessionEncoderProvider.class);
         String encodedAuthSessionId = encoder.encodeSessionId(authSessionId);
 
+        // 在该path上设置一个cookie值
         CookieHelper.addCookie(AUTH_SESSION_ID, encodedAuthSessionId, cookiePath, null, null, -1, sslRequired, true, SameSiteAttributeValue.NONE);
 
         log.debugf("Set AUTH_SESSION_ID cookie with value %s", encodedAuthSessionId);
@@ -155,7 +183,7 @@ public class AuthenticationSessionManager {
 
 
     /**
-     *
+     * 解密后重新加密 主要是针对粘性会话 后面的route信息可能会变化
      * @param encodedAuthSessionId encoded ID with attached route in cluster environment (EG. "5e161e00-d426-4ea6-98e9-52eb9844e2d7.node1" )
      * @return object with decoded and actually encoded authSessionId
      */
@@ -169,6 +197,12 @@ public class AuthenticationSessionManager {
     }
 
 
+    /**
+     * 重新编码发生变化 就要更新cookie中的值
+     * @param oldEncodedAuthSessionId
+     * @param newAuthSessionId
+     * @param realm
+     */
     void reencodeAuthSessionCookie(String oldEncodedAuthSessionId, AuthSessionId newAuthSessionId, RealmModel realm) {
         if (!oldEncodedAuthSessionId.equals(newAuthSessionId.getEncodedId())) {
             log.debugf("Route changed. Will update authentication session cookie. Old: '%s', New: '%s'", oldEncodedAuthSessionId,
@@ -179,16 +213,20 @@ public class AuthenticationSessionManager {
 
 
     /**
+     * 根据realm 查询cookie
      * @param realm
      * @return list of the values of AUTH_SESSION_ID cookies. It is assumed that values could be encoded with route added (EG. "5e161e00-d426-4ea6-98e9-52eb9844e2d7.node1" )
      */
     List<String> getAuthSessionCookies(RealmModel realm) {
+        // 获取请求头Cookie中 key为AUTH_SESSION_ID  的value
         Set<String> cookiesVal = CookieHelper.getCookieValue(AUTH_SESSION_ID);
 
+        // 发现有多个会话id
         if (cookiesVal.size() > 1) {
             AuthenticationManager.expireOldAuthSessionCookie(realm, session.getContext().getUri(), session.getContext().getConnection());
         }
 
+        // 最多返回3个认证会话
         List<String> authSessionIds = cookiesVal.stream().limit(AUTH_SESSION_LIMIT).collect(Collectors.toList());
 
         if (authSessionIds.isEmpty()) {
@@ -199,6 +237,12 @@ public class AuthenticationSessionManager {
     }
 
 
+    /**
+     * 移除某个认证会话所属的 root认证会话
+     * @param realm
+     * @param authSession
+     * @param expireRestartCookie
+     */
     public void removeAuthenticationSession(RealmModel realm, AuthenticationSessionModel authSession, boolean expireRestartCookie) {
         RootAuthenticationSessionModel rootAuthSession = authSession.getParentSession();
 
@@ -209,6 +253,7 @@ public class AuthenticationSessionManager {
         if (expireRestartCookie) {
             ClientConnection clientConnection = session.getContext().getConnection();
             UriInfo uriInfo = session.getContext().getUri();
+            // 添加一个 KC_RESTART cookie
             RestartLoginCookie.expireRestartCookie(realm, clientConnection, uriInfo);
         }
     }
@@ -221,6 +266,7 @@ public class AuthenticationSessionManager {
 
 
     // Don't look at cookie. Just lookup authentication session based on the ID and client. Return null if not found
+    // 根据cleint 和tabid 查询会话
     public AuthenticationSessionModel getAuthenticationSessionByIdAndClient(RealmModel realm, String authSessionId, ClientModel client, String tabId) {
         RootAuthenticationSessionModel rootAuthSession = session.authenticationSessions().getRootAuthenticationSession(realm, authSessionId);
         return rootAuthSession==null ? null : rootAuthSession.getAuthenticationSession(client, tabId);

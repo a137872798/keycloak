@@ -108,7 +108,7 @@ import static org.keycloak.services.util.CookieHelper.getCookie;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
- * 处理认证相关的逻辑  并且是无状态对象
+ * 处理认证相关的逻辑  并且是无状态对象   该对象被AuthenticationProcessor使用
  */
 public class AuthenticationManager {
     public static final String SET_REDIRECT_URI_AFTER_REQUIRED_ACTIONS= "SET_REDIRECT_URI_AFTER_REQUIRED_ACTIONS";
@@ -140,10 +140,14 @@ public class AuthenticationManager {
     public static final String KEYCLOAK_SESSION_COOKIE = "KEYCLOAK_SESSION";
     public static final String KEYCLOAK_REMEMBER_ME = "KEYCLOAK_REMEMBER_ME";
     public static final String KEYCLOAK_LOGOUT_PROTOCOL = "KEYCLOAK_LOGOUT_PROTOCOL";
+
+    /**
+     * 用于校验JWT类型的
+     */
     private static final TokenTypeCheck VALIDATE_IDENTITY_COOKIE = new TokenTypeCheck(TokenUtil.TOKEN_TYPE_KEYCLOAK_ID);
 
     /**
-     * 判断当前session是否有效
+     * 判断某个realm下的某个用户会话是否有效   主要就是看是否长时间未访问
      * @param realm  领域实体
      * @param userSession  用户会话实体
      * @return
@@ -155,11 +159,11 @@ public class AuthenticationManager {
             return false;
         }
 
-        //
+        // 因为会话是有存活时间的  所以需要查看当前时间
         int currentTime = Time.currentTime();
 
         // Additional time window is added for the case when session was updated in different DC and the update to current DC was postponed
-        // 如果设置了 rememberme 使用的是不同的时间
+        // 如果设置了 remember me 使用的是不同的时间
         int maxIdle = userSession.isRememberMe() && realm.getSsoSessionIdleTimeoutRememberMe() > 0 ?
             realm.getSsoSessionIdleTimeoutRememberMe() : realm.getSsoSessionIdleTimeout();
         int maxLifespan = userSession.isRememberMe() && realm.getSsoSessionMaxLifespanRememberMe() > 0 ?
@@ -172,6 +176,12 @@ public class AuthenticationManager {
         return sessionIdleOk && sessionMaxOk;
     }
 
+    /**
+     * 检测离线会话是否有效
+     * @param realm
+     * @param userSession
+     * @return
+     */
     public static boolean isOfflineSessionValid(RealmModel realm, UserSessionModel userSession) {
         if (userSession == null) {
             logger.debug("No offline user session");
@@ -182,6 +192,7 @@ public class AuthenticationManager {
         int maxIdle = realm.getOfflineSessionIdleTimeout() + SessionTimeoutHelper.IDLE_TIMEOUT_WINDOW_SECONDS;
 
         // KEYCLOAK-7688 Offline Session Max for Offline Token
+        // 具体判断依据也是时间相关的  不细看了
         if (realm.isOfflineSessionMaxLifespanEnabled()) {
             int max = userSession.getStarted() + realm.getOfflineSessionMaxLifespan();
             return userSession.getLastSessionRefresh() + maxIdle > currentTime && max > currentTime;
@@ -190,27 +201,48 @@ public class AuthenticationManager {
         }
     }
 
+    /**
+     * 判断用户会话是否已经到期了
+     * @param session
+     * @param userSession
+     * @param realm
+     * @param uriInfo
+     * @param headers
+     * @param connection
+     * @return
+     */
     public static boolean expireUserSessionCookie(KeycloakSession session, UserSessionModel userSession, RealmModel realm, UriInfo uriInfo, HttpHeaders headers, ClientConnection connection) {
         try {
             // check to see if any identity cookie is set with the same session and expire it if necessary
+            // 从请求头中获取 key为KEYCLOAK_IDENTITY的 cookie值
             Cookie cookie = CookieHelper.getCookie(headers.getCookies(), KEYCLOAK_IDENTITY_COOKIE);
             if (cookie == null) return true;
+
+            // 也就是说通过keycloak认证后 应该会产生一个特殊的token  存储在cookie中
             String tokenString = cookie.getValue();
 
+            // 产生校验器 对token进行认证
             TokenVerifier<AccessToken> verifier = TokenVerifier.create(tokenString, AccessToken.class)
               .realmUrl(Urls.realmIssuer(uriInfo.getBaseUri(), realm.getName()))
               .checkActive(false)
               .checkTokenType(false)
               .withChecks(VALIDATE_IDENTITY_COOKIE);
 
+            // 将cookie值解析成token对象 并获取kid值
             String kid = verifier.getHeader().getKeyId();
+            // 头部有描述 数据体的加密方式
             String algorithm = verifier.getHeader().getAlgorithm().name();
 
             SignatureVerifierContext signatureVerifier = session.getProvider(SignatureProvider.class, algorithm).verifier(kid);
             verifier.verifierContext(signatureVerifier);
 
+            // 返回token信息
             AccessToken token = verifier.verify().getToken();
+            // 从缓存服务器取到某个会话信息
+            // 到这一步简单来说 就是从cookie中取到token信息 token中有sessionid  然后通过id检索session存储服务  拿到session信息
             UserSessionModel cookieSession = session.sessions().getUserSession(realm, token.getSessionState());
+
+            // 会话已经不存在的情况下 代表过期了   id变化的情况 代表cookie所关联的用户会话已经过期了  传入的userSession更具权威性 一旦产生冲突 只认可userSession
             if (cookieSession == null || !cookieSession.getId().equals(userSession.getId())) return true;
             expireIdentityCookie(realm, uriInfo, connection);
             return true;
@@ -220,6 +252,12 @@ public class AuthenticationManager {
 
     }
 
+    /**
+     * 采用后端登出的方式  会回调客户端提供的接口
+     * @param session
+     * @param userSession   本次被登出的用户会话
+     * @param logoutBroker
+     */
     public static void backchannelLogout(KeycloakSession session, UserSessionModel userSession, boolean logoutBroker) {
         backchannelLogout(
                 session,
@@ -232,6 +270,17 @@ public class AuthenticationManager {
         );
     }
 
+    /**
+     * 请求client的回调接口 通知它用户会话登出
+     * @param session
+     * @param realm
+     * @param userSession
+     * @param uriInfo
+     * @param connection
+     * @param headers
+     * @param logoutBroker
+     * @return
+     */
     public static BackchannelLogoutResponse backchannelLogout(KeycloakSession session, RealmModel realm,
             UserSessionModel userSession, UriInfo uriInfo,
             ClientConnection connection, HttpHeaders headers,
@@ -240,7 +289,7 @@ public class AuthenticationManager {
     }
 
     /**
-     *
+     * 登出会话
      * @param session
      * @param realm
      * @param userSession
@@ -259,10 +308,13 @@ public class AuthenticationManager {
             boolean offlineSession) {
         BackchannelLogoutResponse backchannelLogoutResponse = new BackchannelLogoutResponse();
 
+        // 用户会话已经不存在了 登出已经完成  不用真正通知
         if (userSession == null) {
             backchannelLogoutResponse.setLocalLogoutSucceeded(true);
             return backchannelLogoutResponse;
         }
+
+        // 更新状态为登出中
         UserModel user = userSession.getUser();
         if (userSession.getState() != UserSessionModel.State.LOGGING_OUT) {
             userSession.setState(UserSessionModel.State.LOGGING_OUT);
@@ -270,6 +322,8 @@ public class AuthenticationManager {
 
         logger.debugv("Logging out: {0} ({1}) offline: {2}", user.getUsername(), userSession.getId(),
                 userSession.isOffline());
+
+        // 判断cookie是否过期了
         boolean expireUserSessionCookieSucceeded =
                 expireUserSessionCookie(session, userSession, realm, uriInfo, headers, connection);
 
@@ -728,8 +782,15 @@ public class AuthenticationManager {
         return null;
     }
 
+    /**
+     *
+     * @param realm
+     * @param uriInfo
+     * @param connection
+     */
     public static void expireIdentityCookie(RealmModel realm, UriInfo uriInfo, ClientConnection connection) {
         logger.debug("Expiring identity cookie");
+        // 生成定位到某个realm的path
         String path = getIdentityCookiePath(realm, uriInfo);
         expireCookie(realm, KEYCLOAK_IDENTITY_COOKIE, path, true, connection, SameSiteAttributeValue.NONE);
         expireCookie(realm, KEYCLOAK_SESSION_COOKIE, path, false, connection, SameSiteAttributeValue.NONE);
@@ -754,10 +815,18 @@ public class AuthenticationManager {
         expireCookie(realm, cookieName, path, true, connection, null);
     }
 
+    /**
+     * 使得一些过期会话从cookie中移除
+     * @param realm
+     * @param uriInfo
+     * @param connection
+     */
     public static void expireOldAuthSessionCookie(RealmModel realm, UriInfo uriInfo, ClientConnection connection) {
         logger.debugv("Expire {1} cookie .", AuthenticationSessionManager.AUTH_SESSION_ID);
 
+        // 得到绑定cookie的path
         String oldPath = getOldCookiePath(realm, uriInfo);
+        // 使得该path相关的某些cookie失效
         expireCookie(realm, AuthenticationSessionManager.AUTH_SESSION_ID, oldPath, true, connection, SameSiteAttributeValue.NONE);
     }
 
@@ -765,6 +834,12 @@ public class AuthenticationManager {
         return getRealmCookiePath(realm, uriInfo);
     }
 
+    /**
+     * cookie会绑定在某个uri上 这里就是生成uri  因为uri需要跟realm挂钩
+     * @param realm
+     * @param uriInfo
+     * @return
+     */
     public static String getRealmCookiePath(RealmModel realm, UriInfo uriInfo) {
         URI uri = RealmsResource.realmBaseUrl(uriInfo).build(realm.getName());
         // KEYCLOAK-5270
@@ -781,6 +856,15 @@ public class AuthenticationManager {
         return uri.getRawPath();
     }
 
+    /**
+     * 使得cookie失效
+     * @param realm
+     * @param cookieName
+     * @param path
+     * @param httpOnly
+     * @param connection
+     * @param sameSite
+     */
     public static void expireCookie(RealmModel realm, String cookieName, String path, boolean httpOnly, ClientConnection connection, SameSiteAttributeValue sameSite) {
         logger.debugf("Expiring cookie: %s path: %s", cookieName, path);
         boolean secureOnly = realm.getSslRequired().isRequired(connection);;
@@ -980,6 +1064,7 @@ public class AuthenticationManager {
     }
 
     // Return null if action is not required. Or the name of the requiredAction in case it is required.
+    // 返回下个认证action
     public static String nextRequiredAction(final KeycloakSession session, final AuthenticationSessionModel authSession,
                                             final HttpRequest request, final EventBuilder event) {
         final RealmModel realm = authSession.getRealm();
@@ -1021,9 +1106,16 @@ public class AuthenticationManager {
     }
 
 
+    /**
+     * 获取用户已经同意的client
+     * @param session
+     * @param authSession
+     * @return
+     */
     private static UserConsentModel getEffectiveGrantedConsent(KeycloakSession session, AuthenticationSessionModel authSession) {
         // If prompt=consent, we ignore existing persistent consent
         String prompt = authSession.getClientNote(OIDCLoginProtocol.PROMPT_PARAM);
+        // 这种情况 忽略存储在持久层的 用户认可client数据
         if (TokenUtil.hasPrompt(prompt, OIDCLoginProtocol.PROMPT_VALUE_CONSENT)) {
             return null;
         } else {
@@ -1031,35 +1123,51 @@ public class AuthenticationManager {
             final UserModel user = authSession.getAuthenticatedUser();
             final ClientModel client = authSession.getClient();
 
+            // 查询该用户是否已经支持client的信息
             return session.users().getConsentByClient(realm, user.getId(), client.getId());
         }
     }
 
 
+    /**
+     *
+     * @param session
+     * @param authSession
+     * @param request
+     * @param event
+     * @return
+     */
     public static Response actionRequired(final KeycloakSession session, final AuthenticationSessionModel authSession,
                                                          final HttpRequest request, final EventBuilder event) {
         final RealmModel realm = authSession.getRealm();
         final UserModel user = authSession.getAuthenticatedUser();
         final ClientModel client = authSession.getClient();
 
+        // 先评估需要进行哪些认证动作  需要的会加入到user中
         evaluateRequiredActionTriggers(session, authSession, request, event, realm, user);
 
         logger.debugv("processAccessCode: go to oauth page?: {0}", client.isConsentRequired());
 
         event.detail(Details.CODE_ID, authSession.getParentSession().getId());
 
+        // 拿到上一步返回的认证动作
         Stream<String> requiredActions = user.getRequiredActionsStream();
+        // 执行认证动作得到结果
         Response action = executionActions(session, authSession, request, event, realm, user, requiredActions);
         if (action != null) return action;
 
         // executionActions() method should remove any duplicate actions that might be in the clientSession
+        // 执行过的action 会被remove掉  所以如果还有剩余就有执行的必要
         action = executionActions(session, authSession, request, event, realm, user, authSession.getRequiredActions().stream());
         if (action != null) return action;
 
+        // 需要认可
         if (client.isConsentRequired()) {
 
+            // 得到用户认可client的对象
             UserConsentModel grantedConsent = getEffectiveGrantedConsent(session, authSession);
 
+            // 返回其他需要认可的client
             List<ClientScopeModel> clientScopesToApprove = getClientScopesToApproveOnConsentScreen(realm, grantedConsent, authSession);
 
             // Skip grant screen if everything was already approved by this user
@@ -1070,6 +1178,7 @@ public class AuthenticationManager {
                 accessCode.setAction(AuthenticatedClientSessionModel.Action.REQUIRED_ACTIONS.name());
                 authSession.setAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION, execution);
 
+                // 产生一个授权页面 示意用户为该client授权
                 return session.getProvider(LoginFormsProvider.class)
                         .setAuthenticationSession(authSession)
                         .setExecution(execution)
@@ -1077,6 +1186,7 @@ public class AuthenticationManager {
                         .setAccessRequest(clientScopesToApprove)
                         .createOAuthGrant();
             } else {
+                // 要么就是已经认可过所有要求 要么就是不需要认可  (grantedConsent为null 代表用户还未认可 同时没有进入上面的分支代表 client需要的认可scope为空 也就是不需要认可)
                 String consentDetail = (grantedConsent != null) ? Details.CONSENT_VALUE_PERSISTED_CONSENT : Details.CONSENT_VALUE_NO_CONSENT_REQUIRED;
                 event.detail(Details.CONSENT, consentDetail);
             }
@@ -1087,12 +1197,20 @@ public class AuthenticationManager {
 
     }
 
+    /**
+     *
+     * @param realm
+     * @param grantedConsent  描述用户已经授权的client
+     * @param authSession
+     * @return
+     */
     private static List<ClientScopeModel> getClientScopesToApproveOnConsentScreen(RealmModel realm, UserConsentModel grantedConsent,
                                                                                   AuthenticationSessionModel authSession) {
         // Client Scopes to be displayed on consent screen
         List<ClientScopeModel> clientScopesToDisplay = new LinkedList<>();
 
         for (String clientScopeId : authSession.getClientScopes()) {
+            // 根据id精准的读取出每个scope
             ClientScopeModel clientScope = KeycloakModelUtils.findClientScopeById(realm, authSession.getClient(), clientScopeId);
 
             if (clientScope == null || !clientScope.isDisplayOnConsentScreen()) {
@@ -1100,6 +1218,7 @@ public class AuthenticationManager {
             }
 
             // Check if consent already granted by user
+            // 还未通过授权的 clientScope需要返回
             if (grantedConsent == null || !grantedConsent.isClientScopeGranted(clientScope)) {
                 clientScopesToDisplay.add(clientScope);
             }
@@ -1109,24 +1228,37 @@ public class AuthenticationManager {
     }
 
 
+    /**
+     * 为认证会话设置client_scope
+     * @param authSession
+     */
     public static void setClientScopesInSession(AuthenticationSessionModel authSession) {
+
+        // 认证会话关联client root认证会话关联user
         ClientModel client = authSession.getClient();
         UserModel user = authSession.getAuthenticatedUser();
 
         // todo scope param protocol independent
         String scopeParam = authSession.getClientNote(OAuth2Constants.SCOPE);
 
+        // 从tokenManager中找到client关联的一组scope
         Set<String> requestedClientScopes = TokenManager.getRequestedClientScopes(scopeParam, client)
                 .map(ClientScopeModel::getId).collect(Collectors.toSet());
 
+        // 设置client_scope
         authSession.setClientScopes(requestedClientScopes);
     }
 
+    /**
+     * 生成一个认证动作对象
+     * @param context
+     * @return
+     */
     public static RequiredActionProvider createRequiredAction(RequiredActionContextResult context) {
         String display = context.getAuthenticationSession().getAuthNote(OAuth2Constants.DISPLAY);
         if (display == null) return context.getFactory().create(context.getSession());
 
-
+        // TODO 忽略 display
         if (context.getFactory() instanceof DisplayTypeRequiredActionFactory) {
             RequiredActionProvider provider = ((DisplayTypeRequiredActionFactory)context.getFactory()).createDisplay(context.getSession(), display);
             if (provider != null) return provider;
@@ -1141,16 +1273,32 @@ public class AuthenticationManager {
         }
     }
 
-
+    /**
+     *
+     * @param session
+     * @param authSession
+     * @param request
+     * @param event
+     * @param realm
+     * @param user
+     * @param requiredActions   描述需要进行的所有认证操作
+     * @return
+     */
     protected static Response executionActions(KeycloakSession session, AuthenticationSessionModel authSession,
                                                HttpRequest request, EventBuilder event, RealmModel realm, UserModel user,
                                                Stream<String> requiredActions) {
 
+        // 先执行所有普通的action
+
+        // 此时已经执行完所有action了
         Optional<Response> response = sortRequiredActionsByPriority(realm, requiredActions)
                 .map(model -> executeAction(session, authSession, model, request, event, realm, user, false))
                 .filter(Objects::nonNull).findFirst();
+        // 已经产生结果了  比如前面的action失败 会直接返回
         if (response.isPresent())
             return response.get();
+
+        // 执行 kc_action
 
         String kcAction = authSession.getClientNote(Constants.KC_ACTION);
         if (kcAction != null) {
@@ -1168,8 +1316,22 @@ public class AuthenticationManager {
         return null;
     }
 
+    /**
+     *
+     * @param session
+     * @param authSession  认证会话  对应user->client
+     * @param model        此时要执行的某个认证动作
+     * @param request      对应的请求参数
+     * @param event
+     * @param realm
+     * @param user
+     * @param kcActionExecution  简单理解 该标识为true时 initiatedActionSupport 必须为supported
+     * @return
+     */
     private static Response executeAction(KeycloakSession session, AuthenticationSessionModel authSession, RequiredActionProviderModel model,
                                           HttpRequest request, EventBuilder event, RealmModel realm, UserModel user, boolean kcActionExecution) {
+
+        // 找到该认证action对应的工厂
         RequiredActionFactory factory = (RequiredActionFactory) session.getKeycloakSessionFactory().getProviderFactory(RequiredActionProvider.class, model.getProviderId());
         if (factory == null) {
             throw new RuntimeException("Unable to find factory for Required Action: " + model.getProviderId() + " did you forget to declare it in a META-INF/services file?");
@@ -1186,22 +1348,29 @@ public class AuthenticationManager {
         }
 
         if (kcActionExecution) {
+            // provider不需要进行一些init操作
             if (actionProvider.initiatedActionSupport() == InitiatedActionSupport.NOT_SUPPORTED) {
                 logger.debugv("Requested action {0} does not support being invoked with kc_action", factory.getId());
                 setKcActionStatus(factory.getId(), RequiredActionContext.KcActionStatus.ERROR, authSession);
                 return null;
+                // 该provider不可用 设置异常状态
             } else if (!model.isEnabled()) {
                 logger.debugv("Requested action {0} is disabled and can't be invoked with kc_action", factory.getId());
                 setKcActionStatus(factory.getId(), RequiredActionContext.KcActionStatus.ERROR, authSession);
                 return null;
             } else {
+                // 设置成执行中
                 authSession.setClientNote(Constants.KC_ACTION_EXECUTING, factory.getId());
             }
         }
 
+        // 如果对应的provider有需要 则会返回给用户需要展示的内容   简单理解 当这步完成后status已经被修改了
         actionProvider.requiredActionChallenge(context);
 
+        // action执行失败
         if (context.getStatus() == RequiredActionContext.Status.FAILURE) {
+
+            // 简单理解就是OIDC
             LoginProtocol protocol = context.getSession().getProvider(LoginProtocol.class, context.getAuthenticationSession().getProtocol());
             protocol.setRealm(context.getRealm())
                     .setHttpHeaders(context.getHttpRequest().getHttpHeaders())
@@ -1211,23 +1380,37 @@ public class AuthenticationManager {
             event.error(Errors.REJECTED_BY_USER);
             return response;
         }
+
+        // 代表处于认证中吧
         else if (context.getStatus() == RequiredActionContext.Status.CHALLENGE) {
+            // 设置认证会话此时在执行的provider
             authSession.setAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION, model.getProviderId());
             return context.getChallenge();
         }
+
+        // 认证成功
         else if (context.getStatus() == RequiredActionContext.Status.SUCCESS) {
             event.clone().event(EventType.CUSTOM_REQUIRED_ACTION).detail(Details.CUSTOM_REQUIRED_ACTION, factory.getId()).success();
             // don't have to perform the same action twice, so remove it from both the user and session required actions
+            // 认证动作已经完成 不需要记录了
             authSession.getAuthenticatedUser().removeRequiredAction(factory.getId());
             authSession.removeRequiredAction(factory.getId());
+            // 设置成功状态
             setKcActionStatus(factory.getId(), RequiredActionContext.KcActionStatus.SUCCESS, authSession);
         }
 
         return null;
     }
 
+    /**
+     * 对所有要执行的认证动作进行排序
+     * @param realm
+     * @param requiredActions
+     * @return
+     */
     private static Stream<RequiredActionProviderModel> sortRequiredActionsByPriority(RealmModel realm, Stream<String> requiredActions) {
         return requiredActions.map(action -> {
+                    // 通过名称匹配  找到对应的provider
                     RequiredActionProviderModel model = realm.getRequiredActionProviderByAlias(action);
                     if (model == null) {
                         logger.warnv("Could not find configuration for Required Action {0}, did you forget to register it?", action);
@@ -1238,22 +1421,44 @@ public class AuthenticationManager {
                 .filter(RequiredActionProviderModel::isEnabled)
                 .sorted(RequiredActionProviderModel.RequiredActionComparator.SINGLETON);
     }
-    
+
+    /**
+     * 将所有需要的认证动作加入到 userModel中  这里是评估哪些动作是必要的
+     * @param session
+     * @param authSession
+     * @param request
+     * @param event
+     * @param realm
+     * @param user
+     */
     public static void evaluateRequiredActionTriggers(final KeycloakSession session, final AuthenticationSessionModel authSession,
                                                       final HttpRequest request, final EventBuilder event,
                                                       final RealmModel realm, final UserModel user) {
         // see if any required actions need triggering, i.e. an expired password
         realm.getRequiredActionProvidersStream()
                 .filter(RequiredActionProviderModel::isEnabled)
+                // 找到对应的工厂
                 .map(model -> toRequiredActionFactory(session, model))
                 .forEachOrdered(f -> evaluateRequiredAction(session, authSession, request, event, realm, user, f));
     }
 
+    /**
+     * 评估是否要触发这个认证动作
+     * @param session
+     * @param authSession
+     * @param request
+     * @param event
+     * @param realm
+     * @param user
+     * @param factory
+     */
     private static void evaluateRequiredAction(final KeycloakSession session, final AuthenticationSessionModel authSession,
                                         final HttpRequest request, final EventBuilder event, final RealmModel realm,
                                         final UserModel user, RequiredActionFactory factory) {
         RequiredActionProvider provider = factory.create(session);
         RequiredActionContextResult result = new RequiredActionContextResult(authSession, realm, event, session, request, user, factory) {
+            // 下面这几个方法都是不应该被触发的
+
             @Override
             public void challenge(Response response) {
                 throw new RuntimeException("Not allowed to call challenge() within evaluateTriggers()");
@@ -1275,9 +1480,16 @@ public class AuthenticationManager {
             }
         };
 
+        // 评估是否需要触发这个动作 如果需要会触发userModel.addRequiredAction
         provider.evaluateTriggers(result);
     }
 
+    /**
+     * 返回可以生成 RequiredActionProvider 的工厂 意味着这些action 在认证阶段必须完成
+     * @param session
+     * @param model
+     * @return
+     */
     private static RequiredActionFactory toRequiredActionFactory(KeycloakSession session, RequiredActionProviderModel model) {
         RequiredActionFactory factory = (RequiredActionFactory) session.getKeycloakSessionFactory()
                 .getProviderFactory(RequiredActionProvider.class, model.getProviderId());
@@ -1300,12 +1512,14 @@ public class AuthenticationManager {
      * @param isCookie
      * @param tokenString
      * @param headers
-     * @param additionalChecks
+     * @param additionalChecks  需要通过的额外检查
      * @return
      */
     public static AuthResult verifyIdentityToken(KeycloakSession session, RealmModel realm, UriInfo uriInfo, ClientConnection connection, boolean checkActive, boolean checkTokenType,
                                                  String checkAudience, boolean isCookie, String tokenString, HttpHeaders headers, Predicate<? super AccessToken>... additionalChecks) {
         try {
+            // TODO 验证的逻辑先忽略
+            // 生成一个校验器
             TokenVerifier<AccessToken> verifier = TokenVerifier.create(tokenString, AccessToken.class)
               .withDefaultChecks()
               .realmUrl(Urls.realmIssuer(uriInfo.getBaseUri(), realm.getName()))
@@ -1323,7 +1537,10 @@ public class AuthenticationManager {
             SignatureVerifierContext signatureVerifier = session.getProvider(SignatureProvider.class, algorithm).verifier(kid);
             verifier.verifierContext(signatureVerifier);
 
+
+            // 验证完毕 获取token
             AccessToken token = verifier.verify().getToken();
+            // 要求token还有效
             if (checkActive) {
                 if (!token.isActive() || token.getIssuedAt() < realm.getNotBefore()) {
                     logger.debug("Identity cookie expired");
@@ -1333,12 +1550,15 @@ public class AuthenticationManager {
 
             UserSessionModel userSession = null;
             UserModel user = null;
+            // token上无会话状态  只能从token上解析出用户信息 而没有session信息
             if (token.getSessionState() == null) {
                 user = TokenManager.lookupUserFromStatelessToken(session, realm, token);
+                // 检查用户是否可用 以及token是否过期
                 if (!isUserValid(session, realm, user, token)) {
                     return null;
                 }
             } else {
+                // 有会话状态的token
                 userSession = session.sessions().getUserSession(realm, token.getSessionState());
                 if (userSession != null) {
                     user = userSession.getUser();
@@ -1348,8 +1568,10 @@ public class AuthenticationManager {
                 }
             }
 
+            // isSessionValid 代表会话已经超时
             if (token.getSessionState() != null && !isSessionValid(realm, userSession)) {
                 // Check if accessToken was for the offline session.
+                // TODO 检查离线会话
                 if (!isCookie) {
                     UserSessionModel offlineUserSession = session.sessions().getOfflineUserSession(realm, token.getSessionState());
                     if (isOfflineSessionValid(realm, offlineUserSession)) {
@@ -1363,6 +1585,7 @@ public class AuthenticationManager {
                 return null;
             }
 
+            // 至此已经确保 session/user的有效性了   将token的状态检查器 转移到session中
             session.setAttribute("state_checker", token.getOtherClaims().get("state_checker"));
 
             return new AuthResult(user, userSession, token);
@@ -1372,12 +1595,21 @@ public class AuthenticationManager {
         return null;
     }
 
+    /**
+     * 判断用户是否有效
+     * @param session
+     * @param realm
+     * @param user
+     * @param token
+     * @return
+     */
     private static boolean isUserValid(KeycloakSession session, RealmModel realm, UserModel user, AccessToken token) {
         if (user == null || !user.isEnabled()) {
             logger.debug("Unknown user in identity token");
             return false;
         }
 
+        // 获取user的一个属性 叫做 not_before    当token的iat小于该值时  认为用户无效
         int userNotBefore = session.users().getNotBeforeOfUser(realm, user);
         if (token.getIssuedAt() < userNotBefore) {
             logger.debug("User notBefore newer than token");
@@ -1387,10 +1619,20 @@ public class AuthenticationManager {
         return true;
     }
 
+    /**
+     * 描述认证状态
+     */
     public enum AuthenticationStatus {
-        SUCCESS, ACCOUNT_TEMPORARILY_DISABLED, ACCOUNT_DISABLED, ACTIONS_REQUIRED, INVALID_USER, INVALID_CREDENTIALS, MISSING_PASSWORD, MISSING_TOTP, FAILED
+        SUCCESS,
+        // 账户临时不可用 应该就是防止暴力破解的
+        ACCOUNT_TEMPORARILY_DISABLED, ACCOUNT_DISABLED,
+        // 应该是代表还需要进行的认证动作
+        ACTIONS_REQUIRED, INVALID_USER, INVALID_CREDENTIALS, MISSING_PASSWORD, MISSING_TOTP, FAILED
     }
 
+    /**
+     * 对应一个认证结果
+     */
     public static class AuthResult {
         private final UserModel user;
         private final UserSessionModel session;
@@ -1415,29 +1657,57 @@ public class AuthenticationManager {
         }
     }
 
+    /**
+     * 设置keycloak的状态
+     * @param executedProviderId  本次操作的actionId
+     * @param status  描述本次的动作是成功了 取消 还是失败
+     * @param authSession
+     */
     public static void setKcActionStatus(String executedProviderId, RequiredActionContext.KcActionStatus status, AuthenticationSessionModel authSession) {
+        // clientNote 就是一个map
+        // 当本次传入的provider 与action的name一致时
         if (executedProviderId.equals(authSession.getClientNote(Constants.KC_ACTION))) {
+            // 更新action状态
             authSession.setClientNote(Constants.KC_ACTION_STATUS, status.name().toLowerCase());
+            // 应该是代表执行完毕了   所以移除掉action信息  仅保留状态
             authSession.removeClientNote(Constants.KC_ACTION);
             authSession.removeClientNote(Constants.KC_ACTION_EXECUTING);
         }
     }
 
+    /**
+     * 代表登录成功
+     * @param session
+     * @param authSession
+     */
     public static void logSuccess(KeycloakSession session, AuthenticationSessionModel authSession) {
+        // 从当前上下文可以知道 请求对应的realm
         RealmModel realm = session.getContext().getRealm();
+        // 防止暴力破解？
         if (realm.isBruteForceProtected()) {
+            // 拿到会话信息后 尝试检索用户数据
             UserModel user = lookupUserForBruteForceLog(session, realm, authSession);
             if (user != null) {
+                // 因为登录成功了 可以解除防暴力登录的限制了   比如 错误次数可以重置了
                 BruteForceProtector bruteForceProtector = session.getProvider(BruteForceProtector.class);
                 bruteForceProtector.successfulLogin(realm, user, session.getContext().getConnection());
             }
         }
     }
 
+    /**
+     * 从会话信息中解析出用户信息
+     * @param session
+     * @param realm
+     * @param authenticationSession
+     * @return
+     */
     public static UserModel lookupUserForBruteForceLog(KeycloakSession session, RealmModel realm, AuthenticationSessionModel authenticationSession) {
+        // 认证会话上是有用户id的  然后通过realm+uid 查找用户
         UserModel user = authenticationSession.getAuthenticatedUser();
         if (user != null) return user;
 
+        // 尝试使用username查询
         String username = authenticationSession.getAuthNote(AbstractUsernameFormAuthenticator.ATTEMPTED_USERNAME);
         if (username != null) {
             return KeycloakModelUtils.findUserByNameOrEmail(session, realm, username);

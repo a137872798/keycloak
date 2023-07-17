@@ -35,6 +35,10 @@ public class RootAuthenticationSessionEntity extends SessionEntity {
 
     private String id;
     private int timestamp;
+
+    /**
+     * 每个root 认证会话 可以衍生出很多子会话  实际上每个client 会对应一个子会话
+     */
     private Map<String, AuthenticationSessionEntity> authenticationSessions = new ConcurrentHashMap<>();
 
     public RootAuthenticationSessionEntity() {

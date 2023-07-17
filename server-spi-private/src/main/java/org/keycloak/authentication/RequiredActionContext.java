@@ -35,6 +35,7 @@ import java.net.URI;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 描述一个认证过程中必须要完成的动作
  */
 public interface RequiredActionContext {
     enum Status {

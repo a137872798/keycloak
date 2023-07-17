@@ -26,6 +26,8 @@ import java.util.Map;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 认证会话  不同于 user session 和 client session
+ * 简单理解是一个上层会话对象  暴露出的api都是一些增删改查
  */
 public interface AuthenticationSessionProvider extends Provider {
 
@@ -34,6 +36,7 @@ public interface AuthenticationSessionProvider extends Provider {
      * entity will be prefilled with current timestamp, the given realm and client.
      * @param realm {@code RealmModel} Can't be {@code null}.
      * @return Returns created {@code RootAuthenticationSessionModel}. Never returns {@code null}.
+     * 针对某个realm 创建一个root认证会话对象
      */
     RootAuthenticationSessionModel createRootAuthenticationSession(RealmModel realm);
 
@@ -54,6 +57,7 @@ public interface AuthenticationSessionProvider extends Provider {
      * @param realm {@code RealmModel} Can't be {@code null}.
      * @param id {@code String} Id of newly created root authentication session. If {@code null} a random id will be generated.
      * @return Returns created {@code RootAuthenticationSessionModel}. Never returns {@code null}.
+     * 指定id创建
      */
     RootAuthenticationSessionModel createRootAuthenticationSession(RealmModel realm, String id);
 
@@ -62,6 +66,7 @@ public interface AuthenticationSessionProvider extends Provider {
      * @param realm {@code RealmModel} Can't be {@code null}.
      * @param authenticationSessionId {@code RootAuthenticationSessionModel} If {@code null} then {@code null} will be returned.
      * @return Returns found {@code RootAuthenticationSessionModel} or {@code null} if no root authentication session is found.
+     * 指定realm,id 检索认证会话
      */
     RootAuthenticationSessionModel getRootAuthenticationSession(RealmModel realm, String authenticationSessionId);
 
@@ -74,6 +79,7 @@ public interface AuthenticationSessionProvider extends Provider {
 
     /**
      * Remove expired authentication sessions in all the realms
+     * 移除所有realm下的所有过期会话
      */
     void removeAllExpired();
 

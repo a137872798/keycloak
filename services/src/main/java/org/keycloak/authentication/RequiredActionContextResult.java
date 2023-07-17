@@ -39,6 +39,7 @@ import java.net.URI;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 代表针对一个必须完成的认证动作的结果
  */
 public class RequiredActionContextResult implements RequiredActionContext {
     protected AuthenticationSessionModel authenticationSession;

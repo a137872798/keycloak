@@ -29,6 +29,7 @@ import org.jboss.logging.Logger;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 代表单个事务对象
  */
 public class InfinispanKeycloakTransaction implements KeycloakTransaction {
 
@@ -38,8 +39,18 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         ADD, ADD_WITH_LIFESPAN, REMOVE, REPLACE, ADD_IF_ABSENT // ADD_IF_ABSENT throws an exception if there is existing value
     }
 
+    /**
+     * 事务是否处于begin状态
+     */
     private boolean active;
+    /**
+     * 是否需要回滚
+     */
     private boolean rollback;
+
+    /**
+     * 模版就是开启事务 然后执行所有task  之后提交
+     */
     private final Map<Object, CacheTask> tasks = new LinkedHashMap<>();
 
     @Override
@@ -49,13 +60,16 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
 
     @Override
     public void commit() {
+        // 已经被标记为需要回滚 代表执行过程中发生了错误
         if (rollback) {
             throw new RuntimeException("Rollback only!");
         }
 
+        // 执行所有任务
         tasks.values().forEach(CacheTask::execute);
     }
 
+    // 回滚 清理所有任务
     @Override
     public void rollback() {
         tasks.clear();
@@ -76,16 +90,26 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         return active;
     }
 
+    /**
+     * 增加一个任务  这里的任务就是把 一个kv值推送到缓存服务器
+     * @param cache
+     * @param key
+     * @param value
+     * @param <K>
+     * @param <V>
+     */
     public <K, V> void put(Cache<K, V> cache, K key, V value) {
         log.tracev("Adding cache operation: {0} on {1}", CacheOperation.ADD, key);
 
         Object taskKey = getTaskKey(cache, key);
+        // 不能重复提交同一会话对象
         if (tasks.containsKey(taskKey)) {
             throw new IllegalStateException("Can't add session: task in progress for session");
         } else {
             tasks.put(taskKey, new CacheTaskWithValue<V>(value) {
                 @Override
                 public void execute() {
+                    // 执行逻辑就是推送kv
                     decorateCache(cache).put(key, value);
                 }
 
@@ -97,6 +121,16 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         }
     }
 
+    /**
+     * 同上 增加了kv的存活时间
+     * @param cache
+     * @param key
+     * @param value
+     * @param lifespan
+     * @param lifespanUnit
+     * @param <K>
+     * @param <V>
+     */
     public <K, V> void put(Cache<K, V> cache, K key, V value, long lifespan, TimeUnit lifespanUnit) {
         log.tracev("Adding cache operation: {0} on {1}", CacheOperation.ADD_WITH_LIFESPAN, key);
 
@@ -118,6 +152,14 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         }
     }
 
+    /**
+     * 将kv推送到缓存服务器
+     * @param cache
+     * @param key
+     * @param value
+     * @param <K>
+     * @param <V>
+     */
     public <K, V> void putIfAbsent(Cache<K, V> cache, K key, V value) {
         log.tracev("Adding cache operation: {0} on {1}", CacheOperation.ADD_IF_ABSENT, key);
 
@@ -142,6 +184,16 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         }
     }
 
+    /**
+     * 使用新value替换缓存服务器上的值
+     * @param cache
+     * @param key
+     * @param value
+     * @param lifespan
+     * @param lifespanUnit
+     * @param <K>
+     * @param <V>
+     */
     public <K, V> void replace(Cache<K, V> cache, K key, V value, long lifespan, TimeUnit lifespanUnit) {
         log.tracev("Adding cache operation: {0} on {1}", CacheOperation.REPLACE, key);
 
@@ -167,6 +219,15 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         }
     }
 
+    /**
+     * TODO 不同集群间的交互先忽略
+     * @param clusterProvider
+     * @param taskKey
+     * @param event
+     * @param ignoreSender
+     * @param <K>
+     * @param <V>
+     */
     public <K, V> void notify(ClusterProvider clusterProvider, String taskKey, ClusterEvent event, boolean ignoreSender) {
         log.tracev("Adding cache operation SEND_EVENT: {0}", event);
 
@@ -179,6 +240,13 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         tasks.put(taskKey, () -> clusterProvider.notify(taskKey, event, ignoreSender, ClusterProvider.DCNotify.ALL_DCS));
     }
 
+    /**
+     * 从缓存服务器上移除某个值
+     * @param cache
+     * @param key
+     * @param <K>
+     * @param <V>
+     */
     public <K, V> void remove(Cache<K, V> cache, K key) {
         log.tracev("Adding cache operation: {0} on {1}", CacheOperation.REMOVE, key);
 
@@ -224,10 +292,17 @@ public class InfinispanKeycloakTransaction implements KeycloakTransaction {
         }
     }
 
+    /**
+     * 模拟一个事务中的子任务
+     */
     public interface CacheTask {
         void execute();
     }
 
+    /**
+     * 任务会携带一个value
+     * @param <V>
+     */
     public abstract class CacheTaskWithValue<V> implements CacheTask {
         protected V value;
 

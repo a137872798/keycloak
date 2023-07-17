@@ -46,6 +46,7 @@ public class CookieHelper {
 
     /**
      * Set a response cookie.  This solely exists because JAX-RS 1.1 does not support setting HttpOnly cookies
+     * 设置cookie
      * @param name
      * @param value
      * @param path
@@ -68,11 +69,15 @@ public class CookieHelper {
 
         HttpResponse response = Resteasy.getContextData(HttpResponse.class);
         StringBuffer cookieBuf = new StringBuffer();
+
+        // 将信息填充到cookie值中
         ServerCookie.appendCookieValue(cookieBuf, 1, name, value, path, domain, comment, maxAge, secure_sameSite, httpOnly, sameSite);
         String cookie = cookieBuf.toString();
+        // 请求头是set-cookie 这样下次请求就会带上该cookie
         response.getOutputHeaders().add(HttpHeaders.SET_COOKIE, cookie);
 
         // a workaround for browser in older Apple OSs – browsers ignore cookies with SameSite=None
+        // TODO 兼容性逻辑先忽略
         if (sameSiteParam == SameSiteAttributeValue.NONE) {
             addCookie(name + LEGACY_COOKIE, value, path, domain, comment, maxAge, secure, httpOnly, null);
         }

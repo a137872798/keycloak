@@ -53,6 +53,9 @@ public class DefaultKeycloakContext implements KeycloakContext {
 
     private Map<UrlType, KeycloakUriInfo> uriInfo;
 
+    /**
+     * 本次交互关联的认证会话 对应user->client的维度
+     */
     private AuthenticationSessionModel authenticationSession;
 
     public DefaultKeycloakContext(KeycloakSession session) {

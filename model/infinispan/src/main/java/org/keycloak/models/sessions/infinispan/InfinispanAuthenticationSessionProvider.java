@@ -43,15 +43,35 @@ import org.keycloak.sessions.RootAuthenticationSessionModel;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 通过缓存对象提供认证会话数据
  */
 public class InfinispanAuthenticationSessionProvider implements AuthenticationSessionProvider {
 
     private static final Logger log = Logger.getLogger(InfinispanAuthenticationSessionProvider.class);
 
+    /**
+     * 通过该对象可以拿到各种信息
+     */
     private final KeycloakSession session;
+
+    /**
+     * 该provider 会维护root对象 每个root 又可以向下延展出很多子认证会话
+     */
     private final Cache<String, RootAuthenticationSessionEntity> cache;
+
+    /**
+     * 为会话产生为唯一id
+     */
     private final InfinispanKeyGenerator keyGenerator;
+
+    /**
+     * 可以批量执行一组任务  都是与缓存服务器的交互
+     */
     protected final InfinispanKeycloakTransaction tx;
+
+    /**
+     * TODO DC相关 先忽略
+     */
     protected final SessionEventsSenderTransaction clusterEventsSenderTx;
 
     public InfinispanAuthenticationSessionProvider(KeycloakSession session, InfinispanKeyGenerator keyGenerator, Cache<String, RootAuthenticationSessionEntity> cache) {
@@ -62,10 +82,16 @@ public class InfinispanAuthenticationSessionProvider implements AuthenticationSe
         this.tx = new InfinispanKeycloakTransaction();
         this.clusterEventsSenderTx = new SessionEventsSenderTransaction(session);
 
+        // 把他们放入一个大的会话管理器中
         session.getTransactionManager().enlistAfterCompletion(tx);
         session.getTransactionManager().enlistAfterCompletion(clusterEventsSenderTx);
     }
 
+    /**
+     * 产生属于某个realm下的root认证会话  实际上应该是对应一个用户   但是该怎么反向检索某个用户的root认证会话呢 ？？？
+     * @param realm {@code RealmModel} Can't be {@code null}.
+     * @return
+     */
     @Override
     public RootAuthenticationSessionModel createRootAuthenticationSession(RealmModel realm) {
         String id = keyGenerator.generateKeyString(session, cache);
@@ -73,6 +99,12 @@ public class InfinispanAuthenticationSessionProvider implements AuthenticationSe
     }
 
 
+    /**
+     * 创建 root 认证会话对象   与用户会话 一一对应
+     * @param realm {@code RealmModel} Can't be {@code null}.
+     * @param id {@code String} Id of newly created root authentication session. If {@code null} a random id will be generated.
+     * @return
+     */
     @Override
     public RootAuthenticationSessionModel createRootAuthenticationSession(RealmModel realm, String id) {
         RootAuthenticationSessionEntity entity = new RootAuthenticationSessionEntity();
@@ -80,18 +112,31 @@ public class InfinispanAuthenticationSessionProvider implements AuthenticationSe
         entity.setRealmId(realm.getId());
         entity.setTimestamp(Time.currentTime());
 
+        // 获取会话存活时长
         int expirationSeconds = RealmInfoUtil.getDettachedClientSessionLifespan(realm);
+        // 存储到缓存服务器  同时指定存活时长
         tx.put(cache, id, entity, expirationSeconds, TimeUnit.SECONDS);
 
         return wrap(realm, entity);
     }
 
 
+    /**
+     * 包装root 认证会话
+     * @param realm
+     * @param entity
+     * @return
+     */
     private RootAuthenticationSessionAdapter wrap(RealmModel realm, RootAuthenticationSessionEntity entity) {
         return entity==null ? null : new RootAuthenticationSessionAdapter(session, this, cache, realm, entity);
     }
 
 
+    /**
+     * 通过会话id 检索某个认证会话
+     * @param authSessionId
+     * @return
+     */
     private RootAuthenticationSessionEntity getRootAuthenticationSessionEntity(String authSessionId) {
         // Chance created in this transaction
         RootAuthenticationSessionEntity entity = tx.get(cache, authSessionId);
@@ -108,6 +153,10 @@ public class InfinispanAuthenticationSessionProvider implements AuthenticationSe
         // Rely on expiration of cache entries provided by infinispan. Nothing needed here
     }
 
+    /**
+     * TODO
+     * @param realm {@code RealmModel} Can't be {@code null}.
+     */
     @Override
     public void onRealmRemoved(RealmModel realm) {
         // Send message to all DCs. The remoteCache will notify client listeners on all DCs for remove authentication sessions
@@ -116,6 +165,10 @@ public class InfinispanAuthenticationSessionProvider implements AuthenticationSe
                 ClusterProvider.DCNotify.ALL_DCS);
     }
 
+    /**
+     * 从缓存服务器上移除某个realm 相关的所有会话
+     * @param realmId
+     */
     protected void onRealmRemovedEvent(String realmId) {
         Iterator<Map.Entry<String, RootAuthenticationSessionEntity>> itr = CacheDecorators.localCache(cache)
                 .entrySet()
@@ -143,7 +196,11 @@ public class InfinispanAuthenticationSessionProvider implements AuthenticationSe
 
     }
 
-
+    /**
+     * TODO
+     * @param compoundId {@code AuthenticationSessionCompoundId} The method has no effect if {@code null}.
+     * @param authNotesFragment {@code Map<String, String>} Map with authNote values.
+     */
     @Override
     public void updateNonlocalSessionAuthNotes(AuthenticationSessionCompoundId compoundId, Map<String, String> authNotesFragment) {
         if (compoundId == null) {
@@ -160,6 +217,12 @@ public class InfinispanAuthenticationSessionProvider implements AuthenticationSe
     }
 
 
+    /**
+     * 通过id 检索认证会话   并进行包装
+     * @param realm {@code RealmModel} Can't be {@code null}.
+     * @param authenticationSessionId {@code RootAuthenticationSessionModel} If {@code null} then {@code null} will be returned.
+     * @return
+     */
     @Override
     public RootAuthenticationSessionModel getRootAuthenticationSession(RealmModel realm, String authenticationSessionId) {
         RootAuthenticationSessionEntity entity = getRootAuthenticationSessionEntity(authenticationSessionId);

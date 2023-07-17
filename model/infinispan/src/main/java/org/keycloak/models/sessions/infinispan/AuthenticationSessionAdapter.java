@@ -35,6 +35,7 @@ import org.keycloak.sessions.RootAuthenticationSessionModel;
  * NOTE: Calling setter doesn't automatically enlist for update
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 被包装的某个子认证会话
  */
 public class AuthenticationSessionAdapter implements AuthenticationSessionModel {
 
