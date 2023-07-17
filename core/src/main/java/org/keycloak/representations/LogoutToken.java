@@ -8,6 +8,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 在jwt的基础上 增加了额外的信息 代表一个登出类型的token
+ */
 public class LogoutToken extends JsonWebToken {
 
     @JsonProperty("sid")

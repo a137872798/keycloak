@@ -28,17 +28,29 @@ import org.keycloak.sessions.AuthenticationSessionModel;
  */
 public class AuthenticationFlowResolver {
 
+    /**
+     * 从认证会话中解析出认证流
+     * @param authSession
+     * @return
+     */
     public static AuthenticationFlowModel resolveBrowserFlow(AuthenticationSessionModel authSession) {
         AuthenticationFlowModel flow = null;
+
+        // 普通的认证会话是由client发起的
         ClientModel client = authSession.getClient();
+        // 传入基于浏览器的认证key  得到一个认证流name
         String clientFlow = client.getAuthenticationFlowBindingOverride(AuthenticationFlowBindings.BROWSER_BINDING);
+
         if (clientFlow != null) {
+            // 检索数据库 得到认证流
             flow = authSession.getRealm().getAuthenticationFlowById(clientFlow);
             if (flow == null) {
                 throw new ModelException("Client " + client.getClientId() + " has browser flow override, but this flow does not exist");
             }
             return flow;
         }
+
+        // fallback 使用realm 绑定的认证流
         return authSession.getRealm().getBrowserFlow();
     }
     public static AuthenticationFlowModel resolveDirectGrantFlow(AuthenticationSessionModel authSession) {

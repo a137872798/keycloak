@@ -28,6 +28,7 @@ import org.keycloak.protocol.oidc.OIDCLoginProtocol;
  * Parse the parameters from request queryString
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 该对象负责解析参数
  */
 public class AuthzEndpointQueryStringParser extends AuthzEndpointRequestParser {
 
@@ -54,6 +55,8 @@ public class AuthzEndpointQueryStringParser extends AuthzEndpointRequestParser {
 
         super.validateResponseTypeParameter(responseTypeParameter, request);
     }
+
+    // 都是有关怎么访问requestParams的
 
     @Override
     protected String getParameter(String paramName) {

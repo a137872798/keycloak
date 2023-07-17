@@ -25,6 +25,7 @@ import java.util.Map;
  * Encapsulates information about the execution in ClientAuthenticationFlow
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 认证中的上下文  可以取到client信息
  */
 public interface ClientAuthenticationFlowContext extends AbstractAuthenticationFlowContext {
 

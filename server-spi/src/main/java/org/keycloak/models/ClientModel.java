@@ -198,6 +198,10 @@ public interface ClientModel extends ClientScopeModel, RoleContainerModel,  Prot
     void removeAuthenticationFlowBindingOverride(String binding);
     void setAuthenticationFlowBindingOverride(String binding, String flowId);
 
+    /**
+     * 登出时采用前端登出还是后端登出
+     * @return
+     */
     boolean isFrontchannelLogout();
     void setFrontchannelLogout(boolean flag);
 

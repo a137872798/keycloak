@@ -35,6 +35,7 @@ import org.keycloak.sessions.AuthenticationSessionModel;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 帮助跳转回认证页
  */
 public class AuthenticationFlowURLHelper {
 
@@ -63,6 +64,14 @@ public class AuthenticationFlowURLHelper {
     }
 
 
+    /**
+     * 生成一个通往认证流的页面 同时设置参数
+     * @param flowPath
+     * @param executionId
+     * @param clientId
+     * @param tabId
+     * @return
+     */
     public URI getLastExecutionUrl(String flowPath, String executionId, String clientId, String tabId) {
         UriBuilder uriBuilder = LoginActionsService.loginActionsBaseUrl(uriInfo)
                 .path(flowPath);
@@ -77,7 +86,13 @@ public class AuthenticationFlowURLHelper {
     }
 
 
+    /**
+     * 返回最近一个执行的认证
+     * @param authSession
+     * @return
+     */
     public URI getLastExecutionUrl(AuthenticationSessionModel authSession) {
+        // 获取当前正在执行的认证器id
         String executionId = getExecutionId(authSession);
         String latestFlowPath = authSession.getAuthNote(AuthenticationProcessor.CURRENT_FLOW_PATH);
 
@@ -89,6 +104,7 @@ public class AuthenticationFlowURLHelper {
             latestFlowPath = LoginActionsService.AUTHENTICATE_PATH;
         }
 
+        // 拼接path 填充参数
         return getLastExecutionUrl(latestFlowPath, executionId, authSession.getClient().getClientId(), authSession.getTabId());
     }
 

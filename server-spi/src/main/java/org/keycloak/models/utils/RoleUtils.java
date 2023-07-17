@@ -134,6 +134,7 @@ public class RoleUtils {
      * @param visited Track roles, which were already visited. Those will be ignored and won't be added to the stream. Besides that,
      *                the "visited" set itself will be updated as a result of this method call and all the tracked roles will be added to it
      * @return Stream of containing all of the composite roles and their components. Never returns {@code null}.
+     * 将角色展开
      */
     private static Stream<RoleModel> expandCompositeRolesStream(RoleModel role, Set<RoleModel> visited) {
         Stream.Builder<RoleModel> sb = Stream.builder();
@@ -146,6 +147,7 @@ public class RoleUtils {
                 RoleModel current = stack.pop();
                 sb.add(current);
 
+                // 组合角色 展开
                 if (current.isComposite()) {
                     current.getCompositesStream()
                             .filter(r -> !visited.contains(r))
@@ -162,10 +164,12 @@ public class RoleUtils {
 
 
     /**
+     * 展开角色
      * @param roles
      * @return new set with composite roles expanded
      */
     public static Set<RoleModel> expandCompositeRoles(Set<RoleModel> roles) {
+        // 通过该对象 过滤重复的角色
         Set<RoleModel> visited = new HashSet<>();
 
         return roles.stream()
@@ -185,6 +189,7 @@ public class RoleUtils {
 
 
     /**
+     * 获取用户所有角色
      * @param user
      * @return all user role mappings including all groups of user. Composite roles will be expanded
      */

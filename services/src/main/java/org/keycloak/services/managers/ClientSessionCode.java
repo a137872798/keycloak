@@ -28,6 +28,7 @@ import org.keycloak.sessions.CommonClientSessionModel;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 整合realm和session的中间对象
  */
 public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> {
 
@@ -194,6 +195,7 @@ public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> 
 
 
     public void setAction(String action) {
+        // 更新登录用会话此时在执行的action
         commonLoginSession.setAction(action);
 
         CodeGenerateUtil.ClientSessionParser<CLIENT_SESSION> clientSessionParser = (CodeGenerateUtil.ClientSessionParser<CLIENT_SESSION>) CodeGenerateUtil.getParser(commonLoginSession.getClass());
