@@ -27,18 +27,24 @@ import org.keycloak.util.EnumWithStableIndex;
  * Predecesor of AuthenticationSessionModel, ClientLoginSessionModel and ClientSessionModel (then action tickets). Maybe we will remove it later...
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 描述针对某个客户端的会话  实际上是 用户会话+client会话   用户会话与客户端会话强绑定
  */
 public interface CommonClientSessionModel {
 
     String getRedirectUri();
     void setRedirectUri(String uri);
 
+    // 描述客户端信息 以及客户端所属的realm
     RealmModel getRealm();
     ClientModel getClient();
 
     String getAction();
     void setAction(String action);
 
+    /**
+     * 交互所使用的协议
+     * @return
+     */
     String getProtocol();
     void setProtocol(String method);
 

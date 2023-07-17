@@ -4,8 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 代表通知client 会话登出的响应结果
+ */
 public class BackchannelLogoutResponse {
 
+    /**
+     * 本地是否已经成功登出
+     */
     private boolean localLogoutSucceeded;
     private List<DownStreamBackchannelLogoutResponse> clientResponses = new ArrayList<>();
 

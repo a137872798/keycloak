@@ -26,6 +26,7 @@ import org.keycloak.provider.Provider;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 防止暴力登录的对象
  */
 public interface BruteForceProtector extends Provider {
     String DISABLED_BY_PERMANENT_LOCKOUT = "permanentLockout";
@@ -34,6 +35,13 @@ public interface BruteForceProtector extends Provider {
 
     void successfulLogin(RealmModel realm, UserModel user, ClientConnection clientConnection);
 
+    /**
+     * 代表临时禁用某个对象吧
+     * @param session
+     * @param realm
+     * @param user
+     * @return
+     */
     boolean isTemporarilyDisabled(KeycloakSession session, RealmModel realm, UserModel user);
 
     boolean isPermanentlyLockedOut(KeycloakSession session, RealmModel realm, UserModel user);

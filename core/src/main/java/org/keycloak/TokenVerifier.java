@@ -184,8 +184,13 @@ public class TokenVerifier<T extends JsonWebToken> {
         }
     }
 
-
+    /**
+     * token 值
+     */
     private String tokenString;
+    /**
+     * token 类型
+     */
     private Class<? extends T> clazz;
     private PublicKey publicKey;
     private SecretKey secretKey;
@@ -393,6 +398,11 @@ public class TokenVerifier<T extends JsonWebToken> {
         return this.replaceCheck(IssuedForCheck.class, true, new IssuedForCheck(expectedIssuedFor));
     }
 
+    /**
+     * 将token值解析成 token对象
+     * @return
+     * @throws VerificationException
+     */
     public TokenVerifier<T> parse() throws VerificationException {
         if (jws == null) {
             if (tokenString == null) {

@@ -303,6 +303,12 @@ public class OIDCLoginProtocol implements LoginProtocol {
         return Boolean.valueOf(Optional.ofNullable(client.getAttribute(OIDCConfigAttributes.ID_TOKEN_AS_DETACHED_SIGNATURE)).orElse(Boolean.FALSE.toString())).booleanValue();
     }
 
+    /**
+     * 通过该对象构建response
+     * @param authSession
+     * @param error
+     * @return
+     */
     @Override
     public Response sendError(AuthenticationSessionModel authSession, Error error) {
         if (isOAuth2DeviceVerificationFlow(authSession)) {

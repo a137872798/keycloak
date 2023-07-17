@@ -74,6 +74,7 @@ import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForM
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 每个认证处理器 对应一次请求
  */
 public class AuthenticationProcessor {
     public static final String CURRENT_AUTHENTICATION_EXECUTION = "current.authentication.execution";
@@ -87,16 +88,42 @@ public class AuthenticationProcessor {
 
     protected static final Logger logger = Logger.getLogger(AuthenticationProcessor.class);
     protected RealmModel realm;
+
+    /**
+     * 当本次请求解析后 用户认证成功 就会得到该用户关联的会话数据
+     */
     protected UserSessionModel userSession;
+    /**
+     * 代表一个子认证会话   user+client维度
+     */
     protected AuthenticationSessionModel authenticationSession;
+
+    /**
+     * 通往发出认证请求的客户端
+     */
     protected ClientConnection connection;
+
     protected UriInfo uriInfo;
+    /**
+     * 通过会话可以得到各种信息
+     */
     protected KeycloakSession session;
+
+    /**
+     * 先忽略事件监听机制
+     */
     protected EventBuilder event;
+
+    /**
+     * 相关的请求
+     */
     protected HttpRequest request;
     protected String flowId;
     protected String flowPath;
     protected boolean browserFlow;
+    /**
+     * 强制保护器？
+     */
     protected BruteForceProtector protector;
     protected Runnable afterResetListener;
     /**
@@ -269,6 +296,10 @@ public class AuthenticationProcessor {
         return flowPath;
     }
 
+    /**
+     * 认证成功后 设置用户数据
+     * @param user
+     */
     public void setAutheticatedUser(UserModel user) {
         UserModel previousUser = getAuthenticationSession().getAuthenticatedUser();
         if (previousUser != null && !user.getId().equals(previousUser.getId()))

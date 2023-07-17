@@ -238,6 +238,7 @@ public final class KeycloakModelUtils {
      * @return found user
      */
     public static UserModel findUserByNameOrEmail(KeycloakSession session, RealmModel realm, String username) {
+        // 检查username是否是email
         if (realm.isLoginWithEmailAllowed() && username.indexOf('@') != -1) {
             UserModel user = session.users().getUserByEmail(realm, username);
             if (user != null) {

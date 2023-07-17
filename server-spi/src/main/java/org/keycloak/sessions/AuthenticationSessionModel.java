@@ -28,6 +28,7 @@ import org.keycloak.models.UserModel;
  * is represented by {@link RootAuthenticationSessionModel}
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 表示认证状态
  */
 public interface AuthenticationSessionModel extends CommonClientSessionModel {
 
