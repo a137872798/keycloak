@@ -42,6 +42,7 @@ import java.util.Map;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 代表一个重新登录的token
  */
 public class RestartLoginCookie implements Token {
     private static final Logger logger = Logger.getLogger(RestartLoginCookie.class);
@@ -119,11 +120,22 @@ public class RestartLoginCookie implements Token {
         }
     }
 
+    /**
+     * 添加一个需要重新登录的cookie
+     * @param session
+     * @param realm
+     * @param connection
+     * @param uriInfo
+     * @param authSession
+     */
     public static void setRestartCookie(KeycloakSession session, RealmModel realm, ClientConnection connection, UriInfo uriInfo, AuthenticationSessionModel authSession) {
+        // 会话信息转移到cookie中
         RestartLoginCookie restart = new RestartLoginCookie(authSession);
+        // 对token进行编码
         String encoded = session.tokens().encode(restart);
         String path = AuthenticationManager.getRealmCookiePath(realm, uriInfo);
         boolean secureOnly = realm.getSslRequired().isRequired(connection);
+        // 添加cookie
         CookieHelper.addCookie(KC_RESTART, encoded, path, null, null, -1, secureOnly, true);
     }
 

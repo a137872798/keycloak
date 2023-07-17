@@ -202,7 +202,7 @@ public class AuthenticationManager {
     }
 
     /**
-     * 判断用户会话是否已经到期了
+     * 清除cookie
      * @param session
      * @param userSession
      * @param realm
@@ -323,27 +323,32 @@ public class AuthenticationManager {
         logger.debugv("Logging out: {0} ({1}) offline: {2}", user.getUsername(), userSession.getId(),
                 userSession.isOffline());
 
-        // 判断cookie是否过期了
+        // 从cookie中清除session信息
         boolean expireUserSessionCookieSucceeded =
                 expireUserSessionCookie(session, userSession, realm, uriInfo, headers, connection);
 
+        // 为登出操作生成 会话对象
         final AuthenticationSessionManager asm = new AuthenticationSessionManager(session);
         AuthenticationSessionModel logoutAuthSession =
                 createOrJoinLogoutSession(session, realm, asm, userSession, false);
 
         boolean userSessionOnlyHasLoggedOutClients = false;
         try {
+            // 进行后端登出并产生结果
             backchannelLogoutResponse = backchannelLogoutAll(session, realm, userSession, logoutAuthSession, uriInfo,
                     headers, logoutBroker);
+            // 所有client都完成登出
             userSessionOnlyHasLoggedOutClients =
                     checkUserSessionOnlyHasLoggedOutClients(realm, userSession, logoutAuthSession);
         } finally {
+            // 登出操作完成就可以移除会话了
             RootAuthenticationSessionModel rootAuthSession = logoutAuthSession.getParentSession();
             rootAuthSession.removeAuthenticationSessionByTabId(logoutAuthSession.getTabId());
         }
 
         userSession.setState(UserSessionModel.State.LOGGED_OUT);
 
+        // TODO
         if (offlineSession) {
             new UserSessionManager(session).revokeOfflineUserSession(userSession);
 
@@ -360,8 +365,18 @@ public class AuthenticationManager {
         return backchannelLogoutResponse;
     }
 
+    /**
+     * 创建一个登出会话
+     * @param session
+     * @param realm
+     * @param asm
+     * @param userSession
+     * @param browserCookie  是否要从cookie中查询会话
+     * @return
+     */
     private static AuthenticationSessionModel createOrJoinLogoutSession(KeycloakSession session, RealmModel realm, final AuthenticationSessionManager asm, UserSessionModel userSession, boolean browserCookie) {
         // Account management client is used as a placeholder
+        // 得到 account client  在新建一个realm时 会自动为其创建account client
         ClientModel client = SystemClientUtil.getSystemClient(realm);
 
         String authSessionId;
@@ -369,6 +384,7 @@ public class AuthenticationManager {
         boolean browserCookiePresent = false;
 
         // Try to lookup current authSessionId from browser cookie. If doesn't exists, use the same as current userSession
+        // 从cookie中找到关联的root认证会话
         if (browserCookie) {
             rootLogoutSession = asm.getCurrentRootAuthenticationSession(realm);
         }
@@ -376,40 +392,60 @@ public class AuthenticationManager {
             authSessionId = rootLogoutSession.getId();
             browserCookiePresent = true;
         } else {
+            // 用户sessionId 与root认证id 是一样的
             authSessionId = userSession.getId();
             rootLogoutSession = session.authenticationSessions().getRootAuthenticationSession(realm, authSessionId);
         }
 
+        // 首次创建
         if (rootLogoutSession == null) {
             rootLogoutSession = session.authenticationSessions().createRootAuthenticationSession(realm, authSessionId);
         }
         if (browserCookie && !browserCookiePresent) {
-            // Update cookie if needed
+            // Update cookie if needed  将sessionId保存在cookie中
             asm.setAuthSessionCookie(authSessionId, realm);
         }
 
         // See if we have logoutAuthSession inside current rootSession. Create new if not
+        // 检查当前是否已经有登出会话了
         Optional<AuthenticationSessionModel> found = rootLogoutSession.getAuthenticationSessions().values().stream().filter((AuthenticationSessionModel authSession) -> {
             return client.equals(authSession.getClient()) && Objects.equals(AuthenticationSessionModel.Action.LOGGING_OUT.name(), authSession.getAction());
 
         }).findFirst();
 
+        // 没有的话创建一个登出会话
         AuthenticationSessionModel logoutAuthSession = found.isPresent() ? found.get() : rootLogoutSession.createAuthenticationSession(client);
+        // 设置当前在执行的会话
         session.getContext().setAuthenticationSession(logoutAuthSession);
 
         logoutAuthSession.setAction(AuthenticationSessionModel.Action.LOGGING_OUT.name());
         return logoutAuthSession;
     }
 
+    /**
+     * 后端登出
+     * @param session
+     * @param realm
+     * @param userSession
+     * @param logoutAuthSession
+     * @param uriInfo
+     * @param headers
+     * @param logoutBroker
+     * @return
+     */
     private static BackchannelLogoutResponse backchannelLogoutAll(KeycloakSession session, RealmModel realm,
             UserSessionModel userSession, AuthenticationSessionModel logoutAuthSession, UriInfo uriInfo,
             HttpHeaders headers, boolean logoutBroker) {
+
+        // 维护每个client登出的结果
         BackchannelLogoutResponse backchannelLogoutResponse = new BackchannelLogoutResponse();
 
+        // 遍历所有客户端会话
         for (AuthenticatedClientSessionModel clientSession : userSession.getAuthenticatedClientSessions().values()) {
             Response clientSessionLogoutResponse =
                     backchannelLogoutClientSession(session, realm, clientSession, logoutAuthSession, uriInfo, headers);
 
+            // 回调url
             String backchannelLogoutUrl =
                     OIDCAdvancedConfigWrapper.fromClientModel(clientSession.getClient()).getBackchannelLogoutUrl();
 
@@ -424,6 +460,8 @@ public class AuthenticationManager {
             }
             backchannelLogoutResponse.addClientResponses(downStreamBackchannelLogoutResponse);
         }
+
+        // 代表还需要登出broker
         if (logoutBroker) {
             String brokerId = userSession.getNote(Details.IDENTITY_PROVIDER);
             if (brokerId != null) {
@@ -447,13 +485,21 @@ public class AuthenticationManager {
      * @param userSession
      * @param logoutAuthSession
      * @return {@code true} when all clients have been logged out, {@code false} otherwise
+     * 检查是否已经从用户会话下删除了所有会话
      */
     private static boolean checkUserSessionOnlyHasLoggedOutClients(RealmModel realm,
       UserSessionModel userSession, AuthenticationSessionModel logoutAuthSession) {
+
+        // 获取该用户会话关联的所有client会话   本身在创建client会话时 就是要传入userSession的  所以可以查询
         final Map<String, AuthenticatedClientSessionModel> acs = userSession.getAuthenticatedClientSessions();
+
+        // 代表这些client的会话还未登出
         Set<AuthenticatedClientSessionModel> notLoggedOutSessions = acs.entrySet().stream()
+                //  一旦发现有client未登出
           .filter(me -> ! Objects.equals(AuthenticationSessionModel.Action.LOGGED_OUT, getClientLogoutAction(logoutAuthSession, me.getKey())))
+                // 发现client此时还未执行登出动作
           .filter(me -> ! Objects.equals(AuthenticationSessionModel.Action.LOGGED_OUT.name(), me.getValue().getAction()))
+                // 采用的协议 比如oidc
           .filter(me -> Objects.nonNull(me.getValue().getProtocol()))   // Keycloak service-like accounts
           .map(Map.Entry::getValue)
           .collect(Collectors.toSet());
@@ -488,6 +534,7 @@ public class AuthenticationManager {
      * @param headers
      * @return {@code http status OK} if the client was or is already being logged out, {@code null} if it is
      *         not known how to log it out and no request is made, otherwise the response of the logout request.
+     *         采用后端登出的方式
      */
     private static Response backchannelLogoutClientSession(KeycloakSession session, RealmModel realm,
             AuthenticatedClientSessionModel clientSession, AuthenticationSessionModel logoutAuthSession,
@@ -523,6 +570,7 @@ public class AuthenticationManager {
                     .setHttpHeaders(headers)
                     .setUriInfo(uriInfo);
 
+            // 唯一区别
             Response clientSessionLogout = protocol.backchannelLogout(userSession, clientSession);
 
             setClientLogoutAction(logoutAuthSession, client.getId(), AuthenticationSessionModel.Action.LOGGED_OUT);
@@ -534,12 +582,25 @@ public class AuthenticationManager {
         }
     }
 
+    /**
+     * 通过前端登出
+     * @param session
+     * @param realm
+     * @param clientSession
+     * @param logoutAuthSession
+     * @param uriInfo
+     * @param headers
+     * @return
+     */
     private static Response frontchannelLogoutClientSession(KeycloakSession session, RealmModel realm,
       AuthenticatedClientSessionModel clientSession, AuthenticationSessionModel logoutAuthSession,
       UriInfo uriInfo, HttpHeaders headers) {
+
+        // 用户会话
         UserSessionModel userSession = clientSession.getUserSession();
         ClientModel client = clientSession.getClient();
 
+        // 不支持前端登出 或者已登出 不需要处理
         if (! client.isFrontchannelLogout() || AuthenticationSessionModel.Action.LOGGED_OUT.name().equals(clientSession.getAction())) {
             return null;
         }
@@ -562,6 +623,7 @@ public class AuthenticationManager {
                     .setHttpHeaders(headers)
                     .setUriInfo(uriInfo);
 
+            // 调用协议api
             Response response = protocol.frontchannelLogout(userSession, clientSession);
             if (response != null) {
                 logger.debug("returning frontchannel logout request to client");
@@ -583,6 +645,7 @@ public class AuthenticationManager {
      * @param logoutAuthSession logoutAuthSession. May be {@code null} in which case this is a no-op.
      * @param clientUuid Client. Must not be {@code null}
      * @param action
+     * 设置某个client此时的登出状态
      */
     public static void setClientLogoutAction(AuthenticationSessionModel logoutAuthSession, String clientUuid, AuthenticationSessionModel.Action action) {
         if (logoutAuthSession != null && clientUuid != null) {
@@ -595,6 +658,7 @@ public class AuthenticationManager {
      * @param logoutAuthSession logoutAuthSession. May be {@code null} in which case this is a no-op.
      * @param clientUuid Internal ID of the client. Must not be {@code null}
      * @return State if it can be determined, {@code null} otherwise.
+     * 获取某个client此时的登出状态  比如正在登出 或者已登出
      */
     public static AuthenticationSessionModel.Action getClientLogoutAction(AuthenticationSessionModel logoutAuthSession, String clientUuid) {
         if (logoutAuthSession == null || clientUuid == null) {
@@ -607,6 +671,8 @@ public class AuthenticationManager {
 
     /**
      * Logout all clientSessions of this user and client
+     *
+     * 用户在某个client采用的是后端登录
      * @param session
      * @param realm
      * @param user
@@ -626,6 +692,17 @@ public class AuthenticationManager {
                 });
     }
 
+    /**
+     * 发出一个登出操作
+     * @param session
+     * @param realm
+     * @param userSession
+     * @param uriInfo
+     * @param connection
+     * @param headers
+     * @param initiatingIdp
+     * @return
+     */
     public static Response browserLogout(KeycloakSession session,
                                          RealmModel realm,
                                          UserSessionModel userSession,
@@ -639,20 +716,26 @@ public class AuthenticationManager {
             UserModel user = userSession.getUser();
             logger.debugv("Logging out: {0} ({1})", user.getUsername(), userSession.getId());
         }
-        
+
+        // 开始执行登出逻辑 状态变更为 loggingout
         if (userSession.getState() != UserSessionModel.State.LOGGING_OUT) {
             userSession.setState(UserSessionModel.State.LOGGING_OUT);
         }
 
         final AuthenticationSessionManager asm = new AuthenticationSessionManager(session);
+        // 创建一个登出用会话 以及为context设置登出会话
         AuthenticationSessionModel logoutAuthSession = createOrJoinLogoutSession(session, realm, asm, userSession, true);
 
+        // 触发登出操作
         Response response = browserLogoutAllClients(userSession, session, realm, headers, uriInfo, logoutAuthSession);
+        // 提前产生结果 登出操作未全部完成 返回response
         if (response != null) {
             return response;
         }
 
+        // 登出操作全部完成
         String brokerId = userSession.getNote(Details.IDENTITY_PROVIDER);
+        // TODO
         if (brokerId != null && !brokerId.equals(initiatingIdp)) {
             IdentityProvider identityProvider = IdentityBrokerService.getIdentityProvider(session, realm, brokerId);
             response = identityProvider.keycloakInitiatedBrowserLogout(session, userSession, uriInfo, realm);
@@ -661,20 +744,35 @@ public class AuthenticationManager {
             }
         }
 
+        // 做收尾工作 比如清理会话
         return finishBrowserLogout(session, realm, userSession, uriInfo, connection, headers);
     }
 
+    /**
+     * 找到所有未登出的会话 根据前端登出/后端登出的方式处理
+     * @param userSession
+     * @param session
+     * @param realm
+     * @param headers
+     * @param uriInfo
+     * @param logoutAuthSession
+     * @return
+     */
     private static Response browserLogoutAllClients(UserSessionModel userSession, KeycloakSession session, RealmModel realm, HttpHeaders headers, UriInfo uriInfo, AuthenticationSessionModel logoutAuthSession) {
+        // 未登出的所有client
         Map<Boolean, List<AuthenticatedClientSessionModel>> acss = userSession.getAuthenticatedClientSessions().values().stream()
           .filter(clientSession -> ! Objects.equals(AuthenticationSessionModel.Action.LOGGED_OUT.name(), clientSession.getAction()))
           .filter(clientSession -> clientSession.getProtocol() != null)
           .collect(Collectors.partitioningBy(clientSession -> clientSession.getClient().isFrontchannelLogout()));
 
+        // 得到所有采用后端登出方式的client
         final List<AuthenticatedClientSessionModel> backendLogoutSessions = acss.get(false) == null ? Collections.emptyList() : acss.get(false);
         backendLogoutSessions.forEach(acs -> backchannelLogoutClientSession(session, realm, acs, logoutAuthSession, uriInfo, headers));
 
+        // 前端登出要使用重定向
         final List<AuthenticatedClientSessionModel> redirectClients = acss.get(true) == null ? Collections.emptyList() : acss.get(true);
         for (AuthenticatedClientSessionModel nextRedirectClient : redirectClients) {
+            // 一旦产生结果直接返回
             Response response = frontchannelLogoutClientSession(session, realm, nextRedirectClient, logoutAuthSession, uriInfo, headers);
             if (response != null) {
                 return response;
@@ -684,14 +782,30 @@ public class AuthenticationManager {
         return null;
     }
 
+    /**
+     * 登出操作完成后触发
+     * @param session
+     * @param realm
+     * @param userSession
+     * @param uriInfo
+     * @param connection
+     * @param headers
+     * @return
+     */
     public static Response finishBrowserLogout(KeycloakSession session, RealmModel realm, UserSessionModel userSession, UriInfo uriInfo, ClientConnection connection, HttpHeaders headers) {
         final AuthenticationSessionManager asm = new AuthenticationSessionManager(session);
+
+        // 产生一个登出用的会话
         AuthenticationSessionModel logoutAuthSession = createOrJoinLogoutSession(session, realm, asm, userSession, true);
 
+        // 检查该用户是否在所有client都完成登出  仅打印日志
         checkUserSessionOnlyHasLoggedOutClients(realm, userSession, logoutAuthSession);
 
+        // 既然要触发登出了 就要把cookie的值清理掉
         expireIdentityCookie(realm, uriInfo, connection);
         expireRememberMeCookie(realm, uriInfo, connection);
+
+        // 一旦cookie中的token 被清理后 就认为登出完成
         userSession.setState(UserSessionModel.State.LOGGED_OUT);
         String method = userSession.getNote(KEYCLOAK_LOGOUT_PROTOCOL);
         EventBuilder event = new EventBuilder(realm, session, connection);
@@ -700,13 +814,26 @@ public class AuthenticationManager {
                 .setHttpHeaders(headers)
                 .setUriInfo(uriInfo)
                 .setEventBuilder(event);
+        // 触发协议后续逻辑
         Response response = protocol.finishLogout(userSession);
+
+        // 一个user session的remove 会关联到所有client session的移除
         session.sessions().removeUserSession(realm, userSession);
+        // 移除root会话
         session.authenticationSessions().removeRootAuthenticationSession(realm, logoutAuthSession.getParentSession());
         return response;
     }
 
 
+    /**
+     * 将会话加工成一个token
+     * @param keycloakSession
+     * @param realm
+     * @param user
+     * @param session
+     * @param issuer
+     * @return
+     */
     public static IdentityCookieToken createIdentityToken(KeycloakSession keycloakSession, RealmModel realm, UserModel user, UserSessionModel session, String issuer) {
         IdentityCookieToken token = new IdentityCookieToken();
         token.id(KeycloakModelUtils.generateId());
@@ -715,10 +842,12 @@ public class AuthenticationManager {
         token.issuer(issuer);
         token.type(TokenUtil.TOKEN_TYPE_KEYCLOAK_ID);
 
+        // token 关联会话id
         if (session != null) {
             token.setSessionState(session.getId());
         }
 
+        // 设置token过期时间
         if (session != null && session.isRememberMe() && realm.getSsoSessionMaxLifespanRememberMe() > 0) {
             token.expiration(Time.currentTime() + realm.getSsoSessionMaxLifespanRememberMe());
         } else if (realm.getSsoSessionMaxLifespan() > 0) {
@@ -735,12 +864,28 @@ public class AuthenticationManager {
         return token;
     }
 
+    /**
+     * 为登录用户生成一个cookie
+     * @param keycloakSession
+     * @param realm
+     * @param user
+     * @param session
+     * @param uriInfo
+     * @param connection
+     */
     public static void createLoginCookie(KeycloakSession keycloakSession, RealmModel realm, UserModel user, UserSessionModel session, UriInfo uriInfo, ClientConnection connection) {
+        // 生成存储cookie的路径
         String cookiePath = getIdentityCookiePath(realm, uriInfo);
         String issuer = Urls.realmIssuer(uriInfo.getBaseUri(), realm.getName());
+
+        // 将session加工成一个token
         IdentityCookieToken identityCookieToken = createIdentityToken(keycloakSession, realm, user, session, issuer);
         String encoded = keycloakSession.tokens().encode(identityCookieToken);
         boolean secureOnly = realm.getSslRequired().isRequired(connection);
+
+        // 总计要将2个东西加入到cookie中
+
+        // cookie 存活时间
         int maxAge = NewCookie.DEFAULT_MAX_AGE;
         if (session != null && session.isRememberMe()) {
             maxAge = realm.getSsoSessionMaxLifespanRememberMe() > 0 ? realm.getSsoSessionMaxLifespanRememberMe() : realm.getSsoSessionMaxLifespan();
@@ -760,6 +905,13 @@ public class AuthenticationManager {
         P3PHelper.addP3PHeader();
     }
 
+    /**
+     * 创建 remember的cookie
+     * @param realm
+     * @param username
+     * @param uriInfo
+     * @param connection
+     */
     public static void createRememberMeCookie(RealmModel realm, String username, UriInfo uriInfo, ClientConnection connection) {
         String path = getIdentityCookiePath(realm, uriInfo);
         boolean secureOnly = realm.getSslRequired().isRequired(connection);
@@ -768,6 +920,12 @@ public class AuthenticationManager {
         CookieHelper.addCookie(KEYCLOAK_REMEMBER_ME, "username:" + username, path, null, null, 31536000, secureOnly, true);
     }
 
+    /**
+     * 返回cookie中被remember me的用户
+     * @param realm
+     * @param headers
+     * @return
+     */
     public static String getRememberMeUsername(RealmModel realm, HttpHeaders headers) {
         if (realm.isRememberMe()) {
             Cookie cookie = headers.getCookies().get(AuthenticationManager.KEYCLOAK_REMEMBER_ME);
@@ -783,7 +941,7 @@ public class AuthenticationManager {
     }
 
     /**
-     *
+     * 清除IdentityCookie的值
      * @param realm
      * @param uriInfo
      * @param connection
@@ -795,6 +953,7 @@ public class AuthenticationManager {
         expireCookie(realm, KEYCLOAK_IDENTITY_COOKIE, path, true, connection, SameSiteAttributeValue.NONE);
         expireCookie(realm, KEYCLOAK_SESSION_COOKIE, path, false, connection, SameSiteAttributeValue.NONE);
 
+        // 应该是兼容性代码
         String oldPath = getOldCookiePath(realm, uriInfo);
         expireCookie(realm, KEYCLOAK_IDENTITY_COOKIE, oldPath, true, connection, SameSiteAttributeValue.NONE);
         expireCookie(realm, KEYCLOAK_SESSION_COOKIE, oldPath, false, connection, SameSiteAttributeValue.NONE);
@@ -889,21 +1048,39 @@ public class AuthenticationManager {
         String tokenString = cookie.getValue();
         // 验证token有效性
         AuthResult authResult = verifyIdentityToken(session, realm, session.getContext().getUri(), session.getContext().getConnection(), checkActive, false, null, true, tokenString, session.getContext().getRequestHeaders(), VALIDATE_IDENTITY_COOKIE);
+        // 验证失败 清除cookie的值
         if (authResult == null) {
             expireIdentityCookie(realm, session.getContext().getUri(), session.getContext().getConnection());
             expireOldIdentityCookie(realm, session.getContext().getUri(), session.getContext().getConnection());
             return null;
         }
+
+        // token有效 更新最近访问时间
         authResult.getSession().setLastSessionRefresh(Time.currentTime());
         return authResult;
     }
 
 
+    /**
+     * 当认证流程结束后  进行重定向
+     * @param session
+     * @param realm
+     * @param userSession
+     * @param clientSessionCtx
+     * @param request
+     * @param uriInfo
+     * @param clientConnection
+     * @param event
+     * @param authSession
+     * @return
+     */
     public static Response redirectAfterSuccessfulFlow(KeycloakSession session, RealmModel realm, UserSessionModel userSession,
                                                        ClientSessionContext clientSessionCtx,
                                                 HttpRequest request, UriInfo uriInfo, ClientConnection clientConnection,
                                                 EventBuilder event, AuthenticationSessionModel authSession) {
+        // 获取协议对象
         LoginProtocol protocolImpl = session.getProvider(LoginProtocol.class, authSession.getProtocol());
+        // 进行属性填充
         protocolImpl.setRealm(realm)
                 .setHttpHeaders(request.getHttpHeaders())
                 .setUriInfo(uriInfo)
@@ -912,16 +1089,32 @@ public class AuthenticationManager {
 
     }
 
+    /**
+     * 认证流程成功后
+     * @param session
+     * @param realm
+     * @param userSession
+     * @param clientSessionCtx
+     * @param request
+     * @param uriInfo
+     * @param clientConnection
+     * @param event
+     * @param authSession
+     * @param protocol
+     * @return
+     */
     public static Response redirectAfterSuccessfulFlow(KeycloakSession session, RealmModel realm, UserSessionModel userSession,
                                                        ClientSessionContext clientSessionCtx,
                                                        HttpRequest request, UriInfo uriInfo, ClientConnection clientConnection,
                                                        EventBuilder event, AuthenticationSessionModel authSession, LoginProtocol protocol) {
+        // 获取session
         Cookie sessionCookie = getCookie(request.getHttpHeaders().getCookies(), AuthenticationManager.KEYCLOAK_SESSION_COOKIE);
         if (sessionCookie != null) {
 
             String[] split = sessionCookie.getValue().split("/");
             if (split.length >= 3) {
                 String oldSessionId = split[2];
+                // 新发生的认证动作产生了新的session值 需要删除原来的session值 以及相关的会话
                 if (!oldSessionId.equals(userSession.getId())) {
                     UserSessionModel oldSession = session.sessions().getUserSession(realm, oldSessionId);
                     if (oldSession != null) {
@@ -933,14 +1126,21 @@ public class AuthenticationManager {
         }
 
         // Updates users locale if required
+        // TODO 新的用户可能使用不同的语言环境
         session.getContext().resolveLocale(userSession.getUser());
 
         // refresh the cookies!
+        // 基于新的会话产生session值 设置到cookie中
         createLoginCookie(session, realm, userSession.getUser(), userSession, uriInfo, clientConnection);
+
+        // 更新用户会话为 已登录
         if (userSession.getState() != UserSessionModel.State.LOGGED_IN) userSession.setState(UserSessionModel.State.LOGGED_IN);
+
         if (userSession.isRememberMe()) {
+            // 创建一个 remember me 的cookie
             createRememberMeCookie(realm, userSession.getLoginUsername(), uriInfo, clientConnection);
         } else {
+            // 清除 remember me cookie
             expireRememberMeCookie(realm, uriInfo, clientConnection);
         }
 
@@ -951,12 +1151,14 @@ public class AuthenticationManager {
         if (isSSOAuthentication) {
             clientSession.setNote(SSO_AUTH, "true");
         } else {
+            // 非单点登录的情况下 设置认证时间
             int authTime = Time.currentTime();
             userSession.setNote(AUTH_TIME, String.valueOf(authTime));
             clientSession.removeNote(SSO_AUTH);
         }
 
         // The user has successfully logged in and we can clear his/her previous login failure attempts.
+        // 重置防暴力破解的参数
         logSuccess(session, authSession);
 
         return protocol.authenticated(authSession, userSession, clientSessionCtx);
@@ -978,88 +1180,143 @@ public class AuthenticationManager {
         return parts[2];
     }
 
+    /**
+     * 判断是否为单点登录认证
+     * @param clientSession
+     * @return
+     */
     public static boolean isSSOAuthentication(AuthenticatedClientSessionModel clientSession) {
         String ssoAuth = clientSession.getNote(SSO_AUTH);
         return Boolean.parseBoolean(ssoAuth);
     }
 
 
+    /**
+     * 尝试完结认证操作
+     * @param session
+     * @param authSession
+     * @param clientConnection
+     * @param request
+     * @param uriInfo
+     * @param event
+     * @return
+     */
     public static Response nextActionAfterAuthentication(KeycloakSession session, AuthenticationSessionModel authSession,
                                                   ClientConnection clientConnection,
                                                   HttpRequest request, UriInfo uriInfo, EventBuilder event) {
+
+        // 执行认证action
         Response requiredAction = actionRequired(session, authSession, request, event);
         if (requiredAction != null) return requiredAction;
+
+        // 中途没有产生response 代表认证成功了  进行一些收尾工作
         return finishedRequiredActions(session, authSession, null, clientConnection, request, uriInfo, event);
 
     }
 
 
+    /**
+     * 重定向到执行认证action的地方
+     * @param session
+     * @param realm
+     * @param authSession
+     * @param uriInfo
+     * @param requiredAction
+     * @return
+     */
     public static Response redirectToRequiredActions(KeycloakSession session, RealmModel realm, AuthenticationSessionModel authSession, UriInfo uriInfo, String requiredAction) {
         // redirect to non-action url so browser refresh button works without reposting past data
         ClientSessionCode<AuthenticationSessionModel> accessCode = new ClientSessionCode<>(session, realm, authSession);
         accessCode.setAction(AuthenticationSessionModel.Action.REQUIRED_ACTIONS.name());
+
+        // 更新认证相关会话的信息 代表此时正在进行认证相关的操作
         authSession.setAuthNote(AuthenticationProcessor.CURRENT_FLOW_PATH, LoginActionsService.REQUIRED_ACTION);
         authSession.setAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION, requiredAction);
 
         UriBuilder uriBuilder = LoginActionsService.loginActionsBaseUrl(uriInfo)
                 .path(LoginActionsService.REQUIRED_ACTION);
 
+        // 插入参数
         if (requiredAction != null) {
             uriBuilder.queryParam(Constants.EXECUTION, requiredAction);
         }
-
         uriBuilder.queryParam(Constants.CLIENT_ID, authSession.getClient().getClientId());
         uriBuilder.queryParam(Constants.TAB_ID, authSession.getTabId());
 
+        // 设置root级别的认证会话id
         if (uriInfo.getQueryParameters().containsKey(LoginActionsService.AUTH_SESSION_ID)) {
             uriBuilder.queryParam(LoginActionsService.AUTH_SESSION_ID, authSession.getParentSession().getId());
 
         }
 
         URI redirect = uriBuilder.build(realm.getName());
+        // 重定向到执行认证的页面
         return Response.status(302).location(redirect).build();
 
     }
 
 
+    /**
+     * 触发某个行为 并产生结果
+     * @param session
+     * @param authSession
+     * @param userSession
+     * @param clientConnection
+     * @param request
+     * @param uriInfo
+     * @param event
+     * @return
+     */
     public static Response finishedRequiredActions(KeycloakSession session, AuthenticationSessionModel authSession, UserSessionModel userSession,
                                                    ClientConnection clientConnection, HttpRequest request, UriInfo uriInfo, EventBuilder event) {
         String actionTokenKeyToInvalidate = authSession.getAuthNote(INVALIDATE_ACTION_TOKEN);
         if (actionTokenKeyToInvalidate != null) {
+            // 将string转换成token的key
             ActionTokenKeyModel actionTokenKey = DefaultActionTokenKey.from(actionTokenKeyToInvalidate);
             
             if (actionTokenKey != null) {
                 ActionTokenStoreProvider actionTokenStore = session.getProvider(ActionTokenStoreProvider.class);
+                // 通过null 覆盖token
                 actionTokenStore.put(actionTokenKey, null); // Token is invalidated
             }
         }
 
+        // 代表认证动作都已经完成  并且需要一些额外操作
         if (authSession.getAuthNote(END_AFTER_REQUIRED_ACTIONS) != null) {
             LoginFormsProvider infoPage = session.getProvider(LoginFormsProvider.class).setAuthenticationSession(authSession)
                     .setSuccess(Messages.ACCOUNT_UPDATED);
             if (authSession.getAuthNote(SET_REDIRECT_URI_AFTER_REQUIRED_ACTIONS) != null) {
                 if (authSession.getRedirectUri() != null) {
+                    // 在page中设置redirectUri   代表着一般认证完成后需要重定向到某个uri
                     infoPage.setAttribute("pageRedirectUri", authSession.getRedirectUri());
                 }
-
             } else {
+                // 代表不需要重定向
                 infoPage.setAttribute(Constants.SKIP_LINK, true);
             }
+
+            // 生成响应结果
             Response response = infoPage
                     .createInfoPage();
 
+            // 看来认证会话是认证过程中使用的会话   与client session/user session是不一样的  一旦认证动作完成后 认证会话就不再需要了
             new AuthenticationSessionManager(session).removeAuthenticationSession(authSession.getRealm(), authSession, true);
 
             return response;
         }
+
+        // 不需要额外操作的情况下
         RealmModel realm = authSession.getRealm();
 
+        // 完成了认证 产生client级别的会话对象
         ClientSessionContext clientSessionCtx = AuthenticationProcessor.attachSession(authSession, userSession, session, realm, clientConnection, event);
         userSession = clientSessionCtx.getClientSession().getUserSession();
 
+        // 设置用户会话
         event.event(EventType.LOGIN);
         event.session(userSession);
         event.success();
+        // 这里是通用逻辑 也是要进行重定向的
         return redirectAfterSuccessfulFlow(session, realm, userSession, clientSessionCtx, request, uriInfo, clientConnection, event, authSession);
     }
 
@@ -1071,16 +1328,21 @@ public class AuthenticationManager {
         final UserModel user = authSession.getAuthenticatedUser();
         final ClientModel client = authSession.getClient();
 
+        // 评估所有要处理的action 并设置到user中
         evaluateRequiredActionTriggers(session, authSession, request, event, realm, user);
 
+        // 在评估后返回第一个action
         Optional<String> reqAction = user.getRequiredActionsStream().findFirst();
         if (reqAction.isPresent()) {
             return reqAction.get();
         }
+
+        // 也是返回第一个
         if (!authSession.getRequiredActions().isEmpty()) {
             return authSession.getRequiredActions().iterator().next();
         }
 
+        // 普通的action遍历完后 还有个kc_action
         String kcAction = authSession.getClientNote(Constants.KC_ACTION);
         if (kcAction != null) {
             return kcAction;
@@ -1092,6 +1354,7 @@ public class AuthenticationManager {
 
             // See if any clientScopes need to be approved on consent screen
             List<ClientScopeModel> clientScopesToApprove = getClientScopesToApproveOnConsentScreen(realm, grantedConsent, authSession);
+            // 代表还需要用户为client授权
             if (!clientScopesToApprove.isEmpty()) {
                 return CommonClientSessionModel.Action.OAUTH_GRANT.name();
             }

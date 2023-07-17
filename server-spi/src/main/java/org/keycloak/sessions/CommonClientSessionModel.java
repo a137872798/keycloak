@@ -28,6 +28,10 @@ import org.keycloak.models.RealmModel;
  */
 public interface CommonClientSessionModel {
 
+    /**
+     * 当认证完成后需要跳转的重定向地址
+     * @return
+     */
     String getRedirectUri();
     void setRedirectUri(String uri);
 

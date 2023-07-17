@@ -486,7 +486,13 @@ public class TokenManager {
         return token;
     }
 
-
+    /**
+     * 将用户会话 和 认证会话 关联
+     * @param session
+     * @param userSession
+     * @param authSession
+     * @return
+     */
     public static ClientSessionContext attachAuthenticationSession(KeycloakSession session, UserSessionModel userSession, AuthenticationSessionModel authSession) {
         ClientModel client = authSession.getClient();
 
@@ -520,6 +526,10 @@ public class TokenManager {
     }
 
 
+    /**
+     * 将client会话从用户会话剥离
+     * @param clientSession
+     */
     public static void dettachClientSession(AuthenticatedClientSessionModel clientSession) {
         UserSessionModel userSession = clientSession.getUserSession();
         if (userSession == null) {
@@ -530,20 +540,32 @@ public class TokenManager {
     }
 
 
+    /**
+     * 查询client_scope/user 关联的所有role
+     * @param user
+     * @param client
+     * @param clientScopes
+     * @return
+     */
     public static Set<RoleModel> getAccess(UserModel user, ClientModel client, Stream<ClientScopeModel> clientScopes) {
+        // 获取用户的所有角色
         Set<RoleModel> roleMappings = RoleUtils.getDeepUserRoleMappings(user);
 
+        // 这种情况返回user的所有角色   这样的范围会更大  因为该user可能会有一些client上并不存在的role
         if (client.isFullScopeAllowed()) {
             if (logger.isTraceEnabled()) {
                 logger.tracef("Using full scope for client %s", client.getClientId());
             }
             return roleMappings;
         } else {
+            // 下面的操作得到的role 都必然属于该client
 
             // 1 - Client roles of this client itself
+            // 得到client支持的所有角色
             Stream<RoleModel> scopeMappings = client.getRolesStream();
 
             // 2 - Role mappings of client itself + default client scopes + optional client scopes requested by scope parameter (if applyScopeParam is true)
+            // 将client_scope的所有角色取出来 (去重)
             Stream<RoleModel> clientScopesMappings;
             if (!logger.isTraceEnabled()) {
                 clientScopesMappings = clientScopes.flatMap(clientScope -> clientScope.getScopeMappingsStream());
@@ -556,10 +578,10 @@ public class TokenManager {
             }
             scopeMappings = Stream.concat(scopeMappings, clientScopesMappings);
 
-            // 3 - Expand scope mappings
+            // 3 - Expand scope mappings  将组合角色展开
             scopeMappings = RoleUtils.expandCompositeRolesStream(scopeMappings);
 
-            // Intersection of expanded user roles and expanded scopeMappings
+            // Intersection of expanded user roles and expanded scopeMappings  仅保留交集
             roleMappings.retainAll(scopeMappings.collect(Collectors.toSet()));
 
             return roleMappings;
@@ -567,17 +589,24 @@ public class TokenManager {
     }
 
 
-    /** Return client itself + all default client scopes of client + optional client scopes requested by scope parameter **/
+    /**
+     * Return client itself + all default client scopes of client + optional client scopes requested by scope parameter
+     * 返回client的 scope
+     */
     public static Stream<ClientScopeModel> getRequestedClientScopes(String scopeParam, ClientModel client) {
         // Add all default client scopes automatically and client itself
+        // client在实体层面会关联scope对象
         Stream<ClientScopeModel> clientScopes = Stream.concat(
                 client.getClientScopes(true, true).values().stream(),
+                // 把client自身也加进去
                 Stream.of(client)).distinct();
 
+        // 代表没法提供其他信息  这样只会返回default_scope
         if (scopeParam == null) {
             return clientScopes;
         }
 
+        // 与param匹配的scope也会被返回
         Map<String, ClientScopeModel> allOptionalScopes = client.getClientScopes(false, true);
         // Add optional client scopes requested by scope parameter
         return Stream.concat(parseScopeParameter(scopeParam).map(allOptionalScopes::get).filter(Objects::nonNull),
@@ -1204,6 +1233,12 @@ public class TokenManager {
                     });
     }
 
+    /**
+     *
+     * @param realm
+     * @param session
+     * @return
+     */
     private Stream<OIDCIdentityProvider> getOIDCIdentityProviders(RealmModel realm, KeycloakSession session) {
         try {
             return realm.getIdentityProvidersStream()
@@ -1217,6 +1252,11 @@ public class TokenManager {
         return Stream.empty();
     }
 
+    /**
+     * 检测此时登出token中 是否有一个eventName为 http://schemas.openid.net/event/backchannel-logout
+     * @param logoutToken
+     * @return
+     */
     private boolean checkLogoutTokenForEvents(LogoutToken logoutToken) {
         for (String eventKey : logoutToken.getEvents().keySet()) {
             if (TokenUtil.TOKEN_BACKCHANNEL_LOGOUT_EVENT.equals(eventKey)) {

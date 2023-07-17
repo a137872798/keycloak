@@ -23,6 +23,7 @@ import java.util.Comparator;
 /**
 * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
 * @version $Revision: 1 $
+ * 认证流包含多个过程 每个会绑定一个AuthenticationExecutionModel
 */
 public class AuthenticationExecutionModel implements Serializable {
 

@@ -66,6 +66,8 @@ import java.util.regex.Pattern;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 基于OIDC协议的认证对象
+ * keycloak作为服务端 暴露实现oidc协议相关的接口
  */
 public class AuthorizationEndpoint extends AuthorizationEndpointBase {
 
@@ -88,6 +90,9 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         REGISTER, CODE, FORGOT_CREDENTIALS
     }
 
+    /**
+     * 创建客户端
+     */
     private ClientModel client;
     private AuthenticationSessionModel authenticationSession;
 
@@ -103,6 +108,10 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         event.event(EventType.LOGIN);
     }
 
+    /**
+     * 接收表单数据
+     * @return
+     */
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response buildPost() {
@@ -116,6 +125,11 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         return process(session.getContext().getUri().getQueryParameters());
     }
 
+    /**
+     * 处理认证请求
+     * @param params  从req中解析出的表单参数
+     * @return
+     */
     private Response process(MultivaluedMap<String, String> params) {
         String clientId = AuthorizationEndpointRequestParserProcessor.getClientId(event, session, params);
 
@@ -123,6 +137,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         checkRealm();
         checkClient(clientId);
 
+        // 简单来说就是将params的参数转移到req中
         request = AuthorizationEndpointRequestParserProcessor.parseRequest(event, session, client, params);
 
         checkRedirectUri();
@@ -202,6 +217,10 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         return this;
     }
 
+    /**
+     * 检查客户端id 是否有效
+     * @param clientId
+     */
     private void checkClient(String clientId) {
         if (clientId == null) {
             event.error(Errors.INVALID_REQUEST);
@@ -216,16 +235,19 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
             throw new ErrorPageException(session, authenticationSession, Response.Status.BAD_REQUEST, Messages.CLIENT_NOT_FOUND);
         }
 
+        // client已经被禁用
         if (!client.isEnabled()) {
             event.error(Errors.CLIENT_DISABLED);
             throw new ErrorPageException(session, authenticationSession, Response.Status.BAD_REQUEST, Messages.CLIENT_DISABLED);
         }
 
+        // bearerOnly的client不允许通过该对象进行认证
         if (client.isBearerOnly()) {
             event.error(Errors.NOT_ALLOWED);
             throw new ErrorPageException(session, authenticationSession, Response.Status.FORBIDDEN, Messages.BEARER_ONLY);
         }
 
+        // 只支持处理oidc协议
         String protocol = client.getProtocol();
         if (protocol == null) {
             logger.warnf("Client '%s' doesn't have protocol set. Fallback to openid-connect. Please fix client configuration", clientId);
@@ -425,6 +447,9 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         return errorResponseBuilder.build();
     }
 
+    /**
+     * 检查重定向地址
+     */
     private void checkRedirectUri() {
         String redirectUriParam = request.getRedirectUriParam();
         boolean isOIDCRequest = TokenUtil.isOIDCRequest(request.getScope());

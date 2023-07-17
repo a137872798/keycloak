@@ -6,6 +6,9 @@ import org.keycloak.credential.CredentialTypeMetadataContext;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 
+/**
+ *
+ */
 public class AuthenticationSelectionOption {
 
     private final AuthenticationExecutionModel authExec;

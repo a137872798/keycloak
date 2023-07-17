@@ -42,6 +42,14 @@ import java.util.List;
  */
 public class AuthorizationEndpointRequestParserProcessor {
 
+    /**
+     * 解析req参数 转换成AuthorizationEndpointRequest
+     * @param event
+     * @param session
+     * @param client
+     * @param requestParams
+     * @return
+     */
     public static AuthorizationEndpointRequest parseRequest(EventBuilder event, KeycloakSession session, ClientModel client, MultivaluedMap<String, String> requestParams) {
         try {
             AuthorizationEndpointRequest request = new AuthorizationEndpointRequest();
@@ -53,6 +61,8 @@ public class AuthorizationEndpointRequestParserProcessor {
                 request.invalidRequestMessage = parser.getInvalidRequestMessage();
                 return request;
             }
+
+            // 下面是一些校验性工作
 
             String requestParam = requestParams.getFirst(OIDCLoginProtocol.REQUEST_PARAM);
             String requestUriParam = requestParams.getFirst(OIDCLoginProtocol.REQUEST_URI_PARAM);
@@ -99,10 +109,18 @@ public class AuthorizationEndpointRequestParserProcessor {
         }
     }
 
+    /**
+     * 通过解析表单参数 确定是哪个client发起的认证请求
+     * @param event
+     * @param session
+     * @param requestParams
+     * @return
+     */
     public static String getClientId(EventBuilder event, KeycloakSession session, MultivaluedMap<String, String> requestParams) {
         List<String> clientParam = requestParams.get(OIDCLoginProtocol.CLIENT_ID_PARAM);
         if (clientParam != null && clientParam.size() == 1) {
             return clientParam.get(0);
+            // client_id 应该只有一个值
         } else {
             event.error(Errors.INVALID_REQUEST);
             throw new ErrorPageException(session, Response.Status.BAD_REQUEST, Messages.INVALID_REQUEST);

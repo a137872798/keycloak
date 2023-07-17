@@ -182,6 +182,13 @@ public class OIDCLoginProtocol implements LoginProtocol {
     }
 
 
+    /**
+     * 当认证结束后 触发该方法
+     * @param authSession
+     * @param userSession
+     * @param clientSessionCtx
+     * @return
+     */
     @Override
     public Response authenticated(AuthenticationSessionModel authSession, UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
         AuthenticatedClientSessionModel clientSession= clientSessionCtx.getClientSession();
@@ -331,6 +338,11 @@ public class OIDCLoginProtocol implements LoginProtocol {
         throw new RuntimeException("NOT IMPLEMENTED");
     }
 
+    /**
+     * 登出完成时触发
+     * @param userSession
+     * @return
+     */
     @Override
     public Response finishLogout(UserSessionModel userSession) {
         String redirectUri = userSession.getNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);

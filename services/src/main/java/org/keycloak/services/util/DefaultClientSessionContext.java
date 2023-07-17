@@ -47,18 +47,28 @@ import org.keycloak.util.TokenUtil;
  * Not thread safe. It's per-request object
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端会话 上下文
  */
 public class DefaultClientSessionContext implements ClientSessionContext {
 
     private static Logger logger = Logger.getLogger(DefaultClientSessionContext.class);
 
     private final AuthenticatedClientSessionModel clientSession;
+
+    /**
+     * 存储scope的id
+     */
     private final Set<String> clientScopeIds;
     private final KeycloakSession session;
 
+    /**
+     * 一个client对应多个scope
+     */
     private Set<ClientScopeModel> clientScopes;
 
-    //
+    /**
+     * 每个client有多个角色
+     */
     private Set<RoleModel> roles;
     private Set<ProtocolMapperModel> protocolMappers;
 
@@ -78,11 +88,13 @@ public class DefaultClientSessionContext implements ClientSessionContext {
      * Useful if we want to "re-compute" client scopes based on the scope parameter
      */
     public static DefaultClientSessionContext fromClientSessionScopeParameter(AuthenticatedClientSessionModel clientSession, KeycloakSession session) {
+        // 从client会话上获取scope属性
         return fromClientSessionAndScopeParameter(clientSession, clientSession.getNote(OAuth2Constants.SCOPE), session);
     }
 
 
     public static DefaultClientSessionContext fromClientSessionAndScopeParameter(AuthenticatedClientSessionModel clientSession, String scopeParam, KeycloakSession session) {
+        // 当存在scope属性时 除了获取client的default_scope外 还会获取scope关联的client_scope
         Stream<ClientScopeModel> requestedClientScopes = TokenManager.getRequestedClientScopes(scopeParam, clientSession.getClient());
         return fromClientSessionAndClientScopes(clientSession, requestedClientScopes, session);
     }
@@ -93,6 +105,12 @@ public class DefaultClientSessionContext implements ClientSessionContext {
     }
 
 
+    /**
+     * @param clientSession
+     * @param clientScopes
+     * @param session
+     * @return
+     */
     public static DefaultClientSessionContext fromClientSessionAndClientScopes(AuthenticatedClientSessionModel clientSession,
                                                                                Stream<ClientScopeModel> clientScopes,
                                                                                KeycloakSession session) {
@@ -113,6 +131,10 @@ public class DefaultClientSessionContext implements ClientSessionContext {
     }
 
 
+    /**
+     * 通过scopeIds属性 加载client_scope
+     * @return
+     */
     @Override
     public Stream<ClientScopeModel> getClientScopesStream() {
         // Load client scopes if not yet present
@@ -133,6 +155,10 @@ public class DefaultClientSessionContext implements ClientSessionContext {
     }
 
 
+    /**
+     *
+     * @return
+     */
     @Override
     public Stream<ProtocolMapperModel> getProtocolMappersStream() {
         // Load protocolMappers if not yet present
@@ -156,13 +182,17 @@ public class DefaultClientSessionContext implements ClientSessionContext {
     public String getScopeString() {
         // Add both default and optional scopes to scope parameter. Don't add client itself
         String scopeParam = getClientScopesStream()
+                // 排除ClientModel
                 .filter(((Predicate<ClientScopeModel>) ClientModel.class::isInstance).negate())
+                // 要求scope.attr中 include.in.token.scope 为true
                 .filter(ClientScopeModel::isIncludeInTokenScope)
                 .map(ClientScopeModel::getName)
                 .collect(Collectors.joining(" "));
 
         // See if "openid" scope is requested
         String scopeSent = clientSession.getNote(OAuth2Constants.SCOPE);
+
+        // 追加一个openid的scope
         if (TokenUtil.isOIDCRequest(scopeSent)) {
             scopeParam = TokenUtil.attachOIDCScope(scopeParam);
         }
@@ -184,13 +214,13 @@ public class DefaultClientSessionContext implements ClientSessionContext {
     }
 
 
-    // Loading data
-
+    // Loading data    通过scopeId查询scope对象
     private Set<ClientScopeModel> loadClientScopes() {
         Set<ClientScopeModel> clientScopes = new HashSet<>();
         for (String scopeId : clientScopeIds) {
             ClientScopeModel clientScope = KeycloakModelUtils.findClientScopeById(clientSession.getClient().getRealm(), getClientSession().getClient(), scopeId);
             if (clientScope != null) {
+                // 要求scope能作用到user上 也就是scope展开的role 与user的role有交集
                 if (isClientScopePermittedForUser(clientScope)) {
                     clientScopes.add(clientScope);
                 } else {
@@ -207,26 +237,34 @@ public class DefaultClientSessionContext implements ClientSessionContext {
 
     // Return true if clientScope can be used by the user.
     private boolean isClientScopePermittedForUser(ClientScopeModel clientScope) {
+        // Client 默认通过
         if (clientScope instanceof ClientModel) {
             return true;
         }
 
+        // 将scope转换成role
         Set<RoleModel> clientScopeRoles = clientScope.getScopeMappingsStream().collect(Collectors.toSet());
 
-        // Client scope is automatically permitted if it doesn't have any role scope mappings
+        // Client scope is automatically permitted if it doesn't have any role scope mappings  没有角色 自动通过
         if (clientScopeRoles.isEmpty()) {
             return true;
         }
 
         // Expand (resolve composite roles)
+        // 某些角色可能是组合角色  将角色展开
         clientScopeRoles = RoleUtils.expandCompositeRoles(clientScopeRoles);
 
         // Check if expanded roles of clientScope has any intersection with expanded roles of user. If not, it is not permitted
+        // 与当前用户角色有交集 才认为可以得到该scope
         clientScopeRoles.retainAll(getUserRoles());
         return !clientScopeRoles.isEmpty();
     }
 
 
+    /**
+     * 加载所有角色
+     * @return
+     */
     private Set<RoleModel> loadRoles() {
         UserModel user = clientSession.getUserSession().getUser();
         ClientModel client = clientSession.getClient();
@@ -234,7 +272,12 @@ public class DefaultClientSessionContext implements ClientSessionContext {
     }
 
 
+    /**
+     * 加载协议映射对象
+     * @return
+     */
     private Set<ProtocolMapperModel> loadProtocolMappers() {
+        // 该client认证所采用的协议  (oidc,saml)
         String protocol = clientSession.getClient().getProtocol();
 
         // Being rather defensive. But protocol should normally always be there
@@ -247,6 +290,7 @@ public class DefaultClientSessionContext implements ClientSessionContext {
         String finalProtocol = protocol;
         return getClientScopesStream()
                 .flatMap(clientScope -> clientScope.getProtocolMappersStream()
+                        // 拿到协议映射对象   协议要匹配  并且存在对应ProtocolMapperProvider
                         .filter(mapper -> Objects.equals(finalProtocol, mapper.getProtocol()) &&
                                 ProtocolMapperUtils.isEnabled(session, mapper)))
                 .collect(Collectors.toSet());

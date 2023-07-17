@@ -25,11 +25,20 @@ import java.util.stream.Stream;
  * Request-scoped context object
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端上下文对象 包含各种信息
  */
 public interface ClientSessionContext {
 
+    /**
+     * 获取client级别的会话
+     * @return
+     */
     AuthenticatedClientSessionModel getClientSession();
 
+    /**
+     * 一个client 会关联多个client_scope
+     * @return
+     */
     Set<String> getClientScopeIds();
 
     /**
@@ -44,6 +53,7 @@ public interface ClientSessionContext {
     /**
      * Returns client scopes as a stream.
      * @return Stream of client scopes. Never returns {@code null}.
+     * 将关联的scope以stream的形式返回
      */
     Stream<ClientScopeModel> getClientScopesStream();
 
@@ -59,6 +69,7 @@ public interface ClientSessionContext {
     /**
      * Returns all roles including composite ones as a stream.
      * @return Stream of {@link RoleModel}. Never returns {@code null}.
+     * 每个client代表一个应用 返回该应用关联的所有角色
      */
     Stream<RoleModel> getRolesStream();
 
@@ -72,6 +83,7 @@ public interface ClientSessionContext {
     }
 
     /**
+     * 到协议的映射
      * Returns protocol mappers as a stream.
      * @return Stream of protocol mappers. Never returns {@code null}.
      */

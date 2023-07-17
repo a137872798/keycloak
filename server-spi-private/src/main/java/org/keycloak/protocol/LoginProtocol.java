@@ -81,6 +81,13 @@ public interface LoginProtocol extends Provider {
     Response sendError(AuthenticationSessionModel authSession, Error error);
 
     Response backchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession);
+
+    /**
+     * 采用前端登出
+     * @param userSession
+     * @param clientSession
+     * @return
+     */
     Response frontchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession);
     Response finishLogout(UserSessionModel userSession);
 

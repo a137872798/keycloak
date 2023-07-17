@@ -74,6 +74,10 @@ public abstract class AuthzEndpointRequestParser {
         KNOWN_REQ_PARAMS.add(OIDCLoginProtocol.CODE_CHALLENGE_METHOD_PARAM);
     }
 
+    /**
+     * 从参数中解析 填充到 req中
+     * @param request
+     */
     public void parseRequest(AuthorizationEndpointRequest request) {
         String clientId = getParameter(OIDCLoginProtocol.CLIENT_ID_PARAM);
 

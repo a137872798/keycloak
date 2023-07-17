@@ -25,6 +25,7 @@ import java.util.Set;
  * Parse the parameters from request queryString
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 该对象负责解析参数
  */
 class AuthzEndpointQueryStringParser extends AuthzEndpointRequestParser {
 
@@ -35,6 +36,8 @@ class AuthzEndpointQueryStringParser extends AuthzEndpointRequestParser {
     public AuthzEndpointQueryStringParser(MultivaluedMap<String, String> requestParams) {
         this.requestParams = requestParams;
     }
+
+    // 都是有关怎么访问requestParams的
 
     @Override
     protected String getParameter(String paramName) {

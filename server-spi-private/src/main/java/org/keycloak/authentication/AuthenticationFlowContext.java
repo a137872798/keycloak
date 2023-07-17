@@ -33,6 +33,7 @@ import java.util.List;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 在认证过程中的上下文
  */
 public interface AuthenticationFlowContext extends AbstractAuthenticationFlowContext {
 

@@ -73,6 +73,7 @@ import java.util.Map;
  * 每个认证处理器 对应一次请求
  */
 public class AuthenticationProcessor {
+
     public static final String CURRENT_AUTHENTICATION_EXECUTION = "current.authentication.execution";
     public static final String LAST_PROCESSED_EXECUTION = "last.processed.execution";
     public static final String CURRENT_FLOW_PATH = "current.flow.path";
@@ -118,7 +119,7 @@ public class AuthenticationProcessor {
     protected String flowPath;
     protected boolean browserFlow;
     /**
-     * 强制保护器？
+     * 避免暴力破解
      */
     protected BruteForceProtector protector;
     protected Runnable afterResetListener;
@@ -259,6 +260,10 @@ public class AuthenticationProcessor {
         return this;
     }
 
+    /**
+     * 根据session信息 生成一个code
+     * @return
+     */
     public String generateCode() {
         ClientSessionCode accessCode = new ClientSessionCode(session, getRealm(), getAuthenticationSession());
         authenticationSession.getParentSession().setTimestamp(Time.currentTime());
@@ -298,6 +303,11 @@ public class AuthenticationProcessor {
         getAuthenticationSession().setAuthenticatedUser(null);
     }
 
+    /**
+     * 获取刷新的url
+     * @param authSessionIdParam
+     * @return
+     */
     public URI getRefreshUrl(boolean authSessionIdParam) {
         UriBuilder uriBuilder = LoginActionsService.loginActionsBaseUrl(getUriInfo())
                 .path(AuthenticationProcessor.this.flowPath)
@@ -306,19 +316,32 @@ public class AuthenticationProcessor {
         if (authSessionIdParam) {
             uriBuilder.queryParam(LoginActionsService.AUTH_SESSION_ID, getAuthenticationSession().getParentSession().getId());
         }
+
+        // 根据参数信息拼接出一个url
         return uriBuilder
                 .build(getRealm().getName());
     }
 
 
+    /**
+     * 代表认证的处理结果
+     */
     public class Result implements AuthenticationFlowContext, ClientAuthenticationFlowContext {
+
+        // 存储了kv值
         AuthenticatorConfigModel authenticatorConfig;
+        // 关联的认证对象  (流中可能有多个认证器)
         AuthenticationExecutionModel execution;
+        // 对应的认证器
         Authenticator authenticator;
+        // 表示当前认证流的状态
         FlowStatus status;
+        // 客户端级别的认证器
         ClientAuthenticator clientAuthenticator;
+        // 结果会作用的resp上
         Response challenge;
         AuthenticationFlowError error;
+        // 认证流的所有认证器
         List<AuthenticationExecutionModel> currentExecutions;
         FormMessage errorMessage;
         FormMessage successMessage;
@@ -336,6 +359,10 @@ public class AuthenticationProcessor {
             this.currentExecutions = currentExecutions;
         }
 
+        /**
+         * 返回一个新的事件构造器
+         * @return
+         */
         @Override
         public EventBuilder newEvent() {
             return AuthenticationProcessor.this.newEvent();
@@ -343,12 +370,15 @@ public class AuthenticationProcessor {
 
         @Override
         public AuthenticationExecutionModel.Requirement getCategoryRequirementFromCurrentFlow(String authenticatorCategory) {
+            // 返回该认证器所在的一个认证流
             return realm.getAuthenticationExecutionsStream(execution.getParentFlow())
                     .filter(e -> {
+                        // 找到同类型的认证器
                         AuthenticatorFactory factory = (AuthenticatorFactory) getSession().getKeycloakSessionFactory()
                                 .getProviderFactory(Authenticator.class, e.getAuthenticator());
                         return factory != null && factory.getReferenceCategory().equals(authenticatorCategory);
                     })
+                    // 返回requirement信息
                     .map(AuthenticationExecutionModel::getRequirement)
                     .findFirst()
                     .orElse(null);
@@ -363,6 +393,8 @@ public class AuthenticationProcessor {
         public AuthenticatorConfigModel getAuthenticatorConfig() {
             if (execution.getAuthenticatorConfig() == null) return null;
             if (authenticatorConfig != null) return authenticatorConfig;
+
+            // 查找认证配置
             authenticatorConfig = realm.getAuthenticatorConfigById(execution.getAuthenticatorConfig());
             return authenticatorConfig;
         }
@@ -542,7 +574,9 @@ public class AuthenticationProcessor {
 
         @Override
         public LoginFormsProvider form() {
+            // 根据会话信息生成一个code
             String accessCode = generateAccessCode();
+            // 拼接生成url
             URI action = getActionUrl(accessCode);
             LoginFormsProvider provider = getSession().getProvider(LoginFormsProvider.class)
                     .setAuthContext(this)
@@ -634,10 +668,14 @@ public class AuthenticationProcessor {
                     .setHttpHeaders(getHttpRequest().getHttpHeaders())
                     .setUriInfo(getUriInfo())
                     .setEventBuilder(event);
+            // 触发协议api
             Response response = protocol.sendError(getAuthenticationSession(), Error.CANCELLED_BY_USER);
             forceChallenge(response);
         }
 
+        /**
+         * 重置流程 比如用户点了取消  回到上个流程
+         */
         @Override
         public void resetFlow() {
             this.status = FlowStatus.FLOW_RESET;
@@ -682,7 +720,12 @@ public class AuthenticationProcessor {
         }
     }
 
+    /**
+     * 登录失败
+     */
     public void logFailure() {
+
+        // 因为开启了防暴力破解 所以触发相关方法
         if (realm.isBruteForceProtected()) {
             UserModel user = AuthenticationManager.lookupUserForBruteForceLog(session, realm, authenticationSession);
             if (user != null) {
@@ -709,6 +752,11 @@ public class AuthenticationProcessor {
         return status == AuthenticationSessionModel.ExecutionStatus.EVALUATED_FALSE;
     }
 
+    /**
+     * 处理认证过程中产生的异常
+     * @param e
+     * @return
+     */
     public Response handleBrowserExceptionList(AuthenticationFlowException e) {
         LoginFormsProvider forms = session.getProvider(LoginFormsProvider.class).setAuthenticationSession(authenticationSession);
         ServicesLogger.LOGGER.failedAuthentication(e);
@@ -746,6 +794,8 @@ public class AuthenticationProcessor {
                     break;
             }
         }
+
+        // 在添加了各种错误信息后   渲染错误页
         return forms.createErrorPage(Response.Status.BAD_REQUEST);
     }
 
@@ -784,6 +834,7 @@ public class AuthenticationProcessor {
                 if (e.getResponse() != null) return e.getResponse();
                 return ErrorPage.error(session, authenticationSession, Response.Status.BAD_REQUEST, Messages.EXPIRED_CODE);
 
+                // 生成一个新的flow继续处理
             } else if (e.getError() == AuthenticationFlowError.FORK_FLOW) {
                 ForkFlowException reset = (ForkFlowException)e;
 
@@ -858,12 +909,20 @@ public class AuthenticationProcessor {
         }
     }
 
+    /**
+     * 生成一个认证流
+     * @param flowId
+     * @param execution
+     * @return
+     */
     public AuthenticationFlow createFlowExecution(String flowId, AuthenticationExecutionModel execution) {
         AuthenticationFlowModel flow = realm.getAuthenticationFlowById(flowId);
         if (flow == null) {
             logger.error("Unknown flow to execute with");
             throw new AuthenticationFlowException(AuthenticationFlowError.INTERNAL_ERROR);
         }
+
+        // 根据认证流类型 返回不同对象
         if (flow.getProviderId() == null || flow.getProviderId().equals(AuthenticationFlow.BASIC_FLOW)) {
             DefaultAuthenticationFlow flowExecution = new DefaultAuthenticationFlow(this, flow);
             return flowExecution;
@@ -878,13 +937,25 @@ public class AuthenticationProcessor {
         throw new AuthenticationFlowException("Unknown flow provider type", AuthenticationFlowError.INTERNAL_ERROR);
     }
 
+    /**
+     * 触发认证动作
+     * @return
+     * @throws AuthenticationFlowException
+     */
     public Response authenticate() throws AuthenticationFlowException {
         logger.debug("AUTHENTICATE");
         Response challenge = authenticateOnly();
         if (challenge != null) return challenge;
+        // 触发完整流程
         return authenticationComplete();
     }
 
+
+    /**
+     * 创建认证流 并进行认证
+     * @return
+     * @throws AuthenticationFlowException
+     */
     public Response authenticateClient() throws AuthenticationFlowException {
         logger.debug("AUTHENTICATE CLIENT");
         AuthenticationFlow authenticationFlow = createFlowExecution(this.flowId, null);
@@ -901,7 +972,12 @@ public class AuthenticationProcessor {
     }
 
 
+    /**
+     * 构建一个重定向到认证流的响应结果
+     * @return
+     */
     public Response redirectToFlow() {
+        // 简单来说也是构建url的
         URI redirect = new AuthenticationFlowURLHelper(session, realm, uriInfo).getLastExecutionUrl(authenticationSession);
 
         logger.debug("Redirecting to URL: " + redirect.toString());
@@ -952,9 +1028,16 @@ public class AuthenticationProcessor {
     }
 
 
+    /**
+     * 触发一次认证行为
+     * @param execution
+     * @return
+     */
     public Response authenticationAction(String execution) {
         logger.debug("authenticationAction");
         checkClientSession(true);
+
+        // 确保本次要执行的认证器 已经提前设置到会话中
         String current = authenticationSession.getAuthNote(CURRENT_AUTHENTICATION_EXECUTION);
         if (execution == null || !execution.equals(current)) {
             logger.debug("Current execution does not equal executed execution.  Might be a page refresh");
@@ -962,6 +1045,8 @@ public class AuthenticationProcessor {
         }
         UserModel authUser = authenticationSession.getAuthenticatedUser();
         validateUser(authUser);
+
+        // 找不到认证器
         AuthenticationExecutionModel model = realm.getAuthenticationExecutionById(execution);
         if (model == null) {
             logger.debug("Cannot find execution, reseting flow");
@@ -989,35 +1074,57 @@ public class AuthenticationProcessor {
         return authenticationComplete();
     }
 
+    /**
+     *
+     * @param checkAction
+     */
     private void checkClientSession(boolean checkAction) {
         ClientSessionCode code = new ClientSessionCode(session, realm, authenticationSession);
 
         if (checkAction) {
+            // 确保认证会话此时处于认证阶段    也有可能出现比如loggingout
             String action = AuthenticationSessionModel.Action.AUTHENTICATE.name();
             if (!code.isValidAction(action)) {
                 throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CLIENT_SESSION);
             }
         }
+        // 这里计算了一个时间 并认为accessCode已经超时了   会看认证会话所属root会话的创建时间距离当前时间是否超过某个值
         if (!code.isActionActive(ClientSessionCode.ActionType.LOGIN)) {
             throw new AuthenticationFlowException(AuthenticationFlowError.EXPIRED_CODE);
         }
 
+        // 更新时间
         authenticationSession.getParentSession().setTimestamp(Time.currentTime());
     }
 
+    /**
+     * 只完成认证动作
+     * @return
+     * @throws AuthenticationFlowException
+     */
     public Response authenticateOnly() throws AuthenticationFlowException {
         logger.debug("AUTHENTICATE ONLY");
+
+        // 主要也是验证性工作
         checkClientSession(false);
         event.client(authenticationSession.getClient().getClientId())
                 .detail(Details.REDIRECT_URI, authenticationSession.getRedirectUri())
                 .detail(Details.AUTH_METHOD, authenticationSession.getProtocol());
+
+        // 获取认证类型
         String authType = authenticationSession.getAuthNote(Details.AUTH_TYPE);
         if (authType != null) {
             event.detail(Details.AUTH_TYPE, authType);
         }
+
+        // 获取会话用户
         UserModel authUser = authenticationSession.getAuthenticatedUser();
         validateUser(authUser);
+
+        // 创建认证流
         AuthenticationFlow authenticationFlow = createFlowExecution(this.flowId, null);
+
+        // 此时已经产生结果了
         Response challenge = authenticationFlow.processFlow();
         if (challenge != null) return challenge;
         if (authenticationSession.getAuthenticatedUser() == null) {
@@ -1040,9 +1147,22 @@ public class AuthenticationProcessor {
         return clientSessionCtx;
     }
 
-    // May create new userSession too (if userSession argument is null)
+    /**
+     * May create new userSession too (if userSession argument is null)
+     * 当认证完成后  会生成一个client级别的会话对象
+     * @param authSession
+     * @param userSession
+     * @param session
+     * @param realm
+     * @param connection
+     * @param event
+     * @return
+     */
     public static ClientSessionContext attachSession(AuthenticationSessionModel authSession, UserSessionModel userSession, KeycloakSession session, RealmModel realm, ClientConnection connection, EventBuilder event) {
+
+        // 代表该用户通过认证
         String username = authSession.getAuthenticatedUser().getUsername();
+        // 尝试的用户名 这个优先级更高
         String attemptedUsername = authSession.getAuthNote(AbstractUsernameFormAuthenticator.ATTEMPTED_USERNAME);
         if (attemptedUsername != null) username = attemptedUsername;
         String rememberMe = authSession.getAuthNote(Details.REMEMBER_ME);
@@ -1050,14 +1170,20 @@ public class AuthenticationProcessor {
         String brokerSessionId = authSession.getAuthNote(BROKER_SESSION_ID);
         String brokerUserId = authSession.getAuthNote(BROKER_USER_ID);
 
+        // 认证会话 还未关联用户会话
         if (userSession == null) { // if no authenticator attached a usersession
 
+            // root sessionId 就是 user sessionId
             userSession = session.sessions().getUserSession(realm, authSession.getParentSession().getId());
             if (userSession == null) {
+                // 代表是瞬时会话还是持久会话
                 UserSessionModel.SessionPersistenceState persistenceState = UserSessionModel.SessionPersistenceState.fromString(authSession.getClientNote(AuthenticationManager.USER_SESSION_PERSISTENT_STATE));
 
+                // 生成一个用户会话
                 userSession = session.sessions().createUserSession(authSession.getParentSession().getId(), realm, authSession.getAuthenticatedUser(), username, connection.getRemoteAddr(), authSession.getProtocol()
                         , remember, brokerSessionId, brokerUserId, persistenceState);
+
+                // 会话还存在 只是无用户信息  或者会话超时了
             } else if (userSession.getUser() == null || !AuthenticationManager.isSessionValid(realm, userSession)) {
                 userSession.restartSession(realm, authSession.getAuthenticatedUser(), username, connection.getRemoteAddr(), authSession.getProtocol()
                         , remember, brokerSessionId, brokerUserId);
@@ -1099,20 +1225,31 @@ public class AuthenticationProcessor {
 
     }
 
+    /**
+     * 验证用户有效性
+     * @param authenticatedUser
+     */
     public void validateUser(UserModel authenticatedUser) {
         if (authenticatedUser == null) return;
         if (!authenticatedUser.isEnabled()) throw new AuthenticationFlowException(AuthenticationFlowError.USER_DISABLED);
         if (authenticatedUser.getServiceAccountClientLink() != null) throw new AuthenticationFlowException(AuthenticationFlowError.UNKNOWN_USER);
     }
-    
+
+    /**
+     * 完成认证流程
+     * @return
+     */
     protected Response authenticationComplete() {
         // attachSession(); // Session will be attached after requiredActions + consents are finished.
+        // 设置客户端会话
         AuthenticationManager.setClientScopesInSession(authenticationSession);
 
+        // 获取下一个认证行为 并进行重定向
         String nextRequiredAction = nextRequiredAction();
         if (nextRequiredAction != null) {
             return AuthenticationManager.redirectToRequiredActions(session, realm, authenticationSession, uriInfo, nextRequiredAction);
         } else {
+            // 认证完成
             event.detail(Details.CODE_ID, authenticationSession.getParentSession().getId());  // todo This should be set elsewhere.  find out why tests fail.  Don't know where this is supposed to be set
             return AuthenticationManager.finishedRequiredActions(session, authenticationSession, userSession, connection, request, uriInfo, event);
         }
@@ -1132,8 +1269,10 @@ public class AuthenticationProcessor {
 
 
     // This takes care of CRUD of FormMessage to the authenticationSession, so that message can be displayed on the forms in different HTTP request
+    // 开放对表单信息的crud接口
     private class ForwardedFormMessageStore {
 
+        // 对应 success/error 类型的消息
         private final String messageKey;
 
         private ForwardedFormMessageStore(ForwardedFormMessageType messageType) {

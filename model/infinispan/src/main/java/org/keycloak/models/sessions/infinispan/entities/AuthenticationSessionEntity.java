@@ -46,6 +46,9 @@ public class AuthenticationSessionEntity implements Serializable {
     private String action;
     private Set<String> clientScopes;
 
+    /**
+     * 记录每个认证器的认证状态
+     */
     private Map<String, AuthenticationSessionModel.ExecutionStatus> executionStatus = new ConcurrentHashMap<>();
     private String protocol;
 
