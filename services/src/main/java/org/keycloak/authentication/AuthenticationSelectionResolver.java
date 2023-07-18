@@ -67,7 +67,7 @@ class AuthenticationSelectionResolver {
             Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
             List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
 
-            // 获取最近的可选
+            // 沿着model往上找  得到一个flowId
             String topFlowId = getFlowIdOfTheHighestUsefulFlow(processor, model);
 
             if (topFlowId == null) {
@@ -123,7 +123,7 @@ class AuthenticationSelectionResolver {
         RealmModel realm = processor.getRealm();
 
         while (true) {
-            // 代表该认证操作是可选的
+            // 代表该认证操作是可选的  考虑父流程   如果父流程有多个可选的 那么应该是可以避过该execution的
             if (execution.isAlternative()) {
                 // Consider parent flow as we need to get all alternative executions to be able to list their credentials
                 flowId = execution.getParentFlow();

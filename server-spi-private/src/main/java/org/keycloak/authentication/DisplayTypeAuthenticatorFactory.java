@@ -11,8 +11,7 @@ import org.keycloak.models.KeycloakSession;
  */
 public interface DisplayTypeAuthenticatorFactory {
     /**
-     *
-     *
+     * 表示认证器如何展示给用户
      * @param session
      * @param displayType i.e. "console", "wap", "popup" are examples
      * @return null if display type isn't support.

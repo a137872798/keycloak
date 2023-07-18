@@ -56,10 +56,12 @@ import static org.keycloak.models.ImpersonationSessionNote.IMPERSONATOR_USERNAME
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 提供基于OIDC协议的登录能力
  */
 public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
     private static final Logger logger = Logger.getLogger(OIDCLoginProtocolFactory.class);
 
+    // OIDC协议支持的一些user-profile字段
     public static final String USERNAME = "username";
     public static final String EMAIL = "email";
     public static final String EMAIL_VERIFIED = "email verified";
@@ -99,11 +101,20 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
     public static final String ROLES_SCOPE_CONSENT_TEXT = "${rolesScopeConsentText}";
 
 
+    /**
+     * 生成协议对象
+     * @param session
+     * @return
+     */
     @Override
     public LoginProtocol create(KeycloakSession session) {
         return new OIDCLoginProtocol().setSession(session);
     }
 
+    /**
+     * 协议映射   实际上就是一些字段名映射
+     * @return
+     */
     @Override
     public Map<String, ProtocolMapperModel> getBuiltinMappers() {
         return builtins;
@@ -201,9 +212,15 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         builtins.put(name, model);
     }
 
+    /**
+     * 当创建了新的realm时  要为其设置默认的client_scope
+     * client_scope 可以理解为授权 当某个client通过认证后允许它查看哪些数据 就是授权的内容了
+     * @param newRealm
+     */
     @Override
     protected void createDefaultClientScopesImpl(RealmModel newRealm) {
         //name, family_name, given_name, middle_name, nickname, preferred_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated_at.
+        // 添加user-profile
         ClientScopeModel profileScope = newRealm.addClientScope(OAuth2Constants.SCOPE_PROFILE);
         profileScope.setDescription("OpenID Connect built-in scope: profile");
         profileScope.setDisplayOnConsentScreen(true);
@@ -225,6 +242,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         profileScope.addProtocolMapper(builtins.get(LOCALE));
         profileScope.addProtocolMapper(builtins.get(UPDATED_AT));
 
+        // 添加email信息
         ClientScopeModel emailScope = newRealm.addClientScope(OAuth2Constants.SCOPE_EMAIL);
         emailScope.setDescription("OpenID Connect built-in scope: email");
         emailScope.setDisplayOnConsentScreen(true);
@@ -234,6 +252,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         emailScope.addProtocolMapper(builtins.get(EMAIL));
         emailScope.addProtocolMapper(builtins.get(EMAIL_VERIFIED));
 
+        // 用户地址信息
         ClientScopeModel addressScope = newRealm.addClientScope(OAuth2Constants.SCOPE_ADDRESS);
         addressScope.setDescription("OpenID Connect built-in scope: address");
         addressScope.setDisplayOnConsentScreen(true);
@@ -242,6 +261,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         addressScope.setProtocol(getId());
         addressScope.addProtocolMapper(builtins.get(ADDRESS));
 
+        // 用户手机信息
         ClientScopeModel phoneScope = newRealm.addClientScope(OAuth2Constants.SCOPE_PHONE);
         phoneScope.setDescription("OpenID Connect built-in scope: phone");
         phoneScope.setDisplayOnConsentScreen(true);
@@ -252,11 +272,13 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         phoneScope.addProtocolMapper(builtins.get(PHONE_NUMBER_VERIFIED));
 
         // 'profile' and 'email' will be default scopes for now. 'address' and 'phone' will be optional scopes
+        // 分别以default和 非default的形式加入realm
         newRealm.addDefaultClientScope(profileScope, true);
         newRealm.addDefaultClientScope(emailScope, true);
         newRealm.addDefaultClientScope(addressScope, false);
         newRealm.addDefaultClientScope(phoneScope, false);
 
+        // TODO 离线相关
         RoleModel offlineRole = newRealm.getRole(OAuth2Constants.OFFLINE_ACCESS);
         if (offlineRole != null) {
             ClientScopeModel offlineAccessScope = KeycloakModelUtils.getClientScopeByName(newRealm, OAuth2Constants.OFFLINE_ACCESS);
@@ -265,15 +287,21 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
             }
         }
 
+        // 添加角色信息
         addRolesClientScope(newRealm);
+        // web origin
         addWebOriginsClientScope(newRealm);
+        // 添加 micro-profile
         addMicroprofileJWTClientScope(newRealm);
     }
 
 
     public static ClientScopeModel addRolesClientScope(RealmModel newRealm) {
+        // 但是这里获取的client-scope 没有指定protocol
         ClientScopeModel rolesScope = KeycloakModelUtils.getClientScopeByName(newRealm, ROLES_SCOPE);
         if (rolesScope == null) {
+
+            // 添加该protocol绑定的一组role
             rolesScope = newRealm.addClientScope(ROLES_SCOPE);
             rolesScope.setDescription("OpenID Connect scope for add user roles to the access token");
             rolesScope.setDisplayOnConsentScreen(true);
@@ -353,28 +381,40 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         return OIDCLoginProtocol.LOGIN_PROTOCOL;
     }
 
+    /**
+     * 当client被创建时 安装一些默认操作
+     * @param rep
+     * @param newClient
+     */
     @Override
     public void setupClientDefaults(ClientRepresentation rep, ClientModel newClient) {
         if (rep.getRootUrl() != null && (rep.getRedirectUris() == null || rep.getRedirectUris().isEmpty())) {
             String root = rep.getRootUrl();
+
+            // 如果client没有设置重定向地址 默认变成 rootUrl/*
             if (root.endsWith("/")) root = root + "*";
             else root = root + "/*";
             newClient.addRedirectUri(root);
 
             Set<String> origins = new HashSet<String>();
+            // 取出origin 并设置
             String origin = UriUtils.getOrigin(root);
             logger.debugv("adding default client origin: {0}" , origin);
             origins.add(origin);
             newClient.setWebOrigins(origins);
         }
         // if no client type provided, default to public client
+        // 默认采用publicClient的方式
         if (rep.isBearerOnly() == null
                 && rep.isPublicClient() == null) {
             newClient.setPublicClient(true);
             newClient.setSecret(null);
+
+            // 代表既不是bearerOnly 也不是public 就采用secret
         } else if (!(Boolean.TRUE.equals(rep.isBearerOnly()) || Boolean.TRUE.equals(rep.isPublicClient()))) {
             // if client is confidential, generate a secret if none is defined
             if (newClient.getSecret() == null) {
+                // 设置secret  实际上是一个UUID
                 KeycloakModelUtils.generateSecret(newClient);
             }
         }
@@ -384,12 +424,13 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
         }
 
 
-        // Backwards compatibility only
+        // Backwards compatibility only   是否允许直接授权 这样就不需要经过标准的处理流程了
         if (rep.isDirectGrantsOnly() != null) {
             ServicesLogger.LOGGER.usingDeprecatedDirectGrantsOnly();
             newClient.setStandardFlowEnabled(!rep.isDirectGrantsOnly());
             newClient.setDirectAccessGrantsEnabled(rep.isDirectGrantsOnly());
         } else {
+            // 这2个参数默认情况为true
             if (rep.isStandardFlowEnabled() == null) newClient.setStandardFlowEnabled(true);
             if (rep.isDirectAccessGrantsEnabled() == null) newClient.setDirectAccessGrantsEnabled(true);
 
@@ -397,7 +438,10 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
 
         if (rep.isImplicitFlowEnabled() == null) newClient.setImplicitFlowEnabled(false);
         if (rep.isPublicClient() == null) newClient.setPublicClient(true);
+        // 默认采用后端登出的方式
         if (rep.isFrontchannelLogout() == null) newClient.setFrontchannelLogout(false);
+
+        // TODO
         if (OIDCAdvancedConfigWrapper.fromClientRepresentation(rep).getBackchannelLogoutUrl() == null){
             OIDCAdvancedConfigWrapper oidcAdvancedConfigWrapper = OIDCAdvancedConfigWrapper.fromClientModel(newClient);
             oidcAdvancedConfigWrapper.setBackchannelLogoutSessionRequired(true);

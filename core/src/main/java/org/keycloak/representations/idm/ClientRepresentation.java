@@ -25,6 +25,7 @@ import java.util.Map;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 包含client信息
  */
 public class ClientRepresentation {
     protected String id;

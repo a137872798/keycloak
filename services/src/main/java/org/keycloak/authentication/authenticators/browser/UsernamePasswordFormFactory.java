@@ -34,6 +34,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 通过用户名 密码 进行认证
  */
 public class UsernamePasswordFormFactory implements AuthenticatorFactory, DisplayTypeAuthenticatorFactory {
 
@@ -81,6 +82,8 @@ public class UsernamePasswordFormFactory implements AuthenticatorFactory, Displa
     public boolean isConfigurable() {
         return false;
     }
+
+    // 当在flow中添加了表单认证   该认证器只支持required
     public static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
             AuthenticationExecutionModel.Requirement.REQUIRED
     };

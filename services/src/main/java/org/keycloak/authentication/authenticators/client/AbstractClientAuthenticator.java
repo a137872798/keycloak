@@ -25,6 +25,7 @@ import org.keycloak.models.KeycloakSessionFactory;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端认证器 骨架类
  */
 public abstract class AbstractClientAuthenticator implements ClientAuthenticator, ClientAuthenticatorFactory {
 

@@ -272,6 +272,11 @@ public class OIDCAttributeMapperHelper {
         return "true".equals(mappingModel.getConfig().get(ProtocolMapperUtils.MULTIVALUED));
     }
 
+    /**
+     * 判断mapper是否包含用户信息
+     * @param mappingModel
+     * @return
+     */
     public static boolean includeInUserInfo(ProtocolMapperModel mappingModel){
         String includeInUserInfo = mappingModel.getConfig().get(INCLUDE_IN_USERINFO);
 

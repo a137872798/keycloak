@@ -155,10 +155,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 // 获取该execution
                 model = processor.getRealm().getAuthenticationExecutionById(authExecId);
 
+                // 处理单个execution
                 Response response = processSingleFlowExecutionModel(model, false);
                 if (response == null) {
                     return continueAuthenticationAfterSuccessfulAction(model);
                 } else
+                    // 提前产生结果 直接返回
                     return response;
             }
         }
@@ -198,10 +200,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
      *
      * @param actionExecutionModel
      * @return Response if some more forms should be displayed during authentication. Null otherwise.
+     * 执行下个execution
      */
     private Response continueAuthenticationAfterSuccessfulAction(AuthenticationExecutionModel actionExecutionModel) {
         processor.getAuthenticationSession().removeAuthNote(AuthenticationProcessor.CURRENT_AUTHENTICATION_EXECUTION);
 
+        // 检查之前是否还有未处理完的execution
         String firstUnfinishedParentFlowId = checkAndValidateParentFlow(actionExecutionModel);
         AuthenticationExecutionModel parentFlowExecution = processor.getRealm().getAuthenticationExecutionByFlowId(firstUnfinishedParentFlowId);
 
@@ -228,14 +232,18 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
      *
      * @param model An execution model.
      * @return flowId of the 1st ancestor flow, which is not yet successfully finished and may require some further processing
+     * 检查父流程
      */
     private String checkAndValidateParentFlow(AuthenticationExecutionModel model) {
         while (true) {
+            // 返回父流的第一个execution
             AuthenticationExecutionModel parentFlowExecutionModel = processor.getRealm().getAuthenticationExecutionByFlowId(model.getParentFlow());
 
             if (parentFlowExecutionModel != null) {
                 List<AuthenticationExecutionModel> requiredExecutions = new LinkedList<>();
                 List<AuthenticationExecutionModel> alternativeExecutions = new LinkedList<>();
+
+                // 填充到2个list
                 fillListsOfExecutions(processor.getRealm().getAuthenticationExecutionsStream(model.getParentFlow()),
                         requiredExecutions, alternativeExecutions);
 
@@ -256,6 +264,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         }
     }
 
+    /**
+     * 一般该方法作为入口  代表触发认证流
+     * @return
+     */
     @Override
     public Response processFlow() {
         logger.debugf("processFlow: %s", flow.getAlias());
@@ -264,14 +276,18 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         List<AuthenticationExecutionModel> requiredList = new ArrayList<>();
         List<AuthenticationExecutionModel> alternativeList = new ArrayList<>();
 
+        // executions是本flow下的execution
         fillListsOfExecutions(executions.stream(), requiredList, alternativeList);
 
         //handle required elements : all required elements need to be executed
         boolean requiredElementsSuccessful = true;
+
+        // 检查必须要执行的execution
         Iterator<AuthenticationExecutionModel> requiredIListIterator = requiredList.listIterator();
         while (requiredIListIterator.hasNext()) {
             AuthenticationExecutionModel required = requiredIListIterator.next();
             //Conditional flows must be considered disabled (non-existent) if their condition evaluates to false.
+            // 如果该execution是条件类型 先检查是否满足条件
             if (required.isConditional() && isConditionalSubflowDisabled(required)) {
                 requiredIListIterator.remove();
                 continue;
@@ -351,10 +367,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
     /**
      * Checks if the conditional subflow passed in parameter is disabled.
+     * 检查某个conditional类型的execution 是否满足执行条件
      * @param model
      * @return
      */
     boolean isConditionalSubflowDisabled(AuthenticationExecutionModel model) {
+        // 非认证流  非condition类型 返回false   代表可用
         if (model == null || !model.isAuthenticatorFlow() || !model.isConditional()) {
             return false;
         };
@@ -364,6 +382,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                 .filter(this::isConditionalAuthenticator)
                 .filter(s -> s.isEnabled())
                 .collect(Collectors.toList());
+        // 前半段代表剩下的都是disabled
         return conditionalAuthenticatorList.isEmpty() || conditionalAuthenticatorList.stream()
                 .anyMatch(m -> conditionalNotMatched(m, modelList));
     }
@@ -380,8 +399,16 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return factory;
     }
 
+    /**
+     * 代表某个execution不匹配
+     * @param model
+     * @param executionList
+     * @return
+     */
     private boolean conditionalNotMatched(AuthenticationExecutionModel model, List<AuthenticationExecutionModel> executionList) {
+        // 找到该model关联的认证器工厂
         AuthenticatorFactory factory = getAuthenticatorFactory(model);
+        // 创建认证器
         ConditionalAuthenticator authenticator = (ConditionalAuthenticator) createAuthenticator(factory);
         AuthenticationProcessor.Result context = processor.createAuthenticatorContext(model, authenticator, executionList);
 
@@ -509,6 +536,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
      *
      * @param model The current execution model
      * @return an ordered list of the authentication selection options to present the user.
+     * 产生一组备选的认证器
      */
     private List<AuthenticationSelectionOption> createAuthenticationSelectionList(AuthenticationExecutionModel model) {
         return AuthenticationSelectionResolver.createAuthenticationSelectionList(processor, model);

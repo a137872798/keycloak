@@ -253,7 +253,7 @@ public class AuthenticationSessionManager {
         if (expireRestartCookie) {
             ClientConnection clientConnection = session.getContext().getConnection();
             UriInfo uriInfo = session.getContext().getUri();
-            // 添加一个 KC_RESTART cookie
+            // 清除一个 KC_RESTART cookie
             RestartLoginCookie.expireRestartCookie(realm, clientConnection, uriInfo);
         }
     }

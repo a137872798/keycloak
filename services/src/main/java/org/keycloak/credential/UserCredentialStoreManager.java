@@ -134,6 +134,13 @@ public class UserCredentialStoreManager extends AbstractStorageManager<UserStora
         }
     }
 
+    /**
+     * 传入n个认证方式 只要有一个与user匹配就认为认证成功
+     * @param realm
+     * @param user
+     * @param inputs
+     * @return
+     */
     @Override
     public boolean isValid(RealmModel realm, UserModel user, List<CredentialInput> inputs) {
         if (!isValid(user)) {

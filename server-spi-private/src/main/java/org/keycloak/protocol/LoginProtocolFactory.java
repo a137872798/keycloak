@@ -28,21 +28,30 @@ import java.util.Map;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 登录协议工厂 不同的协议对应不同的对象
  */
 public interface LoginProtocolFactory extends ProviderFactory<LoginProtocol> {
     /**
-     * List of built in protocol mappers that can be used to apply to clients.
+     * List of builtin protocol mappers that can be used to apply to clients.
      *
      * @return
+     * 内建的协议映射
      */
     Map<String, ProtocolMapperModel> getBuiltinMappers();
 
 
+    /**
+     * 每个协议要暴露一些端点  用于提供能力
+     * @param realm
+     * @param event
+     * @return
+     */
     Object createProtocolEndpoint(RealmModel realm, EventBuilder event);
 
 
     /**
      * Called when new realm is created
+     * 当新的realm被创建时  为其添加client_scope
      *
      * @param newRealm
      * @param addScopesToExistingClients If true, then existing realm clients will be updated (created realm default scopes will be added to them)
@@ -52,7 +61,7 @@ public interface LoginProtocolFactory extends ProviderFactory<LoginProtocol> {
 
     /**
      * Setup default values for new clients. This expects that the representation has already set up the client
-     *
+     *                  当新的client被创建时 设置一些默认值
      * @param rep
      * @param newClient
      */

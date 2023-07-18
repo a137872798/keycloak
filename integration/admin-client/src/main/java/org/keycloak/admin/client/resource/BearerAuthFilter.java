@@ -29,6 +29,7 @@ import java.util.List;
 
 /**
  * @author rodrigo.sasaki@icarros.com.br
+ * 认证过滤器
  */
 public class BearerAuthFilter implements ClientRequestFilter, ClientResponseFilter {
 
@@ -53,11 +54,13 @@ public class BearerAuthFilter implements ClientRequestFilter, ClientResponseFilt
         if (!authHeader.startsWith(AUTH_HEADER_PREFIX)) {
             authHeader = AUTH_HEADER_PREFIX + authHeader;
         }
+        // token 会自动加在请求头上
         requestContext.getHeaders().add(HttpHeaders.AUTHORIZATION, authHeader);
     }
 
     @Override
     public void filter(ClientRequestContext requestContext, ClientResponseContext responseContext) throws IOException {
+        // 401 代表需要用户认证 也就是之前关联的token已经无效了
         if (responseContext.getStatus() == 401 && tokenManager != null) {
             List<Object> authHeaders = requestContext.getHeaders().get(HttpHeaders.AUTHORIZATION);
             if (authHeaders == null) {
@@ -68,6 +71,7 @@ public class BearerAuthFilter implements ClientRequestFilter, ClientResponseFilt
                     String headerValue = (String) authHeader;
                     if (headerValue.startsWith(AUTH_HEADER_PREFIX)) {
                         String token = headerValue.substring( AUTH_HEADER_PREFIX.length() );
+                        // 使得token无效
                         tokenManager.invalidate( token );
                     }
                 }

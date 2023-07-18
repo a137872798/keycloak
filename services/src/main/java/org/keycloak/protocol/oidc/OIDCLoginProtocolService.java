@@ -69,13 +69,19 @@ import javax.ws.rs.core.UriInfo;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 为了提供OIDC服务 需要暴露一些端点
  */
 public class OIDCLoginProtocolService {
 
     private static final Logger logger = Logger.getLogger(OIDCLoginProtocolService.class);
 
     private RealmModel realm;
+
+    /**
+     * 一些token相关的逻辑 包含在该对象中
+     */
     private TokenManager tokenManager;
+
     private EventBuilder event;
 
     @Context
@@ -96,12 +102,18 @@ public class OIDCLoginProtocolService {
         this.event = event;
     }
 
+    /**
+     * 生成token服务url
+     * @param uriInfo
+     * @return
+     */
     public static UriBuilder tokenServiceBaseUrl(UriInfo uriInfo) {
         UriBuilder baseUriBuilder = uriInfo.getBaseUriBuilder();
         return tokenServiceBaseUrl(baseUriBuilder);
     }
 
     public static UriBuilder tokenServiceBaseUrl(UriBuilder baseUriBuilder) {
+        // 代表从该路径开始会将请求交由RealmsResource这个处理器
         return baseUriBuilder.path(RealmsResource.class).path("{realm}/protocol/" + OIDCLoginProtocol.LOGIN_PROTOCOL);
     }
 
@@ -110,6 +122,11 @@ public class OIDCLoginProtocolService {
         return authUrl(baseUriBuilder);
     }
 
+    /**
+     * 代表auth 由本对象处理
+     * @param baseUriBuilder
+     * @return
+     */
     public static UriBuilder authUrl(UriBuilder baseUriBuilder) {
         UriBuilder uriBuilder = tokenServiceBaseUrl(baseUriBuilder);
         return uriBuilder.path(OIDCLoginProtocolService.class, "auth");
@@ -139,6 +156,8 @@ public class OIDCLoginProtocolService {
         return logoutUrl(baseUriBuilder);
     }
 
+    // logout/revoke 也是交由本对象处理
+
     public static UriBuilder logoutUrl(UriBuilder baseUriBuilder) {
         UriBuilder uriBuilder = tokenServiceBaseUrl(baseUriBuilder);
         return uriBuilder.path(OIDCLoginProtocolService.class, "logout");
@@ -151,6 +170,8 @@ public class OIDCLoginProtocolService {
 
     /**
      * Authorization endpoint
+     * OIDC协议的认证地址
+     * client通过访问该地址判断是否完成登录，否则重定向到登录页面 已完成的情况重定向回用户传入的地址
      */
     @Path("auth")
     public Object auth() {
@@ -181,6 +202,7 @@ public class OIDCLoginProtocolService {
 
     /**
      * Token endpoint
+     * 通过code兑换token
      */
     @Path("token")
     public Object token() {

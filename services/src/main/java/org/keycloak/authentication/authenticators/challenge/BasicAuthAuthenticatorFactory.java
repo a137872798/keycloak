@@ -31,6 +31,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 基础认证器  应该就是通过该对象检查token
  */
 public class BasicAuthAuthenticatorFactory implements AuthenticatorFactory {
 

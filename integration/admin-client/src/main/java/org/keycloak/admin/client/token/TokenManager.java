@@ -35,6 +35,7 @@ import static org.keycloak.OAuth2Constants.PASSWORD;
 import static org.keycloak.OAuth2Constants.REFRESH_TOKEN;
 
 /**
+ * token 管理器  需要借助远程调用
  * @author rodrigo.sasaki@icarros.com.br
  */
 public class TokenManager {
@@ -50,9 +51,12 @@ public class TokenManager {
     public TokenManager(Config config, Client client) {
         this.config = config;
         ResteasyWebTarget target = (ResteasyWebTarget) client.target(config.getServerUrl());
+        // 在serverUrl下注册过滤器
         if (!config.isPublicClient()) {
             target.register(new BasicAuthFilter(config.getClientId(), config.getClientSecret()));
         }
+
+        // 产生一个代理对象
         this.tokenService = target.proxy(TokenService.class);
         this.accessTokenGrantType = config.getGrantType();
 

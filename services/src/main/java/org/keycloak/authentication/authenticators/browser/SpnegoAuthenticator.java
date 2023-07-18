@@ -51,6 +51,10 @@ public class SpnegoAuthenticator extends AbstractUsernameFormAuthenticator imple
         return false;
     }
 
+    /**
+     * 可以理解为不支持表单操作
+     * @param context
+     */
     @Override
     public void action(AuthenticationFlowContext context) {
         context.attempted();
@@ -60,6 +64,8 @@ public class SpnegoAuthenticator extends AbstractUsernameFormAuthenticator imple
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         HttpRequest request = context.getHttpRequest();
+
+        // 从请求头获取 Authorization
         String authHeader = request.getHttpHeaders().getRequestHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null) {
             Response challenge = challengeNegotiation(context, null);

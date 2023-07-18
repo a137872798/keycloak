@@ -139,6 +139,7 @@ import static org.keycloak.models.ImpersonationSessionNote.IMPERSONATOR_USERNAME
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 该端点用于处理token相关的请求
  */
 public class TokenEndpoint {
 
@@ -169,6 +170,9 @@ public class TokenEndpoint {
     @Context
     private ClientConnection clientConnection;
 
+    /**
+     * 一些操作需要委托给tokenManager
+     */
     private final TokenManager tokenManager;
     private final RealmModel realm;
     private final EventBuilder event;

@@ -49,6 +49,7 @@ public class OAuth2CodeParser {
      * @param clientSession
      * @param codeData
      * @return code parameter to be used in OAuth2 handshake
+     * 将code缓存起来 在使用方通过code兑换token时 还会用到
      */
     public static String persistCode(KeycloakSession session, AuthenticatedClientSessionModel clientSession, OAuth2Code codeData) {
         CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
@@ -60,6 +61,8 @@ public class OAuth2CodeParser {
 
         Map<String, String> serialized = codeData.serializeCode();
         codeStore.put(key, clientSession.getUserSession().getRealm().getAccessCodeLifespan(), serialized);
+
+        // 将请求方参数拼接 可以还原出这个值
         return key.toString() + "." + clientSession.getUserSession().getId() + "." + clientSession.getClient().getId();
     }
 

@@ -47,6 +47,10 @@ public class PasswordForm extends UsernamePasswordForm implements CredentialVali
         return session.userCredentialManager().isConfiguredFor(realm, user, getCredentialProvider(session).getType());
     }
 
+    /**
+     * 需要会话已经绑定用户
+     * @return
+     */
     @Override
     public boolean requiresUser() {
         return true;

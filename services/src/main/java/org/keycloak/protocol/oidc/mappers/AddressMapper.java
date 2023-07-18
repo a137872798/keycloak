@@ -72,6 +72,13 @@ public class AddressMapper extends AbstractOIDCProtocolMapper implements OIDCAcc
         return createAddressMapper(true, true, true);
     }
 
+    /**
+     * 创建地址相关的协议映射信息
+     * @param idToken
+     * @param accessToken
+     * @param userInfo
+     * @return
+     */
     public static ProtocolMapperModel createAddressMapper(boolean idToken, boolean accessToken, boolean userInfo) {
         Map<String, String> config;
         ProtocolMapperModel address = new ProtocolMapperModel();

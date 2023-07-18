@@ -45,24 +45,32 @@ import java.util.Set;
  * See org.keycloak.adapters.authentication.ClientIdAndSecretAuthenticator for the adapter
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端认证器  当客户端访问keycloak时 就是通过这些认证器来判断用户是否已认证的
  */
 public class ClientIdAndSecretAuthenticator extends AbstractClientAuthenticator {
 
     public static final String PROVIDER_ID = "client-secret";
 
+    /**
+     * 认证客户端
+     * @param context
+     */
     @Override
     public void authenticateClient(ClientAuthenticationFlowContext context) {
         String client_id = null;
         String clientSecret = null;
 
+        // 获取Authorization 请求头
         String authorizationHeader = context.getHttpRequest().getHttpHeaders().getRequestHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
+        // APPLICATION_FORM_URLENCODED_TYPE 的意思是将表单数据转换成kv对 拼接到url上 (? & 的形式)
         MediaType mediaType = context.getHttpRequest().getHttpHeaders().getMediaType();
         boolean hasFormData = mediaType != null && mediaType.isCompatible(MediaType.APPLICATION_FORM_URLENCODED_TYPE);
 
         MultivaluedMap<String, String> formData = hasFormData ? context.getHttpRequest().getDecodedFormParameters() : null;
 
         if (authorizationHeader != null) {
+            // Authorization: Basic xxxxx   请求头的样式
             String[] usernameSecret = BasicAuthHelper.parseHeader(authorizationHeader);
             if (usernameSecret != null) {
                 client_id = usernameSecret[0];
@@ -70,6 +78,7 @@ public class ClientIdAndSecretAuthenticator extends AbstractClientAuthenticator 
             } else {
 
                 // Don't send 401 if client_id parameter was sent in request. For example IE may automatically send "Authorization: Negotiate" in XHR requests even for public clients
+                // 不包含client_id 就401
                 if (formData != null && !formData.containsKey(OAuth2Constants.CLIENT_ID)) {
                     Response challengeResponse = Response.status(Response.Status.UNAUTHORIZED).header(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"" + context.getRealm().getName() + "\"").build();
                     context.challenge(challengeResponse);
@@ -78,6 +87,7 @@ public class ClientIdAndSecretAuthenticator extends AbstractClientAuthenticator 
             }
         }
 
+        // 如果请求头中没有 Authorization 信息  尝试从url上截取参数
         if (formData != null) {
             // even if basic challenge response exist, we check if client id was explicitly set in the request as a form param,
             // so we can also support clients overriding flows and using challenges (e.g: basic) to authenticate their users
@@ -89,10 +99,12 @@ public class ClientIdAndSecretAuthenticator extends AbstractClientAuthenticator 
             }
         }
 
+        // 如果没有client_id 尝试从会话中获取
         if (client_id == null) {
             client_id = context.getSession().getAttribute("client_id", String.class);
         }
 
+        // 取不到client_id 返回错误信息
         if (client_id == null) {
             Response challengeResponse = ClientAuthUtil.errorResponse(Response.Status.BAD_REQUEST.getStatusCode(), "invalid_client", "Missing client_id parameter");
             context.challenge(challengeResponse);
@@ -115,10 +127,13 @@ public class ClientIdAndSecretAuthenticator extends AbstractClientAuthenticator 
         }
 
         // Skip client_secret validation for public client
+        // 只要能取到client_id 就认为认证通过
         if (client.isPublicClient()) {
             context.success();
             return;
         }
+
+        // 非public 需要 client_secret
 
         if (clientSecret == null) {
             Response challengeResponse = ClientAuthUtil.errorResponse(Response.Status.UNAUTHORIZED.getStatusCode(), "unauthorized_client", "Client secret not provided in request");

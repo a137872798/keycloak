@@ -63,6 +63,13 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         return challenge(context, error, null);
     }
 
+    /**
+     * 可以渲染出页面
+     * @param context
+     * @param error
+     * @param field
+     * @return
+     */
     protected Response challenge(AuthenticationFlowContext context, String error, String field) {
         LoginFormsProvider form = context.form()
                 .setExecution(context.getExecution().getId());
@@ -119,6 +126,11 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
 
     }
 
+    /**
+     * TODO
+     * @param context
+     * @param user
+     */
     public void testInvalidUser(AuthenticationFlowContext context, UserModel user) {
         if (user == null) {
             dummyHash(context);
@@ -141,9 +153,17 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     }
 
 
+    /**
+     * 基于表单数据对用户进行认证
+     * @param context
+     * @param inputData
+     * @return
+     */
     public boolean validateUserAndPassword(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData)  {
+        // 因为需要重新认证表单数据  先解绑之前的用户
         context.clearUser();
         UserModel user = getUser(context, inputData);
+        // username有效  继续检测password
         return user != null && validatePassword(context, user, inputData) && validateUser(context, user, inputData);
     }
 
@@ -153,10 +173,19 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         return user != null && validateUser(context, user, inputData);
     }
 
+    /**
+     * 借助表单参数 查询用户
+     * @param context
+     * @param inputData
+     * @return
+     */
     private UserModel getUser(AuthenticationFlowContext context, MultivaluedMap<String, String> inputData) {
         String username = inputData.getFirst(AuthenticationManager.FORM_USERNAME);
+
+        // 表单中没有username 无法查询
         if (username == null) {
             context.getEvent().error(Errors.USER_NOT_FOUND);
+            // 渲染出登录页面
             Response challengeResponse = challenge(context, getDefaultChallengeMessage(context), FIELD_USERNAME);
             context.failureChallenge(AuthenticationFlowError.INVALID_USER, challengeResponse);
             return null;
@@ -166,6 +195,8 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         username = username.trim();
 
         context.getEvent().detail(Details.USERNAME, username);
+
+        // 记录尝试使用的username
         context.getAuthenticationSession().setAuthNote(AbstractUsernameFormAuthenticator.ATTEMPTED_USERNAME, username);
 
         UserModel user = null;
@@ -183,11 +214,20 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
             return user;
         }
 
+        // 检验用户
         testInvalidUser(context, user);
         return user;
     }
 
+    /**
+     * 认证查询到的用户本身是否可用
+     * @param context
+     * @param user
+     * @param inputData
+     * @return
+     */
     private boolean validateUser(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> inputData) {
+        // 用户被禁用
         if (!enabledUser(context, user)) {
             return false;
         }
@@ -207,14 +247,24 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         return validatePassword(context, user, inputData, true);
     }
 
+    /**
+     * 检测password 是否正确
+     * @param context
+     * @param user
+     * @param inputData
+     * @param clearUser
+     * @return
+     */
     public boolean validatePassword(AuthenticationFlowContext context, UserModel user, MultivaluedMap<String, String> inputData, boolean clearUser) {
         String password = inputData.getFirst(CredentialRepresentation.PASSWORD);
         if (password == null || password.isEmpty()) {
             return badPasswordHandler(context, user, clearUser,true);
         }
 
+        // 由于之前暴力破解 导致用户暂时不可用
         if (isTemporarilyDisabledByBruteForce(context, user)) return false;
 
+        // TODO 具体如何校验先不看  通过就代表password有效
         if (password != null && !password.isEmpty() && context.getSession().userCredentialManager().isValid(context.getRealm(), user, UserCredentialModel.password(password))) {
             return true;
         } else {
@@ -222,7 +272,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         }
     }
 
-    // Set up AuthenticationFlowContext error.
+    // Set up AuthenticationFlowContext error.  密码有问题
     private boolean badPasswordHandler(AuthenticationFlowContext context, UserModel user, boolean clearUser,boolean isEmptyPassword) {
         context.getEvent().user(user);
         context.getEvent().error(Errors.INVALID_USER_CREDENTIALS);
@@ -239,8 +289,15 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
         return false;
     }
 
+    /**
+     * 开启了放包里破解的情况下
+     * @param context
+     * @param user
+     * @return
+     */
     protected boolean isTemporarilyDisabledByBruteForce(AuthenticationFlowContext context, UserModel user) {
         if (context.getRealm().isBruteForceProtected()) {
+            // 此时该对象已经被临时禁用了
             if (context.getProtector().isTemporarilyDisabled(context.getSession(), context.getRealm(), user)) {
                 context.getEvent().user(user);
                 context.getEvent().error(Errors.USER_TEMPORARILY_DISABLED);

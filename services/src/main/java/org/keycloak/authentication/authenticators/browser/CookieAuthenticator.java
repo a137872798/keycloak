@@ -29,6 +29,7 @@ import org.keycloak.sessions.AuthenticationSessionModel;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 通过检测cookie判断用户是否已认证
  */
 public class CookieAuthenticator implements Authenticator {
 
@@ -37,22 +38,33 @@ public class CookieAuthenticator implements Authenticator {
         return false;
     }
 
+    /**
+     * 触发认证动作
+     * @param context
+     */
     @Override
     public void authenticate(AuthenticationFlowContext context) {
+
+        // 当登录成功后才会在cookie中设置 KEYCLOAK_IDENTITY
         AuthenticationManager.AuthResult authResult = AuthenticationManager.authenticateIdentityCookie(context.getSession(),
                 context.getRealm(), true);
+        // 无法获取到cookie信息 attempted 代表尝试过使用该认证器，但是无法处理 这种情况不算失败
         if (authResult == null) {
             context.attempted();
         } else {
+            // 代表cookie上有用户信息
             AuthenticationSessionModel clientSession = context.getAuthenticationSession();
             LoginProtocol protocol = context.getSession().getProvider(LoginProtocol.class, clientSession.getProtocol());
 
             // Cookie re-authentication is skipped if re-authentication is required
+            // 判断是否需要重新认证  比如会话已过期
             if (protocol.requireReauthentication(authResult.getSession(), clientSession)) {
+                // 标记成已尝试 但是不认为失败
                 context.attempted();
             } else {
                 context.getSession().setAttribute(AuthenticationManager.SSO_AUTH, "true");
 
+                // 该用户信息未过期 认证成功
                 context.setUser(authResult.getUser());
                 context.attachUserSession(authResult.getSession());
                 context.success();

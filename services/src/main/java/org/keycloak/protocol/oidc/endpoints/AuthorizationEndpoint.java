@@ -108,17 +108,14 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         event.event(EventType.LOGIN);
     }
 
-    /**
-     * 接收表单数据
-     * @return
-     */
+    // 下面2个方法对应 /auth接口  也就是oidc的认证接口
+
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response buildPost() {
         logger.trace("Processing @POST request");
         return process(httpRequest.getDecodedFormParameters());
     }
-
     @GET
     public Response buildGet() {
         logger.trace("Processing @GET request");
@@ -203,6 +200,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
             case FORGOT_CREDENTIALS:
                 return buildForgotCredential();
             case CODE:
+                // auth 走这条分支
                 return buildAuthorizationCodeAuthorizationResponse();
         }
 
@@ -293,6 +291,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
 
         try {
             parsedResponseType = OIDCResponseType.parse(responseType);
+            // 当action还未设置时 默认使用Code
             if (action == null) {
                 action = Action.CODE;
             }
@@ -535,14 +534,19 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
 
 
     /**
-     * 本次是正常的登录请求 需要返回code
+     * 处理认证请求
      * @return
      */
     private Response buildAuthorizationCodeAuthorizationResponse() {
         this.event.event(EventType.LOGIN);
-        // 授权码认证
+        // 设置认证类型为授权码认证
         authenticationSession.setAuthNote(Details.AUTH_TYPE, CODE_AUTH_TYPE);
 
+        // prompt 用来指示授权服务器是否引导EU重新认证和同意授权  是一个可选和多选的参数
+        // - none 代表如果用户没有预先授权/或登录  直接返回错误
+        // - login 提示用户去登录
+        // - consent 提示用户进行授权
+        // - select_account 针对多个账户的情况可以进行选择
         return handleBrowserAuthenticationRequest(authenticationSession, new OIDCLoginProtocol(session, realm, session.getContext().getUri(), headers, event), TokenUtil.hasPrompt(request.getPrompt(), OIDCLoginProtocol.PROMPT_VALUE_NONE), false);
     }
 

@@ -62,6 +62,7 @@ import javax.ws.rs.core.UriInfo;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 基于OIDC协议的认证对象
  */
 public class OIDCLoginProtocol implements LoginProtocol {
 
@@ -132,6 +133,14 @@ public class OIDCLoginProtocol implements LoginProtocol {
     protected OIDCResponseType responseType;
     protected OIDCResponseMode responseMode;
 
+    /**
+     * 当endpoint处理认证请求时  会创建一个该对象
+     * @param session
+     * @param realm
+     * @param uriInfo
+     * @param headers
+     * @param event
+     */
     public OIDCLoginProtocol(KeycloakSession session, RealmModel realm, UriInfo uriInfo, HttpHeaders headers, EventBuilder event) {
         this.session = session;
         this.realm = realm;
@@ -144,6 +153,11 @@ public class OIDCLoginProtocol implements LoginProtocol {
 
     }
 
+    /**
+     * 设置响应类型和响应模式
+     * @param responseType
+     * @param responseMode
+     */
     private void setupResponseTypeAndMode(String responseType, String responseMode) {
         this.responseType = OIDCResponseType.parse(responseType);
         this.responseMode = OIDCResponseMode.parse(responseMode, this.responseType);
@@ -183,7 +197,7 @@ public class OIDCLoginProtocol implements LoginProtocol {
 
 
     /**
-     * 当认证结束后 触发该方法
+     * 当认证结束后 触发该方法 重定向到用户回调地址 并携带授权码
      * @param authSession
      * @param userSession
      * @param clientSessionCtx
@@ -197,14 +211,19 @@ public class OIDCLoginProtocol implements LoginProtocol {
         String responseModeParam = authSession.getClientNote(OIDCLoginProtocol.RESPONSE_MODE_PARAM);
         setupResponseTypeAndMode(responseTypeParam, responseModeParam);
 
+        // 获取重定向地址
         String redirect = authSession.getRedirectUri();
+
+        // 通过该对象构建重定向请求
         OIDCRedirectUriBuilder redirectUri = OIDCRedirectUriBuilder.fromUri(redirect, responseMode);
         String state = authSession.getClientNote(OIDCLoginProtocol.STATE_PARAM);
         logger.debugv("redirectAccessCode: state: {0}", state);
         if (state != null)
+            // 带回state参数
             redirectUri.addParam(OAuth2Constants.STATE, state);
 
         OIDCAdvancedConfigWrapper clientConfig = OIDCAdvancedConfigWrapper.fromClientModel(clientSession.getClient());
+        // 需要携带会话状态  添加会话id
         if (!clientConfig.isExcludeSessionStateFromAuthResponse()) {
             redirectUri.addParam(OAuth2Constants.SESSION_STATE, userSession.getId());
         }
@@ -212,6 +231,7 @@ public class OIDCLoginProtocol implements LoginProtocol {
         String nonce = authSession.getClientNote(OIDCLoginProtocol.NONCE_PARAM);
         clientSessionCtx.setAttribute(OIDCLoginProtocol.NONCE_PARAM, nonce);
 
+        // 设置kc_action状态
         String kcActionStatus = authSession.getClientNote(Constants.KC_ACTION_STATUS);
         if (kcActionStatus != null) {
             redirectUri.addParam(Constants.KC_ACTION_STATUS, kcActionStatus);
@@ -219,6 +239,8 @@ public class OIDCLoginProtocol implements LoginProtocol {
 
         // Standard or hybrid flow
         String code = null;
+
+        // 授权码模式 在回调时携带一个code
         if (responseType.hasResponseType(OIDCResponseType.CODE)) {
             OAuth2Code codeData = new OAuth2Code(UUID.randomUUID(),
                     Time.currentTime() + userSession.getRealm().getAccessCodeLifespan(),
@@ -228,11 +250,12 @@ public class OIDCLoginProtocol implements LoginProtocol {
                     authSession.getClientNote(OIDCLoginProtocol.CODE_CHALLENGE_PARAM),
                     authSession.getClientNote(OIDCLoginProtocol.CODE_CHALLENGE_METHOD_PARAM));
 
+            // 回调时携带一个code
             code = OAuth2CodeParser.persistCode(session, clientSession, codeData);
             redirectUri.addParam(OAuth2Constants.CODE, code);
         }
 
-        // Implicit or hybrid flow
+        // TODO Implicit or hybrid flow
         if (responseType.isImplicitOrHybridFlow()) {
             org.keycloak.protocol.oidc.TokenManager tokenManager = new org.keycloak.protocol.oidc.TokenManager();
             org.keycloak.protocol.oidc.TokenManager.AccessTokenResponseBuilder responseBuilder = tokenManager.responseBuilder(realm, clientSession.getClient(), event, session, userSession, clientSessionCtx)
@@ -276,7 +299,7 @@ public class OIDCLoginProtocol implements LoginProtocol {
 
 
     /**
-     * 通过该对象构建response
+     * 重定向到用户回调地址 并提示错误信息
      * @param authSession
      * @param error
      * @return
@@ -290,7 +313,8 @@ public class OIDCLoginProtocol implements LoginProtocol {
         String redirect = authSession.getRedirectUri();
         String state = authSession.getClientNote(OIDCLoginProtocol.STATE_PARAM);
         OIDCRedirectUriBuilder redirectUri = OIDCRedirectUriBuilder.fromUri(redirect, responseMode);
-        
+
+        // 在回调地址上添加错误信息
         if (error != Error.CANCELLED_AIA_SILENT) {
             redirectUri.addParam(OAuth2Constants.ERROR, translateError(error));
         }
@@ -300,7 +324,8 @@ public class OIDCLoginProtocol implements LoginProtocol {
         if (state != null) {
             redirectUri.addParam(OAuth2Constants.STATE, state);
         }
-        
+
+        // 删除认证会话
         new AuthenticationSessionManager(session).removeAuthenticationSession(realm, authSession, true);
         return redirectUri.build();
     }
@@ -322,6 +347,12 @@ public class OIDCLoginProtocol implements LoginProtocol {
         }
     }
 
+    /**
+     * TODO 调用后端接口的方式 通知登出
+     * @param userSession
+     * @param clientSession
+     * @return
+     */
     @Override
     public Response backchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         ClientModel client = clientSession.getClient();
@@ -345,6 +376,8 @@ public class OIDCLoginProtocol implements LoginProtocol {
      */
     @Override
     public Response finishLogout(UserSessionModel userSession) {
+
+        // 如果有设置登出的重定向地址
         String redirectUri = userSession.getNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
         String state = userSession.getNote(OIDCLoginProtocol.LOGOUT_STATE_PARAM);
         event.event(EventType.LOGOUT);
@@ -366,18 +399,36 @@ public class OIDCLoginProtocol implements LoginProtocol {
     }
 
 
+    /**
+     * 需要重新认证
+     * @param userSession
+     * @param authSession
+     * @return
+     */
     @Override
     public boolean requireReauthentication(UserSessionModel userSession, AuthenticationSessionModel authSession) {
         return isPromptLogin(authSession) || isAuthTimeExpired(userSession, authSession) || isReAuthRequiredForKcAction(userSession, authSession);
     }
 
+    /**
+     * prompt 携带login信息 代表需要引导用户到登录页
+     * @param authSession
+     * @return
+     */
     protected boolean isPromptLogin(AuthenticationSessionModel authSession) {
         String prompt = authSession.getClientNote(OIDCLoginProtocol.PROMPT_PARAM);
         return TokenUtil.hasPrompt(prompt, OIDCLoginProtocol.PROMPT_VALUE_LOGIN);
     }
 
+    /**
+     * 检验会话是否过期
+     * @param userSession
+     * @param authSession
+     * @return
+     */
     protected boolean isAuthTimeExpired(UserSessionModel userSession, AuthenticationSessionModel authSession) {
         String authTime = userSession.getNote(AuthenticationManager.AUTH_TIME);
+        // 代表会话永不过期
         String maxAge = authSession.getClientNote(OIDCLoginProtocol.MAX_AGE_PARAM);
         if (maxAge == null) {
             return false;
@@ -395,6 +446,12 @@ public class OIDCLoginProtocol implements LoginProtocol {
         return false;
     }
 
+    /**
+     * 是否需要重新认证
+     * @param userSession
+     * @param authSession
+     * @return
+     */
     protected boolean isReAuthRequiredForKcAction(UserSessionModel userSession, AuthenticationSessionModel authSession) {
         if (authSession.getClientNote(Constants.KC_ACTION) != null) {
             String providerId = authSession.getClientNote(Constants.KC_ACTION);
@@ -408,6 +465,14 @@ public class OIDCLoginProtocol implements LoginProtocol {
         }
     }
 
+    /**
+     * TODO
+     * @param realm
+     * @param resource
+     * @param notBefore
+     * @param managementUrl
+     * @return
+     */
     @Override
     public boolean sendPushRevocationPolicyRequest(RealmModel realm, ClientModel resource, int notBefore, String managementUrl) {
         PushNotBeforeAction adminAction = new PushNotBeforeAction(TokenIdGenerator.generateId(), Time.currentTime() + 30, resource.getClientId(), notBefore);

@@ -61,6 +61,7 @@ import static org.keycloak.services.messages.Messages.*;
 
 /**
  * Authenticator for WebAuthn authentication, which will be typically used when WebAuthn is used as second factor.
+ * 基于 WebAuthn的认证方式
  */
 public class WebAuthnAuthenticator implements Authenticator, CredentialValidator<WebAuthnCredentialProvider> {
 

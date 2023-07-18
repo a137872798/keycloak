@@ -341,7 +341,7 @@ public class AuthenticationProcessor {
         // 结果会作用的resp上
         Response challenge;
         AuthenticationFlowError error;
-        // 认证流的所有认证器
+        // 当前可选的认证处理单元     为什么是一个list 因为既可能是一个required对象 也可能是一组alternative对象
         List<AuthenticationExecutionModel> currentExecutions;
         FormMessage errorMessage;
         FormMessage successMessage;
@@ -412,6 +412,9 @@ public class AuthenticationProcessor {
             return clientAuthenticator;
         }
 
+        /**
+         * 代表认证成功
+         */
         @Override
         public void success() {
             this.status = FlowStatus.SUCCESS;
@@ -424,6 +427,10 @@ public class AuthenticationProcessor {
 
         }
 
+        /**
+         * 代表需要先跳转到该页面进行一些操作  才可以继续认证工作
+         * @param challenge
+         */
         @Override
         public void challenge(Response challenge) {
             this.status = FlowStatus.CHALLENGE;
@@ -438,6 +445,11 @@ public class AuthenticationProcessor {
 
         }
 
+        /**
+         * 代表认证失败
+         * @param error
+         * @param challenge  应当返回给用户的结果
+         */
         @Override
         public void failureChallenge(AuthenticationFlowError error, Response challenge) {
             this.error = error;
@@ -660,6 +672,9 @@ public class AuthenticationProcessor {
             return AuthenticationProcessor.this.getRefreshUrl(authSessionIdParam);
         }
 
+        /**
+         * 用户取消登录
+         */
         @Override
         public void cancelLogin() {
             getEvent().error(Errors.REJECTED_BY_USER);
@@ -668,7 +683,7 @@ public class AuthenticationProcessor {
                     .setHttpHeaders(getHttpRequest().getHttpHeaders())
                     .setUriInfo(getUriInfo())
                     .setEventBuilder(event);
-            // 触发协议api
+            // 触发协议api 将错误信息通过回调地址传给用户
             Response response = protocol.sendError(getAuthenticationSession(), Error.CANCELLED_BY_USER);
             forceChallenge(response);
         }
@@ -740,6 +755,11 @@ public class AuthenticationProcessor {
         return status == AuthenticationSessionModel.ExecutionStatus.SUCCESS;
     }
 
+    /**
+     * 评估是否为true
+     * @param model
+     * @return
+     */
     public boolean isEvaluatedTrue(AuthenticationExecutionModel model) {
         AuthenticationSessionModel.ExecutionStatus status = authenticationSession.getExecutionStatus().get(model.getId());
         if (status == null) return false;
@@ -799,6 +819,11 @@ public class AuthenticationProcessor {
         return forms.createErrorPage(Response.Status.BAD_REQUEST);
     }
 
+    /**
+     * 大多数分支都是将错误信息设置到page中 展示给用户
+     * @param failure
+     * @return
+     */
     public Response handleBrowserException(Exception failure) {
         if (failure instanceof AuthenticationFlowException) {
             AuthenticationFlowException e = (AuthenticationFlowException) failure;
@@ -944,6 +969,7 @@ public class AuthenticationProcessor {
      */
     public Response authenticate() throws AuthenticationFlowException {
         logger.debug("AUTHENTICATE");
+        // 仅检查是否完成登录
         Response challenge = authenticateOnly();
         if (challenge != null) return challenge;
         // 触发完整流程
@@ -973,7 +999,7 @@ public class AuthenticationProcessor {
 
 
     /**
-     * 构建一个重定向到认证流的响应结果
+     * 构建一个重定向到认证流的请求
      * @return
      */
     public Response redirectToFlow() {
@@ -1111,7 +1137,7 @@ public class AuthenticationProcessor {
                 .detail(Details.REDIRECT_URI, authenticationSession.getRedirectUri())
                 .detail(Details.AUTH_METHOD, authenticationSession.getProtocol());
 
-        // 获取认证类型
+        // 获取认证类型  当调用认证接口时 AUTH_TYPE = CODE_AUTH_TYPE
         String authType = authenticationSession.getAuthNote(Details.AUTH_TYPE);
         if (authType != null) {
             event.detail(Details.AUTH_TYPE, authType);
@@ -1127,9 +1153,12 @@ public class AuthenticationProcessor {
         // 此时已经产生结果了
         Response challenge = authenticationFlow.processFlow();
         if (challenge != null) return challenge;
+
+        // 会话还没有绑定用户 代表还未完成登录
         if (authenticationSession.getAuthenticatedUser() == null) {
             throw new AuthenticationFlowException(AuthenticationFlowError.UNKNOWN_USER);
         }
+        // 认证失败 抛出异常
         if (!authenticationFlow.isSuccessful()) {
             throw new AuthenticationFlowException(authenticationFlow.getFlowExceptions());
         }

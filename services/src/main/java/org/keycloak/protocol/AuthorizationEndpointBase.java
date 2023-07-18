@@ -111,10 +111,13 @@ public abstract class AuthorizationEndpointBase {
      *
      * @param authSession for current request
      * @param protocol handler for protocol used to initiate login
+     *                 协议对象 包含了处理逻辑
      * @param isPassive set to true if login should be passive (without login screen shown)
+     *                  是否是消极的认证  当prompt为none时 如果用户未登录或未授权 直接返回错误信息
      * @param redirectToAuthentication if true redirect to flow url.  If initial call to protocol is a POST, you probably want to do this.  This is so we can disable the back button on browser
      * @return response to be returned to the browser
      * 处理通过浏览器认证的情况
+     *
      */
     protected Response handleBrowserAuthenticationRequest(AuthenticationSessionModel authSession, LoginProtocol protocol, boolean isPassive, boolean redirectToAuthentication) {
         // 加载浏览器相关的认证流对象
@@ -125,7 +128,7 @@ public abstract class AuthorizationEndpointBase {
         AuthenticationProcessor processor = createProcessor(authSession, flowId, LoginActionsService.AUTHENTICATE_PATH);
         event.detail(Details.CODE_ID, authSession.getParentSession().getId());
 
-        // 被动登录  被动登录意味着只是检查用户是否已登录
+        // 消极登录  只检查用户是否登录和授权 没有的情况下直接返回错误  而不会引导用户去登录/授权
         if (isPassive) {
             // OIDC prompt == NONE or SAML 2 IsPassive flag
             // This means that client is just checking if the user is already completely logged in.
@@ -134,26 +137,27 @@ public abstract class AuthorizationEndpointBase {
                 // 此时已经进行过认证了
                 Response challenge = processor.authenticateOnly();
 
-                // 返回null是正常情况 代表流程可以继续
+                // 返回null是正常情况 代表用户已经认证过
                 if (challenge == null) {
                     // nothing to do - user is already authenticated;
                 } else {
                     // KEYCLOAK-8043: forward the request with prompt=none to the default provider.
-                    // 代表需要跳转
+                    // 设置了该参数时 即使prompt为none 也会跳转引导用户
                     if ("true".equals(authSession.getAuthNote(AuthenticationProcessor.FORWARDED_PASSIVE_LOGIN))) {
+                        // 当引导用户去登录页面时 就会在cookie中设置一个KC_RESTART
                         // 添加一个KC_RESTART的cookie 值为本次会话编码后的数据
                         RestartLoginCookie.setRestartCookie(session, realm, clientConnection, session.getContext().getUri(), authSession);
 
-                        // 重定向回认证页
+                        // TODO 重定向回认证页 先只考虑false的情况
                         if (redirectToAuthentication) {
                             return processor.redirectToFlow();
                         }
                         // no need to trigger authenticate, just return the challenge we got from authenticateOnly.
-                        // 直接返回结果
+                        // 不提醒用户登录和授权 直接返回错误信息 但是添加一个需要重新登录的cookie
                         return challenge;
                     }
                     else {
-                        // 不需要跳转的情况下 返回错误信息
+                        // 返回错误信息
                         Response response = protocol.sendError(authSession, Error.PASSIVE_LOGIN_REQUIRED);
                         return response;
                     }
@@ -162,16 +166,17 @@ public abstract class AuthorizationEndpointBase {
                 // 此时认为认证已经通过 为会话设置client_scope
                 AuthenticationManager.setClientScopesInSession(authSession);
 
-                // 发现还有认证action未执行
+                // 上面只是完成认证工作 如果授权操作还未执行 也是返回错误信息
                 if (processor.nextRequiredAction() != null) {
                     Response response = protocol.sendError(authSession, Error.PASSIVE_INTERACTION_REQUIRED);
                     return response;
                 }
 
+                // 消极状态下  一旦出现问题 将错误展示给用户 而非引导用户登录/授权
             } catch (Exception e) {
                 return processor.handleBrowserException(e);
             }
-            // 成功通过认证流程
+            // 代表登录/认证都已经完成
             return processor.finishAuthentication(protocol);
         } else {
 

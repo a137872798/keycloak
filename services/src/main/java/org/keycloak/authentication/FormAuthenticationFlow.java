@@ -53,16 +53,30 @@ public class FormAuthenticationFlow implements AuthenticationFlow {
     AuthenticationProcessor processor;
     AuthenticationExecutionModel formExecution;
     private final List<AuthenticationExecutionModel> formActionExecutions;
+
+    /**
+     * 表单验证器
+     */
     private final FormAuthenticator formAuthenticator;
 
 
+    /**
+     * 其他验证器初始化都是需要flow  该对象需要execution初始化
+     * @param processor
+     * @param execution
+     */
     public FormAuthenticationFlow(AuthenticationProcessor processor, AuthenticationExecutionModel execution) {
         this.processor = processor;
         this.formExecution = execution;
+        // 加载该execution所属的flow的所有认证单元
         formActionExecutions = processor.getRealm().getAuthenticationExecutionsStream(execution.getFlowId()).collect(Collectors.toList());
+        // 加载本execution相关的认证器
         formAuthenticator = processor.getSession().getProvider(FormAuthenticator.class, execution.getAuthenticator());
     }
 
+    /**
+     * 表单上下文
+     */
     private class FormContextImpl implements FormContext {
         AuthenticationExecutionModel executionModel;
         AuthenticatorConfigModel authenticatorConfig;
@@ -136,6 +150,9 @@ public class FormAuthenticationFlow implements AuthenticationFlow {
 
     }
 
+    /**
+     * ValidationContext 可以标记认证成功还是失败
+     */
     private class ValidationContextImpl extends FormContextImpl implements ValidationContext {
         FormAction action;
         String error;

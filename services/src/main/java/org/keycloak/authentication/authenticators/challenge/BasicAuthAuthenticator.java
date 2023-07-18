@@ -36,6 +36,7 @@ import javax.ws.rs.core.Response;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 基础认证器
  */
 public class BasicAuthAuthenticator extends AbstractUsernameFormAuthenticator implements Authenticator {
 
@@ -49,9 +50,11 @@ public class BasicAuthAuthenticator extends AbstractUsernameFormAuthenticator im
         String authorizationHeader = getAuthorizationHeader(context);
 
         if (authorizationHeader == null) {
+            // 当必须满足该认证器条件时  返回401
             if (context.getExecution().isRequired()) {
                 context.challenge(challenge(context, null));
             } else {
+                // 代表尝试过 但是失败了
                 context.attempted();
             }
             return;
@@ -74,6 +77,12 @@ public class BasicAuthAuthenticator extends AbstractUsernameFormAuthenticator im
         }
     }
 
+    /**
+     * 检查用户名密码是否正确
+     * @param context
+     * @param challenge
+     * @return
+     */
     protected boolean onAuthenticate(AuthenticationFlowContext context, String[] challenge) {
         if (checkUsernameAndPassword(context, challenge[0], challenge[1])) {
             return true;
@@ -82,6 +91,11 @@ public class BasicAuthAuthenticator extends AbstractUsernameFormAuthenticator im
         return false;
     }
 
+    /**
+     * 从请求头获取 AUTHORIZATION
+     * @param context
+     * @return
+     */
     protected String getAuthorizationHeader(AuthenticationFlowContext context) {
         return context.getHttpRequest().getHttpHeaders().getRequestHeaders().getFirst(HttpHeaders.AUTHORIZATION);
     }
@@ -100,6 +114,7 @@ public class BasicAuthAuthenticator extends AbstractUsernameFormAuthenticator im
     }
 
     protected String[] getChallenge(String authorizationHeader) {
+        // 存储的是用户名 密码
         String[] challenge = BasicAuthHelper.parseHeader(authorizationHeader);
 
         if (challenge.length < 2) {

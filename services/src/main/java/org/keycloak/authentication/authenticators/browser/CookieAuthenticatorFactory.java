@@ -33,11 +33,17 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 基于cookie判断用户是否认证
  */
 public class CookieAuthenticatorFactory implements AuthenticatorFactory, DisplayTypeAuthenticatorFactory {
     public static final String PROVIDER_ID = "auth-cookie";
     static CookieAuthenticator SINGLETON = new CookieAuthenticator();
 
+    /**
+     * 该认证器是无状态的 所以可以用单例模式
+     * @param session
+     * @return
+     */
     @Override
     public Authenticator create(KeycloakSession session) {
         return SINGLETON;
@@ -46,7 +52,10 @@ public class CookieAuthenticatorFactory implements AuthenticatorFactory, Display
     @Override
     public Authenticator createDisplay(KeycloakSession session, String displayType) {
         if (displayType == null) return SINGLETON;
+        // 只支持console展示
         if (!OAuth2Constants.DISPLAY_CONSOLE.equalsIgnoreCase(displayType)) return null;
+
+        // AttemptedAuthenticator 相当于一个空的认证器 执行认证后既不会成功也不会失败
         return AttemptedAuthenticator.SINGLETON;  // ignore this authenticator
     }
 
@@ -65,6 +74,10 @@ public class CookieAuthenticatorFactory implements AuthenticatorFactory, Display
 
     }
 
+    /**
+     * 返回 auth-cookie 代表基于cookie判断用户是否已认证
+     * @return
+     */
     @Override
     public String getId() {
         return PROVIDER_ID;

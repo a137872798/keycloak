@@ -6,6 +6,9 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.authentication.AuthenticationFlowContext;
 
+/**
+ * 条件认证器
+ */
 public interface ConditionalAuthenticator extends Authenticator {
     boolean matchCondition(AuthenticationFlowContext context);
 
