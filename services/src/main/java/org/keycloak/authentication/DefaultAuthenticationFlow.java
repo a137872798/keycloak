@@ -44,6 +44,7 @@ import java.util.stream.Stream;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 默认的认证流对象
  */
 public class DefaultAuthenticationFlow implements AuthenticationFlow {
     private static final Logger logger = Logger.getLogger(DefaultAuthenticationFlow.class);
@@ -56,6 +57,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     public DefaultAuthenticationFlow(AuthenticationProcessor processor, AuthenticationFlowModel flow) {
         this.processor = processor;
         this.flow = flow;
+        // 获取flow关联的多个认证动作
         this.executions = processor.getRealm().getAuthenticationExecutionsStream(flow.getId()).collect(Collectors.toList());
     }
 
@@ -63,19 +65,38 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
         return isProcessed(processor, model);
     }
 
+    /**
+     * 判断是否已经处理完所有认证行为
+     * @param processor
+     * @param model
+     * @return
+     */
     protected static boolean isProcessed(AuthenticationProcessor processor, AuthenticationExecutionModel model) {
         if (model.isDisabled()) return true;
+
+        // 获取该execution此时的状态
         AuthenticationSessionModel.ExecutionStatus status = processor.getAuthenticationSession().getExecutionStatus().get(model.getId());
+        // 代表还未为该过程设置状态 也就是还未执行
         if (status == null) return false;
         return status == AuthenticationSessionModel.ExecutionStatus.SUCCESS || status == AuthenticationSessionModel.ExecutionStatus.SKIPPED
                 || status == AuthenticationSessionModel.ExecutionStatus.ATTEMPTED
                 || status == AuthenticationSessionModel.ExecutionStatus.SETUP_REQUIRED;
     }
 
+    /**
+     * 创建认证器
+     * @param factory
+     * @return
+     */
     protected Authenticator createAuthenticator(AuthenticatorFactory factory) {
         return factory.create(processor.getSession());
     }
 
+    /**
+     * 仅执行某个execution
+     * @param actionExecution
+     * @return
+     */
     @Override
     public Response processAction(String actionExecution) {
         logger.debugv("processAction: {0}", actionExecution);
@@ -90,9 +111,11 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
         if (HttpMethod.POST.equals(processor.getRequest().getHttpMethod())) {
             MultivaluedMap<String, String> inputData = processor.getRequest().getDecodedFormParameters();
+            // 从请求参数中获取executionId
             String authExecId = inputData.getFirst(Constants.AUTHENTICATION_EXECUTION);
 
             // User clicked on "try another way" link
+            // TODO
             if (inputData.containsKey("tryAnotherWay")) {
                 logger.trace("User clicked on link 'Try Another Way'");
 
@@ -104,8 +127,10 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
             }
 
             // check if the user has switched to a new authentication execution, and if so switch to it.
+            // 代表用户的请求中指向了其他的execution  要进行切换
             if (authExecId != null && !authExecId.isEmpty()) {
 
+                // 简单理解就是产生了一组认证对象
                 List<AuthenticationSelectionOption> selectionOptions = createAuthenticationSelectionList(model);
 
                 // Check if switch to the requested authentication execution is allowed
@@ -116,6 +141,7 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                                 AuthenticationFlowError.INTERNAL_ERROR)
                         );
 
+                // 获取该execution
                 model = processor.getRealm().getAuthenticationExecutionById(authExecId);
 
                 Response response = processSingleFlowExecutionModel(model, false);
@@ -292,11 +318,13 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
 
     /**
      * Just iterates over executionsToProcess and fill "requiredList" and "alternativeList" according to it
+     * 根据execution的类型 分发到不同list
      */
     void fillListsOfExecutions(Stream<AuthenticationExecutionModel> executionsToProcess, List<AuthenticationExecutionModel> requiredList, List<AuthenticationExecutionModel> alternativeList) {
         executionsToProcess
                 .filter(((Predicate<AuthenticationExecutionModel>) this::isConditionalAuthenticator).negate())
                 .forEachOrdered(execution -> {
+                    // 分组进入不同list
                     if (execution.isRequired() || execution.isConditional()) {
                         requiredList.add(execution);
                     } else if (execution.isAlternative()) {
@@ -304,7 +332,9 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
                     }
                 });
 
+        // 两种都存在
         if (!requiredList.isEmpty() && !alternativeList.isEmpty()) {
+            // 把可选的清理掉了
             List<String> alternativeIds = alternativeList.stream()
                     .map(AuthenticationExecutionModel::getAuthenticator)
                     .collect(Collectors.toList());
@@ -367,6 +397,12 @@ public class DefaultAuthenticationFlow implements AuthenticationFlow {
     }
 
 
+    /**
+     * 执行某个execution
+     * @param model
+     * @param calledFromFlow
+     * @return
+     */
     private Response processSingleFlowExecutionModel(AuthenticationExecutionModel model, boolean calledFromFlow) {
         logger.debugf("check execution: '%s', requirement: '%s'", logExecutionAlias(model), model.getRequirement());
 

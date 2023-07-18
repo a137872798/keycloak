@@ -59,6 +59,7 @@ class AuthenticationSelectionResolver {
      *
      * @param model The current execution model
      * @return an ordered list of the authentication selection options to present the user.
+     * 创建一组可选的execution
      */
     static List<AuthenticationSelectionOption> createAuthenticationSelectionList(AuthenticationProcessor processor, AuthenticationExecutionModel model) {
         List<AuthenticationSelectionOption> authenticationSelectionList = new ArrayList<>();
@@ -68,9 +69,11 @@ class AuthenticationSelectionResolver {
             Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
             List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
 
+            // 获取最近的可选
             String topFlowId = getFlowIdOfTheHighestUsefulFlow(processor, model);
 
             if (topFlowId == null) {
+                // 简单场景 实际上只会加入本execution
                 addSimpleAuthenticationExecution(processor, model, typeAuthExecMap, nonCredentialExecutions);
             } else {
                 addAllExecutionsFromSubflow(processor, topFlowId, typeAuthExecMap, nonCredentialExecutions);
@@ -131,23 +134,28 @@ class AuthenticationSelectionResolver {
      * @param processor
      * @param execution
      * @return
+     * 返回最高的子流
      */
     private static String getFlowIdOfTheHighestUsefulFlow(AuthenticationProcessor processor, AuthenticationExecutionModel execution) {
         String flowId = null;
         RealmModel realm = processor.getRealm();
 
         while (true) {
+            // 代表该认证操作是可选的
             if (execution.isAlternative()) {
-                //Consider parent flow as we need to get all alternative executions to be able to list their credentials
+                // Consider parent flow as we need to get all alternative executions to be able to list their credentials
                 flowId = execution.getParentFlow();
+                // 必选 或者有条件
             } else if (execution.isRequired()  || execution.isConditional()) {
                 if (execution.isAuthenticatorFlow()) {
                     flowId = execution.getFlowId();
                 }
 
                 // Find the corresponding execution. If it is 1st REQUIRED execution in the particular subflow, we need to consider parent flow as well
+                // 获取同一flow下的其他execution
                 List<AuthenticationExecutionModel> executions = realm.getAuthenticationExecutionsStream(execution.getParentFlow())
                         .collect(Collectors.toList());
+
                 int executionIndex = executions.indexOf(execution);
                 if (executionIndex != 0) {
                     return flowId;
@@ -160,6 +168,8 @@ class AuthenticationSelectionResolver {
             if (flow.isTopLevel()) {
                 return flowId;
             }
+
+            // 返回flow下第一个execution
             execution = realm.getAuthenticationExecutionByFlowId(flowId);
         }
     }
@@ -169,11 +179,13 @@ class AuthenticationSelectionResolver {
     // Fill the typeAuthExecMap and nonCredentialExecutions accordingly
     private static void addSimpleAuthenticationExecution(AuthenticationProcessor processor, AuthenticationExecutionModel execution, Map<String, AuthenticationExecutionModel> typeAuthExecMap, List<AuthenticationExecutionModel> nonCredentialExecutions) {
         // Don't add already processed executions
+        // 已经处理过了
         if (DefaultAuthenticationFlow.isProcessed(processor, execution)) {
             return;
         }
 
         Authenticator localAuthenticator = processor.getSession().getProvider(Authenticator.class, execution.getAuthenticator());
+        // 非CredentialValidator类型
         if (!(localAuthenticator instanceof CredentialValidator)) {
             nonCredentialExecutions.add(execution);
         } else {
@@ -188,6 +200,7 @@ class AuthenticationSelectionResolver {
      * given flowId
      *
      * Return true if at least something was added to any of the list
+     * 处理flow下的execution
      */
     private static boolean addAllExecutionsFromSubflow(AuthenticationProcessor processor, String flowId, Map<String, AuthenticationExecutionModel> typeAuthExecMap, List<AuthenticationExecutionModel> nonCredentialExecutions) {
         AuthenticationFlowModel flowModel = processor.getRealm().getAuthenticationFlowById(flowId);
@@ -195,16 +208,22 @@ class AuthenticationSelectionResolver {
             throw new AuthenticationFlowException("Flow not found", AuthenticationFlowError.INTERNAL_ERROR);
         }
 
+        // 根据flowId 产生一个新的flow对象
         DefaultAuthenticationFlow flow = new DefaultAuthenticationFlow(processor, flowModel);
 
         logger.debugf("Going through the flow '%s' for adding executions", flowModel.getAlias());
 
         List<AuthenticationExecutionModel> requiredList = new ArrayList<>();
         List<AuthenticationExecutionModel> alternativeList = new ArrayList<>();
+
+        // 将flow下的excution根据类型分到不同list
         flow.fillListsOfExecutions(processor.getRealm().getAuthenticationExecutionsStream(flowId), requiredList, alternativeList);
 
         // If requiredList is not empty, we're going to collect just very first execution from the flow
+        // 存在必须执行的
         if (!requiredList.isEmpty()) {
+
+            // 找到第一个
             AuthenticationExecutionModel requiredExecution = requiredList.stream().filter(ex -> {
 
                 if (ex.isRequired()) return true;
@@ -216,9 +235,10 @@ class AuthenticationSelectionResolver {
             }).findFirst().orElse(null);
 
             // Not requiredExecution found. Returning false as we did not add any authenticator
+            // 未找到必须执行的
             if (requiredExecution == null) return false;
 
-            // Don't add already processed executions
+            // Don't add already processed executions  已经执行过也不行
             if (flow.isProcessed(requiredExecution)) {
                 return false;
             }
@@ -226,6 +246,7 @@ class AuthenticationSelectionResolver {
             FormAuthenticatorFactory factory = (FormAuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(FormAuthenticator.class, requiredExecution.getAuthenticator());
 
             // Recursively add credentials from required execution
+            // 递归调用
             if (requiredExecution.isAuthenticatorFlow() && factory == null) {
                 return addAllExecutionsFromSubflow(processor, requiredExecution.getFlowId(), typeAuthExecMap, nonCredentialExecutions);
             } else {

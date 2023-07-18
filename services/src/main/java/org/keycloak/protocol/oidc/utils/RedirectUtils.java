@@ -58,8 +58,17 @@ public class RedirectUtils {
         return verifyRedirectUri(session, redirectUri, client, true);
     }
 
+    /**
+     * 验证重定向地址
+     * @param session
+     * @param redirectUri
+     * @param client
+     * @param requireRedirectUri
+     * @return
+     */
     public static String verifyRedirectUri(KeycloakSession session, String redirectUri, ClientModel client, boolean requireRedirectUri) {
         if (client != null)
+            // 如果请求中没有携带重定向地址  就使用client中配置的
             return verifyRedirectUri(session, client.getRootUrl(), redirectUri, client.getRedirectUris(), requireRedirectUri);
         return null;
     }
@@ -90,6 +99,15 @@ public class RedirectUtils {
           .collect(Collectors.toSet());
     }
 
+    /**
+     * 验证重定向地址
+     * @param session
+     * @param rootUrl
+     * @param redirectUri
+     * @param validRedirects
+     * @param requireRedirectUri
+     * @return
+     */
     public static String verifyRedirectUri(KeycloakSession session, String rootUrl, String redirectUri, Set<String> validRedirects, boolean requireRedirectUri) {
         KeycloakUriInfo uriInfo = session.getContext().getUri();
         RealmModel realm = session.getContext().getRealm();
