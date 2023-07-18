@@ -35,6 +35,7 @@ import java.util.Optional;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端认证流
  */
 public class ClientAuthenticationFlow implements AuthenticationFlow {
 
@@ -51,11 +52,19 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
         this.flow = flow;
     }
 
+    /**
+     * 不支持指定某个execution执行
+     * @param actionExecution
+     * @return
+     */
     @Override
     public Response processAction(String actionExecution) {
         throw new IllegalStateException("Not supposed to be invoked");
     }
 
+    /**
+     * 处理整个flow
+     */
     @Override
     public Response processFlow() {
         List<AuthenticationExecutionModel> executions = findExecutionsToRun();

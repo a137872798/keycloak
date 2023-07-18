@@ -7,15 +7,22 @@ import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 
 /**
- *
+ * 每个关联一个认证操作
  */
 public class AuthenticationSelectionOption {
 
+    /**
+     * 关联的认证操作
+     */
     private final AuthenticationExecutionModel authExec;
+    /**
+     * 描述认证类型元数据
+     */
     private final CredentialTypeMetadata credentialTypeMetadata;
 
     public AuthenticationSelectionOption(KeycloakSession session, AuthenticationExecutionModel authExec) {
         this.authExec = authExec;
+        // 创建该对象时生成关联的认证器
         Authenticator authenticator = session.getProvider(Authenticator.class, authExec.getAuthenticator());
         if (authenticator instanceof CredentialValidator) {
             CredentialProvider credentialProvider = ((CredentialValidator) authenticator).getCredentialProvider(session);

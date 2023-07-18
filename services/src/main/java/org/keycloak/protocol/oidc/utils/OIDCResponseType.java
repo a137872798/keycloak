@@ -42,7 +42,11 @@ public class OIDCResponseType {
         this.responseTypes = responseTypes;
     }
 
-
+    /**
+     * 转换成OIDCResponseType
+     * @param responseTypeParam
+     * @return
+     */
     public static OIDCResponseType parse(String responseTypeParam) {
         if (responseTypeParam == null) {
             throw new IllegalArgumentException("response_type is null");

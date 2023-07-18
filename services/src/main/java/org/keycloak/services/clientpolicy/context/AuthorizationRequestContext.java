@@ -24,11 +24,23 @@ import org.keycloak.protocol.oidc.utils.OIDCResponseType;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 
+/**
+ * 认证请求对应的上下文
+ */
 public class AuthorizationRequestContext implements ClientPolicyContext {
 
     private final OIDCResponseType parsedResponseType;
+    /**
+     * 从本次认证请求参数中解析出来的
+     */
     private final AuthorizationEndpointRequest request;
+    /**
+     * 认证产生结果后的重定向地址
+     */
     private final String redirectUri;
+    /**
+     * 请求参数
+     */
     private final MultivaluedMap<String, String> requestParameters;
 
     public AuthorizationRequestContext(OIDCResponseType parsedResponseType,

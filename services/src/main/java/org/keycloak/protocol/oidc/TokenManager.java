@@ -612,12 +612,19 @@ public class TokenManager {
         return Stream.concat(parseScopeParameter(scopeParam).map(allOptionalScopes::get).filter(Objects::nonNull),
                 clientScopes).distinct();
     }
-    
+
+    /**
+     * 检测scope对于client是否有效
+     * @param scopes
+     * @param client
+     * @return
+     */
     public static boolean isValidScope(String scopes, ClientModel client) {
         if (scopes == null) {
             return true;
         }
 
+        // 返回client拥有的所有scope
         Set<String> clientScopes = getRequestedClientScopes(scopes, client)
                 .filter(((Predicate<ClientScopeModel>) ClientModel.class::isInstance).negate())
                 .map(ClientScopeModel::getName)
@@ -628,12 +635,14 @@ public class TokenManager {
             requestedScopes.remove(OAuth2Constants.SCOPE_OPENID);
         }
 
+        // 代表client不支持这些scope
         if (!requestedScopes.isEmpty() && clientScopes.isEmpty()) {
             return false;
         }
 
         for (String requestedScope : requestedScopes) {
             // we also check dynamic scopes in case the client is from a provider that dynamically provides scopes to their clients
+            // 代表请求的scope是client所不具有的 并且无法动态生成
             if (!clientScopes.contains(requestedScope) && client.getDynamicClientScope(requestedScope) == null) {
                 return false;
             }

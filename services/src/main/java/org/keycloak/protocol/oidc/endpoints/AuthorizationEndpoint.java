@@ -140,48 +140,62 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         // 简单来说就是将params的参数转移到req中
         request = AuthorizationEndpointRequestParserProcessor.parseRequest(event, session, client, params);
 
+        // 检验重定向地址有效性
         checkRedirectUri();
+        // 检查响应类型
         Response errorResponse = checkResponseType();
+        // 代表已经出现异常了
         if (errorResponse != null) {
             return errorResponse;
         }
 
+        // req解析出错
         if (request.getInvalidRequestMessage() != null) {
             event.error(Errors.INVALID_REQUEST);
+            // 设置异常参数 调用req中指定的redirect_uri
             return redirectErrorToClient(parsedResponseMode, Errors.INVALID_REQUEST, request.getInvalidRequestMessage());
         }
 
+        // 请求的scope中不包含openid  要打印日志
         if (!TokenUtil.isOIDCRequest(request.getScope())) {
             ServicesLogger.LOGGER.oidcScopeMissing();
         }
 
+        // 携带了错误的scope
         if (!TokenManager.isValidScope(request.getScope(), client)) {
             ServicesLogger.LOGGER.invalidParameter(OIDCLoginProtocol.SCOPE_PARAM);
             event.error(Errors.INVALID_REQUEST);
             return redirectErrorToClient(parsedResponseMode, OAuthErrorException.INVALID_SCOPE, "Invalid scopes: " + request.getScope());
         }
 
+        // 检查请求参数是否满足oidc协议
         errorResponse = checkOIDCParams();
         if (errorResponse != null) {
             return errorResponse;
         }
 
         // https://tools.ietf.org/html/rfc7636#section-4
+        // PKCE是Oauth2的拓展 主要是针对public类型的client code可能被拦截 导致被恶意访问   解决办法就是在授权时额外传入 code_challenge+code_challenge_method2个参数
+        // 而在验证通过获取资源时 额外传入code_verifier
         errorResponse = checkPKCEParams();
         if (errorResponse != null) {
             return errorResponse;
         }
 
         try {
+            // 生成一个context对象 并交给client_policy
+            // TODO 先忽略 clientPolicy
             session.clientPolicy().triggerOnEvent(new AuthorizationRequestContext(parsedResponseType, request, redirectUri, params));
         } catch (ClientPolicyException cpe) {
             return redirectErrorToClient(parsedResponseMode, cpe.getError(), cpe.getErrorDetail());
         }
 
+        // 认证会话  在认证过程中起作用的会话
         authenticationSession = createAuthenticationSession(client, request.getState());
+        // 把req信息填充到认证会话中
         updateAuthenticationSession();
 
-        // So back button doesn't work
+        // So back button doesn't work 设置响应头
         CacheControlUtil.noBackButtonCacheControlHeader();
         switch (action) {
             case REGISTER:
@@ -261,12 +275,17 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         session.getContext().setClient(client);
     }
 
+    /**
+     * 检验返回值类型
+     * @return
+     */
     private Response checkResponseType() {
         String responseType = request.getResponseType();
 
         if (responseType == null) {
             ServicesLogger.LOGGER.missingParameter(OAuth2Constants.RESPONSE_TYPE);
             event.error(Errors.INVALID_REQUEST);
+            // 要求请求参数必须携带 response_type
             return redirectErrorToClient(OIDCResponseMode.QUERY, OAuthErrorException.INVALID_REQUEST, "Missing parameter: response_type");
         }
 
@@ -282,6 +301,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
             return redirectErrorToClient(OIDCResponseMode.QUERY, OAuthErrorException.UNSUPPORTED_RESPONSE_TYPE, null);
         }
 
+        // 解析响应模式
         OIDCResponseMode parsedResponseMode = null;
         try {
             parsedResponseMode = OIDCResponseMode.parse(request.getResponseMode(), parsedResponseType);
@@ -300,6 +320,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
             return redirectErrorToClient(OIDCResponseMode.QUERY, OAuthErrorException.INVALID_REQUEST, "Response_mode 'query' not allowed for implicit or hybrid flow");
         }
 
+        // 代表标准流被禁用
         if ((parsedResponseType.hasResponseType(OIDCResponseType.CODE) || parsedResponseType.hasResponseType(OIDCResponseType.NONE)) && !client.isStandardFlowEnabled()) {
             ServicesLogger.LOGGER.flowNotAllowed("Standard");
             event.error(Errors.NOT_ALLOWED);
@@ -317,13 +338,20 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         return null;
     }
 
+    /**
+     * 检查OIDC参数
+     * @return
+     */
     private Response checkOIDCParams() {
         // If request is not OIDC request, but pure OAuth2 request and response_type is just 'token', then 'nonce' is not mandatory
+        // 如果是oidc请求 scope中会携带openid
         boolean isOIDCRequest = TokenUtil.isOIDCRequest(request.getScope());
+        // response是token类型的话  是正常的
         if (!isOIDCRequest && parsedResponseType.toString().equals(OIDCResponseType.TOKEN)) {
             return null;
         }
 
+        // 这种类型必须要Nonce
         if (parsedResponseType.isImplicitOrHybridFlow() && request.getNonce() == null) {
             ServicesLogger.LOGGER.missingParameter(OIDCLoginProtocol.NONCE_PARAM);
             event.error(Errors.INVALID_REQUEST);
@@ -335,12 +363,14 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
 
     // https://tools.ietf.org/html/rfc7636#section-4
     private Response checkPKCEParams() {
+        // PKCE模式下必须设置中2个参数
         String codeChallenge = request.getCodeChallenge();
         String codeChallengeMethod = request.getCodeChallengeMethod();
 
         // PKCE not adopted to OAuth2 Implicit Grant and OIDC Implicit Flow,
         // adopted to OAuth2 Authorization Code Grant and OIDC Authorization Code Flow, Hybrid Flow
         // Namely, flows using authorization code.
+        // 隐式类型 不需要处理
         if (parsedResponseType.isImplicitFlow()) return null;
 
         String pkceCodeChallengeMethod = OIDCAdvancedConfigWrapper.fromClientModel(client).getPkceCodeChallengeMethod();
@@ -433,6 +463,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
     }
 
     private Response redirectErrorToClient(OIDCResponseMode responseMode, String error, String errorDescription) {
+        // 将异常消息作为参数
         OIDCRedirectUriBuilder errorResponseBuilder = OIDCRedirectUriBuilder.fromUri(redirectUri, responseMode)
                 .addParam(OAuth2Constants.ERROR, error);
 
@@ -452,6 +483,7 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
      */
     private void checkRedirectUri() {
         String redirectUriParam = request.getRedirectUriParam();
+        // 要求scope中携带  openid
         boolean isOIDCRequest = TokenUtil.isOIDCRequest(request.getScope());
 
         event.detail(Details.REDIRECT_URI, redirectUriParam);
@@ -465,6 +497,9 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
     }
 
 
+    /**
+     * 对子认证会话做一些属性填充
+     */
     private void updateAuthenticationSession() {
         authenticationSession.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
         authenticationSession.setRedirectUri(redirectUri);
@@ -499,16 +534,27 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
     }
 
 
+    /**
+     * 本次是正常的登录请求 需要返回code
+     * @return
+     */
     private Response buildAuthorizationCodeAuthorizationResponse() {
         this.event.event(EventType.LOGIN);
+        // 授权码认证
         authenticationSession.setAuthNote(Details.AUTH_TYPE, CODE_AUTH_TYPE);
 
         return handleBrowserAuthenticationRequest(authenticationSession, new OIDCLoginProtocol(session, realm, session.getContext().getUri(), headers, event), TokenUtil.hasPrompt(request.getPrompt(), OIDCLoginProtocol.PROMPT_VALUE_NONE), false);
     }
 
+    /**
+     * 本次需要进行的是注册
+     * @return
+     */
     private Response buildRegister() {
+        // 清理之前的cookie信息 相当于上个人的登录痕迹被清理了
         authManager.expireIdentityCookie(realm, session.getContext().getUri(), clientConnection);
 
+        // 返回注册用的flow
         AuthenticationFlowModel flow = realm.getRegistrationFlow();
         String flowId = flow.getId();
 
@@ -518,6 +564,10 @@ public class AuthorizationEndpoint extends AuthorizationEndpointBase {
         return processor.authenticate();
     }
 
+    /**
+     * 忘记密码 逻辑类似 除了获取的flow不同
+     * @return
+     */
     private Response buildForgotCredential() {
         authManager.expireIdentityCookie(realm, session.getContext().getUri(), clientConnection);
 

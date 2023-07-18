@@ -24,6 +24,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 认证流对象 其中包含了认证需要进行的多个步骤
  */
 public interface AuthenticationFlow {
     String BASIC_FLOW = "basic-flow";

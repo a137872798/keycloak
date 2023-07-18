@@ -30,6 +30,9 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.services.clientpolicy.condition.ClientPolicyConditionProvider;
 import org.keycloak.services.clientpolicy.executor.ClientPolicyExecutorProvider;
 
+/**
+ * 客户端策略对象
+ */
 public class DefaultClientPolicyManager implements ClientPolicyManager {
 
     private static final Logger logger = Logger.getLogger(DefaultClientPolicyManager.class);
@@ -41,8 +44,13 @@ public class DefaultClientPolicyManager implements ClientPolicyManager {
         this.session = session;
     }
 
+    /**
+     * @param context - the context of the event.   其中包含了请求参数
+     * @throws ClientPolicyException
+     */
     @Override
     public void triggerOnEvent(ClientPolicyContext context) throws ClientPolicyException {
+        // 未开启该特性
         if (!Profile.isFeatureEnabled(Profile.Feature.CLIENT_POLICIES)) return;
         ClientPolicyLogger.logv(logger, "Client Policy Operation : event = {0}", context.getEvent());
         doPolicyOperation(
