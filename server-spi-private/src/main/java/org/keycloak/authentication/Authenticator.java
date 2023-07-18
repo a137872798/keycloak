@@ -59,6 +59,7 @@ public interface Authenticator extends Provider {
 
     /**
      * Called from a form action invocation.
+     * 表单验证器 提交表单时通过该方法触发认证逻辑
      *
      * @param context
      */

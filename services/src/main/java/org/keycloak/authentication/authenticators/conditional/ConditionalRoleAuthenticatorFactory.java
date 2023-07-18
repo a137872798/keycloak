@@ -9,7 +9,11 @@ import org.keycloak.provider.ProviderConfigProperty;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 以角色作为条件的认证器
+ */
 public class ConditionalRoleAuthenticatorFactory implements ConditionalAuthenticatorFactory {
+
     public static final String PROVIDER_ID = "conditional-user-role";
 
     public static final String CONDITIONAL_USER_ROLE = "condUserRole";
@@ -82,6 +86,10 @@ public class ConditionalRoleAuthenticatorFactory implements ConditionalAuthentic
         return Arrays.asList(role, negateOutput);
     }
 
+    /**
+     * 调用该方法产生基于角色的认证器
+     * @return
+     */
     @Override
     public ConditionalAuthenticator getSingleton() {
         return ConditionalRoleAuthenticator.SINGLETON;

@@ -34,12 +34,14 @@ import javax.ws.rs.core.Response;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 基于用户名密码 进行认证
  */
 public class UsernamePasswordForm extends AbstractUsernameFormAuthenticator implements Authenticator {
     protected static ServicesLogger log = ServicesLogger.LOGGER;
 
     @Override
     public void action(AuthenticationFlowContext context) {
+        // 也就是说如果我在调用auth的端点时 就携带了username/password 应该是可以直接通过这个认证器的
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
         if (formData.containsKey("cancel")) {
             context.cancelLogin();
@@ -48,13 +50,24 @@ public class UsernamePasswordForm extends AbstractUsernameFormAuthenticator impl
         if (!validateForm(context, formData)) {
             return;
         }
+        // 用户名/密码/用户 都有效的情况 认证成功
         context.success();
     }
 
+    /**
+     * 验证表单数据
+     * @param context
+     * @param formData
+     * @return
+     */
     protected boolean validateForm(AuthenticationFlowContext context, MultivaluedMap<String, String> formData) {
         return validateUserAndPassword(context, formData);
     }
 
+    /**
+     * 将用户引导至登录页面
+     * @param context 认证结果会设置到context上
+     */
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         MultivaluedMap<String, String> formData = new MultivaluedMapImpl<>();

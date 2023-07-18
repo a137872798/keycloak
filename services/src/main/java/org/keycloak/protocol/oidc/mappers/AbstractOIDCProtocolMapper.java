@@ -32,6 +32,7 @@ import org.keycloak.representations.IDToken;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * OIDC的协议映射
  */
 public abstract class AbstractOIDCProtocolMapper implements ProtocolMapper {
 
@@ -64,6 +65,7 @@ public abstract class AbstractOIDCProtocolMapper implements ProtocolMapper {
     public AccessToken transformUserInfoToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                               UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
 
+        // 不包含用户信息 无法转换
         if (!OIDCAttributeMapperHelper.includeInUserInfo(mappingModel)) {
             return token;
         }

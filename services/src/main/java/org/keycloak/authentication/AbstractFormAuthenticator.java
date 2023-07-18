@@ -22,6 +22,7 @@ package org.keycloak.authentication;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 基于表单数据的校验器
  */
 public abstract class AbstractFormAuthenticator implements Authenticator {
 

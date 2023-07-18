@@ -47,8 +47,13 @@ public class ValidateUsername extends AbstractDirectGrantAuthenticator {
 
     public static final String PROVIDER_ID = "direct-grant-validate-username";
 
+    /**
+     * 验证用户名是否有效
+     * @param context
+     */
     @Override
     public void authenticate(AuthenticationFlowContext context) {
+        // 从请求参数中获取username
         String username = retrieveUsername(context);
         if (username == null) {
             context.getEvent().error(Errors.USER_NOT_FOUND);

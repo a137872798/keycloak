@@ -41,6 +41,10 @@ public class ValidatePassword extends AbstractDirectGrantAuthenticator {
 
     public static final String PROVIDER_ID = "direct-grant-validate-password";
 
+    /**
+     * 要求会话中已经设置了用户之后  密码必须匹配
+     * @param context
+     */
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         String password = retrievePassword(context);

@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
  * Provides introspection for a determined OAuth2 token type.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 内省token 或者理解为检验token有效性?
  */
 public interface TokenIntrospectionProvider extends Provider {
 

@@ -12,9 +12,17 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 
+/**
+ * 为什么这些条件认证器的authenticate 方法默认为空  这些对象不需要进行认证么
+ */
 public class ConditionalUserConfiguredAuthenticator implements ConditionalAuthenticator {
     public static final ConditionalUserConfiguredAuthenticator SINGLETON = new ConditionalUserConfiguredAuthenticator();
 
+    /**
+     * 检查条件是否匹配
+     * @param context
+     * @return
+     */
     @Override
     public boolean matchCondition(AuthenticationFlowContext context) {
         return matchConditionInFlow(context, context.getExecution().getParentFlow());
@@ -23,6 +31,8 @@ public class ConditionalUserConfiguredAuthenticator implements ConditionalAuthen
     private boolean matchConditionInFlow(AuthenticationFlowContext context, String flowId) {
         List<AuthenticationExecutionModel> requiredExecutions = new LinkedList<>();
         List<AuthenticationExecutionModel> alternativeExecutions = new LinkedList<>();
+
+        // 查找父级下的所有execution  也就是返回的都是上级
         context.getRealm().getAuthenticationExecutionsStream(flowId)
                 //Check if the execution's authenticator is a conditional authenticator, as they must not be evaluated here.
                 .filter(e -> !isConditionalExecution(context, e))
@@ -42,10 +52,17 @@ public class ConditionalUserConfiguredAuthenticator implements ConditionalAuthen
         return true;
     }
 
+    /**
+     * 检测是否满足条件
+     * @param context
+     * @param e
+     * @return
+     */
     private boolean isConditionalExecution(AuthenticationFlowContext context, AuthenticationExecutionModel e) {
         AuthenticatorFactory factory = (AuthenticatorFactory) context.getSession().getKeycloakSessionFactory()
                 .getProviderFactory(Authenticator.class, e.getAuthenticator());
         if (factory != null) {
+            // 产生一个认证器 并且要求不是condition类型的
             Authenticator auth = factory.create(context.getSession());
             return (auth instanceof ConditionalAuthenticator);
         }

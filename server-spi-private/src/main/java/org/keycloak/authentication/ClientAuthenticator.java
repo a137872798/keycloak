@@ -30,6 +30,8 @@ import org.keycloak.provider.Provider;
  * @see org.keycloak.authentication.authenticators.client.JWTClientAuthenticator
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端认证器  维度和Authenticator 不同   Authenticator对应登录keycloak
+ * ClientAuthenticator 对应从client请求keycloak接口
  */
 public interface ClientAuthenticator extends Provider {
 

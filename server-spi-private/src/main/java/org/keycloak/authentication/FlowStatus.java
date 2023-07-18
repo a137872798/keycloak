@@ -57,7 +57,7 @@ public enum FlowStatus {
     /**
      * This is not an error condition.  Execution was attempted, but the authenticator is unable to process the request.  An example of this is if
      * a Kerberos authenticator did not see a negotiate header.  There was no error, but the execution was attempted.
-     *
+     * 代表已尝试 但是验证器无法处理请求  这种不算错误情况
      */
     ATTEMPTED,
 

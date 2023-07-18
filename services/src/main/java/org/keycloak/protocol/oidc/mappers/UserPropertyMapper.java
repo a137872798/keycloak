@@ -34,6 +34,7 @@ import java.util.List;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 用户属性映射
  */
 public class UserPropertyMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper, OIDCIDTokenMapper, UserInfoTokenMapper {
     private static final List<ProviderConfigProperty> configProperties = new ArrayList<ProviderConfigProperty>();
@@ -86,6 +87,16 @@ public class UserPropertyMapper extends AbstractOIDCProtocolMapper implements OI
         OIDCAttributeMapperHelper.mapClaim(token, mappingModel, propertyValue);
     }
 
+    /**
+     * 创建一个映射对象
+     * @param name
+     * @param userAttribute   在用户属性中的名字
+     * @param tokenClaimName  在token中的名字
+     * @param claimType       字段类型
+     * @param accessToken
+     * @param idToken
+     * @return
+     */
     public static ProtocolMapperModel createClaimMapper(String name,
                                                         String userAttribute,
                                                         String tokenClaimName, String claimType,

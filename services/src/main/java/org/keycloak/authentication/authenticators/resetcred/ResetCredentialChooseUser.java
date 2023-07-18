@@ -43,6 +43,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 切换用户的认证器
  */
 public class ResetCredentialChooseUser implements Authenticator, AuthenticatorFactory {
 
@@ -75,14 +76,20 @@ public class ResetCredentialChooseUser implements Authenticator, AuthenticatorFa
             return;
         }
 
+        // 产生一个需要切换用户的页面
         Response challenge = context.form().createPasswordReset();
         context.challenge(challenge);
     }
 
+    /**
+     * 处理表单数据
+     * @param context
+     */
     @Override
     public void action(AuthenticationFlowContext context) {
         EventBuilder event = context.getEvent();
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
+        // 使用新的username查询用户 并绑定到会话上
         String username = formData.getFirst("username");
         if (username == null || username.isEmpty()) {
             event.error(Errors.USERNAME_MISSING);

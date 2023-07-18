@@ -127,6 +127,7 @@ import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForM
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 该端点用于处理token相关的请求
  */
 public class TokenEndpoint {
 
@@ -149,6 +150,9 @@ public class TokenEndpoint {
 
     private final ClientConnection clientConnection;
 
+    /**
+     * 一些操作需要委托给tokenManager
+     */
     private final TokenManager tokenManager;
     private final RealmModel realm;
     private final EventBuilder event;

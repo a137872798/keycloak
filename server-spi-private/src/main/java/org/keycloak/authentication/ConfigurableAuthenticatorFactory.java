@@ -52,13 +52,14 @@ public interface ConfigurableAuthenticatorFactory extends ConfiguredProvider {
 
     /**
      * Is this authenticator configurable?
-     *
+     * 描述该认证器 是否是可配置的
      * @return
      */
     boolean isConfigurable();
 
     /**
      * What requirement settings are allowed.
+     * 每个认证器 有多个可选的requirement值
      *
      * @return
      */

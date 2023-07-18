@@ -31,6 +31,7 @@ import org.keycloak.provider.ProviderConfigProperty;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 通过OTP进行认证
  */
 public class BasicAuthOTPAuthenticatorFactory implements AuthenticatorFactory {
 

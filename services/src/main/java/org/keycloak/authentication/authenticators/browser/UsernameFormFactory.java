@@ -31,6 +31,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 只需要用户名认证
  */
 public class UsernameFormFactory implements AuthenticatorFactory {
 

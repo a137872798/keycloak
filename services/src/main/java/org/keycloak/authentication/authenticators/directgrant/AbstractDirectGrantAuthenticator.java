@@ -31,8 +31,17 @@ import javax.ws.rs.core.Response;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 直接认证器 就是将action屏蔽掉
  */
 public abstract class AbstractDirectGrantAuthenticator implements Authenticator, AuthenticatorFactory {
+
+    /**
+     * 错误时不会返回页面 而是返回json字符串
+     * @param status
+     * @param error
+     * @param errorDescription
+     * @return
+     */
     public Response errorResponse(int status, String error, String errorDescription) {
         OAuth2ErrorRepresentation errorRep = new OAuth2ErrorRepresentation(error, errorDescription);
         return Response.status(status).entity(errorRep).type(MediaType.APPLICATION_JSON_TYPE).build();

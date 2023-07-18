@@ -85,6 +85,7 @@ public class OAuth2Code {
     }
 
 
+    // 取出code的参数
     public Map<String, String> serializeCode() {
         Map<String, String> result = new HashMap<>();
 

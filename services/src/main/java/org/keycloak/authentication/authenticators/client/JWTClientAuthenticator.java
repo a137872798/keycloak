@@ -73,6 +73,10 @@ public class JWTClientAuthenticator extends AbstractClientAuthenticator {
     public static final String CERTIFICATE_ATTR = "jwt.credential.certificate";
 
 
+    /**
+     * 基于JWT进行认证   这些解析出来都没有用户信息
+     * @param context
+     */
     @Override
     public void authenticateClient(ClientAuthenticationFlowContext context) {
 

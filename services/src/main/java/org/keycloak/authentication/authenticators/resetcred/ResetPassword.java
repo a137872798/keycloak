@@ -34,6 +34,7 @@ public class ResetPassword extends AbstractSetRequiredActionAuthenticator {
         if (context.getExecution().isRequired() ||
                 (context.getExecution().isConditional() &&
                         configuredFor(context))) {
+            // 增加一个action 在之后的流程中会触发
             context.getAuthenticationSession().addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }
         context.success();
