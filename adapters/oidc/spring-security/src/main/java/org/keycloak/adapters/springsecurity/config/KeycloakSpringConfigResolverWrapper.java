@@ -26,6 +26,8 @@ import org.keycloak.adapters.spi.HttpFacade;
  * {@code KeycloakConfigResolver} instances but only those defined by applications or set as default by the configuration.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ *
+ * 包装器 代理模式
  */
 public class KeycloakSpringConfigResolverWrapper implements KeycloakConfigResolver {
 

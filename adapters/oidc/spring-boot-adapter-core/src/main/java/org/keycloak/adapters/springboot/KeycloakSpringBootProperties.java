@@ -26,6 +26,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * keycloak的可配置信息
+ */
 @ConfigurationProperties(prefix = "keycloak", ignoreUnknownFields = false)
 public class KeycloakSpringBootProperties extends AdapterConfig {
 

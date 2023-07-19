@@ -48,7 +48,10 @@ import java.util.Set;
  * Keycloak authentication base integration for Spring Boot - base to be extended for particular boot versions.
  */
 public class KeycloakBaseSpringBootConfiguration {
-	
+
+    /**
+     * 用于读取keycloak配置
+     */
     protected KeycloakSpringBootProperties keycloakProperties;
 
     @Autowired

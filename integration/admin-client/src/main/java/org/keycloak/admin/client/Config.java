@@ -22,6 +22,7 @@ import static org.keycloak.OAuth2Constants.PASSWORD;
 
 /**
  * @author rodrigo.sasaki@icarros.com.br
+ * keycloak的一些配置存储在该对象中
  */
 public class Config {
 

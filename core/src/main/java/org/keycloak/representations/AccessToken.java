@@ -133,6 +133,9 @@ public class AccessToken extends IDToken {
     @JsonProperty("cnf")
     protected CertConf certConf;
 
+    /**
+     * 可以理解为授权范围
+     */
     @JsonProperty("scope")
     protected String scope;
 

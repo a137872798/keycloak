@@ -39,15 +39,27 @@ import java.util.Map;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 认证客户端
  */
 public class AuthorizeClientUtil {
 
     private static final Logger logger = Logger.getLogger(AuthorizeClientUtil.class);
 
+    /**
+     * 认证客户端
+     * @param session
+     * @param event
+     * @param cors
+     * @return
+     */
     public static ClientAuthResult authorizeClient(KeycloakSession session, EventBuilder event, Cors cors) {
+        // 生成认证处理器
         AuthenticationProcessor processor = getAuthenticationProcessor(session, event);
 
+        // 认证client
         Response response = processor.authenticateClient();
+
+        // 需要用户补充信息
         if (response != null) {
             if (cors != null) {
                 cors.allowAllOrigins();
@@ -77,6 +89,7 @@ public class AuthorizeClientUtil {
             protocol = OIDCLoginProtocol.LOGIN_PROTOCOL;
         }
 
+        // 非oidc协议 抛出异常
         if (!protocol.equals(OIDCLoginProtocol.LOGIN_PROTOCOL)) {
             event.error(Errors.INVALID_CLIENT);
             throwErrorResponseException(Errors.INVALID_CLIENT, "Wrong client protocol.", Response.Status.BAD_REQUEST, cors);

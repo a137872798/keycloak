@@ -47,9 +47,10 @@ public class JsonWebToken implements Serializable, Token {
     // 过期时间
     protected Long exp;
     protected Long nbf;
+    // 代表token的产生时间  issued at
     protected Long iat;
 
-    @JsonProperty("iss")
+    @JsonProperty("iss")  // baseUrl + realm
     protected String issuer;
     @JsonProperty("aud")
     @JsonSerialize(using = StringOrArraySerializer.class)
@@ -60,7 +61,7 @@ public class JsonWebToken implements Serializable, Token {
     @JsonProperty("typ")  // actionid
     protected String type;
     @JsonProperty("azp")
-    public String issuedFor;
+    public String issuedFor;  // clientid  该token是针对哪个client的
     protected Map<String, Object> otherClaims = new HashMap<>();
 
     public String getId() {
