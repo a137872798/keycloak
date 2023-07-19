@@ -162,7 +162,7 @@ public abstract class AuthorizationEndpointBase {
                 // 此时认为认证已经通过 为会话设置client_scope
                 AuthenticationManager.setClientScopesInSession(authSession);
 
-                // 发现还有认证action未执行
+                // 代表认证结束后 还需要进行一些工作  而被动登录是不支持的
                 if (processor.nextRequiredAction() != null) {
                     Response response = protocol.sendError(authSession, Error.PASSIVE_INTERACTION_REQUIRED);
                     return response;

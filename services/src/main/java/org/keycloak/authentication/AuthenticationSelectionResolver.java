@@ -34,6 +34,7 @@ import org.keycloak.models.RealmModel;
  * Resolves set of AuthenticationSelectionOptions
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 可以产生一组备选认证器
  */
 class AuthenticationSelectionResolver {
 
@@ -65,9 +66,11 @@ class AuthenticationSelectionResolver {
 
         if (processor.getAuthenticationSession() != null) {
             Map<String, AuthenticationExecutionModel> typeAuthExecMap = new HashMap<>();
+
+            // 代表这些认证器不需要 凭证
             List<AuthenticationExecutionModel> nonCredentialExecutions = new ArrayList<>();
 
-            // 获取最近的可选
+            // 简单理解就是得到了一个flowId
             String topFlowId = getFlowIdOfTheHighestUsefulFlow(processor, model);
 
             if (topFlowId == null) {
@@ -129,12 +132,13 @@ class AuthenticationSelectionResolver {
                 flowId = execution.getParentFlow();
                 // 必选 或者有条件
             } else if (execution.isRequired()  || execution.isConditional()) {
+                // 本execution是同一个flow 可以继续展开
                 if (execution.isAuthenticatorFlow()) {
                     flowId = execution.getFlowId();
                 }
 
                 // Find the corresponding execution. If it is 1st REQUIRED execution in the particular subflow, we need to consider parent flow as well
-                // 获取同一flow下的其他execution
+                // 返回了上一层的执行器
                 List<AuthenticationExecutionModel> executions = realm.getAuthenticationExecutionsStream(execution.getParentFlow())
                         .collect(Collectors.toList());
 
@@ -199,6 +203,7 @@ class AuthenticationSelectionResolver {
         List<AuthenticationExecutionModel> alternativeList = new ArrayList<>();
 
         // 将flow下的excution根据类型分到不同list
+        // 如果有必选的 那么就会清空alternativeList
         flow.fillListsOfExecutions(processor.getRealm().getAuthenticationExecutionsStream(flowId), requiredList, alternativeList);
 
         // If requiredList is not empty, we're going to collect just very first execution from the flow
@@ -217,7 +222,7 @@ class AuthenticationSelectionResolver {
             }).findFirst().orElse(null);
 
             // Not requiredExecution found. Returning false as we did not add any authenticator
-            // 未找到必须执行的
+            // 代表只剩下不满足条件的
             if (requiredExecution == null) return false;
 
             // Don't add already processed executions  已经执行过也不行
@@ -225,6 +230,7 @@ class AuthenticationSelectionResolver {
                 return false;
             }
 
+            // 获取认证器对应的表单认证器
             FormAuthenticatorFactory factory = (FormAuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(FormAuthenticator.class, requiredExecution.getAuthenticator());
 
             // Recursively add credentials from required execution
@@ -239,6 +245,7 @@ class AuthenticationSelectionResolver {
             // We're going through all the alternatives
             boolean anyAdded = false;
 
+            // 必选和多个可选是并列的
             for (AuthenticationExecutionModel execution : alternativeList) {
                 // Don't add already processed executions
                 if (flow.isProcessed(execution)) {

@@ -45,6 +45,9 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
     AuthenticationProcessor processor;
     AuthenticationFlowModel flow;
 
+    /**
+     * 代表处理结果
+     */
     private boolean success;
 
     public ClientAuthenticationFlow(AuthenticationProcessor processor, AuthenticationFlowModel flow) {
@@ -67,9 +70,12 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
      */
     @Override
     public Response processFlow() {
+        // 找到接下来要执行的execution 如果发现了一个必选项  则必须先执行
         List<AuthenticationExecutionModel> executions = findExecutionsToRun();
 
         for (AuthenticationExecutionModel model : executions) {
+
+            // 转换成client认证器
             ClientAuthenticatorFactory factory = (ClientAuthenticatorFactory) processor.getSession().getKeycloakSessionFactory().getProviderFactory(ClientAuthenticator.class, model.getAuthenticator());
             if (factory == null) {
                 throw new AuthenticationFlowException("Could not find ClientAuthenticatorFactory for: " + model.getAuthenticator(), AuthenticationFlowError.INTERNAL_ERROR);
@@ -78,8 +84,11 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
             logger.debugv("client authenticator: {0}", factory.getId());
 
             AuthenticationProcessor.Result context = processor.createClientAuthenticatorContext(model, authenticator, executions);
+
+            // 进行认证后 会将结果设置到context中
             authenticator.authenticateClient(context);
 
+            // 认证成功时 会找到client 然后设置到processor上
             ClientModel client = processor.getClient();
             if (client != null) {
                 String expectedClientAuthType = client.getClientAuthenticatorType();
@@ -91,7 +100,10 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
                 }
 
                 // Check if client authentication matches
+                // 判断与client自身期望的认证方式是否一致  如果与期望方式不符 验证是没有意义的
                 if (factory.getId().equals(expectedClientAuthType)) {
+
+                    // 代表出现了结果期望用户优先处理 无法继续接下来的流程了
                     Response response = processResult(context);
                     if (response != null) return response;
 
@@ -108,6 +120,8 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
             }
         }
 
+        // 如果在本轮中没有被检测出来 也是报错
+
         // Check if any alternative challenge was identified
         if (alternativeChallenge != null) {
             processor.getEvent().error(Errors.INVALID_CLIENT);
@@ -116,13 +130,21 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
         throw new AuthenticationFlowException("Invalid client credentials", AuthenticationFlowError.INVALID_CREDENTIALS);
     }
 
+    /**
+     * 找到接下来要执行的所有execution
+     * @return
+     */
     protected List<AuthenticationExecutionModel> findExecutionsToRun() {
         List<AuthenticationExecutionModel> executionsToRun = new LinkedList<>();
         List<AuthenticationExecutionModel> finalExecutionsToRun = executionsToRun;
+
+        // 同级的flow下 如果存在必须执行项 此时先完成
         Optional<AuthenticationExecutionModel> first = processor.getRealm().getAuthenticationExecutionsStream(flow.getId())
                 .filter(e -> {
+                    // 一旦发现下个必须要处理的execution 就可以直接返回了
                     if (e.isRequired()) {
                         return true;
+                        // 这些是作为备选方案 在到达下个必须完成的execution之前 不会有影响
                     } else if (e.isAlternative()){
                         finalExecutionsToRun.add(e);
                         return false;
@@ -130,9 +152,11 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
                     return false;
                 }).findFirst();
 
+        // 一旦发现了必选项 就返回
         if (first.isPresent())
             executionsToRun = Arrays.asList(first.get());
         else
+            // 没有必选项  就返回所有可选项
             executionsToRun.addAll(finalExecutionsToRun);
 
         if (logger.isTraceEnabled()) {
@@ -146,24 +170,37 @@ public class ClientAuthenticationFlow implements AuthenticationFlow {
         return executionsToRun;
     }
 
+    /**
+     * 处理result的结果
+     * @param result
+     * @return
+     */
     protected Response processResult(AuthenticationProcessor.Result result) {
         AuthenticationExecutionModel execution = result.getExecution();
+
+        // 描述此时处理结果状态
         FlowStatus status = result.getStatus();
 
         logger.debugv("client authenticator {0}: {1}", status.toString(), execution.getAuthenticator());
 
+        // 处理成功 不需要提前返回结果
         if (status == FlowStatus.SUCCESS) {
             return null;
         }
 
+        // 需要返回一些信息给用户 比如错误信息  或者跳转到其他页面 以便用户填充信息
         if (status == FlowStatus.FAILED) {
             if (result.getChallenge() != null) {
                 return sendChallenge(result, execution);
             } else {
                 throw new AuthenticationFlowException(result.getError());
             }
+
+            // 必选项 要求必须触发challenge
         } else if (status == FlowStatus.FORCE_CHALLENGE) {
             return sendChallenge(result, execution);
+
+            // CHALLENGE 对应的是可选项
         } else if (status == FlowStatus.CHALLENGE) {
 
             // Make sure the first priority alternative challenge is used
