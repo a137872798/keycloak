@@ -48,6 +48,7 @@ public class UserSessionCrossDCManager {
 
 
     // get userSession if it has "authenticatedClientSession" of specified client attached to it. Otherwise download it from remoteCache
+    // 通过userSessionId 和clientId 检索会话
     // TODO Probably remove this method once AuthenticatedClientSession.getAction is removed and information is moved to OAuth code JWT instead
     public UserSessionModel getUserSessionWithClient(RealmModel realm, String id, String clientUUID) {
 

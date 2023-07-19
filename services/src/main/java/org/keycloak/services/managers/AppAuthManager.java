@@ -43,6 +43,7 @@ public class AppAuthManager extends AuthenticationManager {
         AuthResult authResult = super.authenticateIdentityCookie(session, realm);
         if (authResult == null) return null;
         // refresh the cookies!
+        // 重新设置了cookie的值
         createLoginCookie(session, realm, authResult.getUser(), authResult.getSession(), session.getContext().getUri(), session.getContext().getConnection());
         if (authResult.getSession().isRememberMe()) createRememberMeCookie(realm, authResult.getUser().getUsername(), session.getContext().getUri(), session.getContext().getConnection());
         return authResult;
@@ -52,6 +53,7 @@ public class AppAuthManager extends AuthenticationManager {
      * Extracts the token string from the given Authorization Bearer header.
      *
      * @return the token string or {@literal null}
+     * 从请求头上解析出token值
      */
     private static String extractTokenStringFromAuthHeader(String authHeader) {
 
@@ -59,6 +61,7 @@ public class AppAuthManager extends AuthenticationManager {
             return null;
         }
 
+        // 代表任意数量的空格
         String[] split = WHITESPACES.split(authHeader.trim());
         if (split.length != 2){
             return null;
@@ -82,6 +85,8 @@ public class AppAuthManager extends AuthenticationManager {
      *
      * @param headers
      * @return the token string or {@literal null} if the Authorization header is not of type Bearer, or the token string is missing.
+     * 从请求头中获取token
+     * 注意token对应的请求头key为Authorization
      */
     public static String extractAuthorizationHeaderTokenOrReturnNull(HttpHeaders headers) {
         String authHeader = headers.getRequestHeaders().getFirst(HttpHeaders.AUTHORIZATION);

@@ -37,6 +37,8 @@ public class BearerAuthFilter implements ClientRequestFilter, ClientResponseFilt
     private final String tokenString;
     private final TokenManager tokenManager;
 
+    // 要么是使用固定的token  要么是使用
+
     public BearerAuthFilter(String tokenString) {
         this.tokenString = tokenString;
         this.tokenManager = null;

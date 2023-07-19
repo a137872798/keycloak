@@ -77,6 +77,8 @@ public class OAuth2CodeParser {
      * @param realm
      * @param event
      * @return
+     *
+     * 解析code
      */
     public static ParseResult parseCode(KeycloakSession session, String code, RealmModel realm, EventBuilder event) {
         ParseResult result = new ParseResult(code);
@@ -87,6 +89,7 @@ public class OAuth2CodeParser {
             return result.illegalCode();
         }
 
+        // 与上面的方法返回结果对应
         String userSessionId = parsed[1];
         String clientUUID = parsed[2];
 
@@ -103,7 +106,9 @@ public class OAuth2CodeParser {
         }
 
         // Retrieve UserSession
+        // 通过user会话id 和clientid 查找会话
         UserSessionModel userSession = new UserSessionCrossDCManager(session).getUserSessionWithClient(realm, userSessionId, clientUUID);
+
         if (userSession == null) {
             // Needed to track if code is invalid or was already used.
             userSession = session.sessions().getUserSession(realm, userSessionId);
@@ -112,9 +117,11 @@ public class OAuth2CodeParser {
             }
         }
 
+        // 设置client会话
         result.clientSession = userSession.getAuthenticatedClientSessionByClient(clientUUID);
 
         CodeToTokenStoreProvider codeStore = session.getProvider(CodeToTokenStoreProvider.class);
+        // 把一些之前有关会话的信息取出来
         Map<String, String> codeData = codeStore.remove(codeUUID);
 
         // Either code not available or was already used

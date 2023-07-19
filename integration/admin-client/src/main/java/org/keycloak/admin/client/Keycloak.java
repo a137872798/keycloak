@@ -39,6 +39,7 @@ import static org.keycloak.OAuth2Constants.PASSWORD;
  *
  * @author rodrigo.sasaki@icarros.com.br
  * @see KeycloakBuilder
+ * 用户应用程序 想要访问keycloak接口时 一般需要借助该对象
  */
 public class Keycloak implements AutoCloseable {
     private final Config config;
@@ -50,15 +51,20 @@ public class Keycloak implements AutoCloseable {
 
     Keycloak(String serverUrl, String realm, String username, String password, String clientId, String clientSecret, String grantType, Client resteasyClient, String authtoken) {
         config = new Config(serverUrl, realm, username, password, clientId, clientSecret, grantType);
+        // 自动生成客户端
         client = resteasyClient != null ? resteasyClient : newRestEasyClient(null, null, false);
         authToken = authtoken;
+
+        // 没有从外部设置token的情况 需要借助tokenManager来管理token
         tokenManager = authtoken == null ? new TokenManager(config, client) : null;
 
         target = (ResteasyWebTarget) client.target(config.getServerUrl());
+        // 注册的过滤器
         target.register(newAuthFilter());
     }
 
     private BearerAuthFilter newAuthFilter() {
+        // 请求在发出去之前会被过滤器拦截 并在请求头上添加token  这样才可以正常访问keycloak的接口
         return authToken != null ? new BearerAuthFilter(authToken) : new BearerAuthFilter(tokenManager);
     }
 

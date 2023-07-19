@@ -65,9 +65,15 @@ public class IDToken extends JsonWebToken {
 
     protected Long auth_time;
 
+    /**
+     * session id
+     */
     @JsonProperty(SESSION_STATE)
     protected String sessionState;
 
+    /**
+     * 存储编码后的accessToken值
+     */
     @JsonProperty(AT_HASH)
     protected String accessTokenHash;
 
@@ -134,6 +140,9 @@ public class IDToken extends JsonWebToken {
     @JsonProperty(CLAIMS_LOCALES)
     protected String claimsLocales;
 
+    /**
+     * 是否为单点登录
+     */
     @JsonProperty(ACR)
     protected String acr;
 

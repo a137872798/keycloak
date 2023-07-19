@@ -48,15 +48,23 @@ public class TokenManager {
     private final TokenService tokenService;
     private final String accessTokenGrantType;
 
+    /**
+     *
+     * @param config
+     * @param client  与远端通信
+     */
     public TokenManager(Config config, Client client) {
         this.config = config;
+        // 这个配置的一般是keycloak的地址
         ResteasyWebTarget target = (ResteasyWebTarget) client.target(config.getServerUrl());
+
         // 在serverUrl下注册过滤器
         if (!config.isPublicClient()) {
+            // 在请求头携带 Authorization: Basic {Token}
             target.register(new BasicAuthFilter(config.getClientId(), config.getClientSecret()));
         }
 
-        // 产生一个代理对象
+        // 产生一个代理对象  调用该对象的api 就会转变成发起http请求
         this.tokenService = target.proxy(TokenService.class);
         this.accessTokenGrantType = config.getGrantType();
 
@@ -78,8 +86,13 @@ public class TokenManager {
         return currentToken;
     }
 
+    /**
+     * 请求远端服务器 获取token
+     * @return
+     */
     public AccessTokenResponse grantToken() {
         Form form = new Form().param(GRANT_TYPE, accessTokenGrantType);
+        // 这个简单理解就是直连模式
         if (PASSWORD.equals(accessTokenGrantType)) {
             form.param("username", config.getUsername())
                 .param("password", config.getPassword());

@@ -147,6 +147,10 @@ public class ClientManager {
         return validatedNodes;
     }
 
+    /**
+     * 为client创建服务账号
+     * @param client
+     */
     public void enableServiceAccount(ClientModel client) {
         client.setServiceAccountsEnabled(true);
 

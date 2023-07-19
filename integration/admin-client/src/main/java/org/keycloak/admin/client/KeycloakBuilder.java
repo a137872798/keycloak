@@ -52,6 +52,7 @@ import static org.keycloak.OAuth2Constants.PASSWORD;
  *
  * @author Scott Rossillo
  * @see ResteasyClientBuilder
+ * 通过该对象来构建 keycloak对象
  */
 public class KeycloakBuilder {
     private String serverUrl;
@@ -62,6 +63,7 @@ public class KeycloakBuilder {
     private String clientSecret;
     private String grantType;
     private ResteasyClient resteasyClient;
+    // token(允许手动设置)
     private String authorization;
 
     public KeycloakBuilder serverUrl(String serverUrl) {
@@ -126,6 +128,7 @@ public class KeycloakBuilder {
             grantType = PASSWORD;
         }
 
+        // 目前只支持这2种方式
         if (PASSWORD.equals(grantType)) {
             if (username == null) {
                 throw new IllegalStateException("username required");

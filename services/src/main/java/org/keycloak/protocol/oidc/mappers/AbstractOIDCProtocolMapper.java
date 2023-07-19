@@ -74,9 +74,19 @@ public abstract class AbstractOIDCProtocolMapper implements ProtocolMapper {
         return token;
     }
 
+    /**
+     * token在返回前会通过该方法进行转换
+     * @param token
+     * @param mappingModel
+     * @param session
+     * @param userSession
+     * @param clientSessionCtx
+     * @return
+     */
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                             UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
 
+        // 该对象如果不支持转换access token 跳过
         if (!OIDCAttributeMapperHelper.includeInAccessToken(mappingModel)){
             return token;
         }
@@ -96,6 +106,15 @@ public abstract class AbstractOIDCProtocolMapper implements ProtocolMapper {
         return token;
     }
 
+    /**
+     * 在返回结果前 还可以做一些数据填充
+     * @param accessTokenResponse
+     * @param mappingModel
+     * @param session
+     * @param userSession
+     * @param clientSessionCtx
+     * @return
+     */
     public AccessTokenResponse transformAccessTokenResponse(AccessTokenResponse accessTokenResponse, ProtocolMapperModel mappingModel,
                                                             KeycloakSession session, UserSessionModel userSession,
                                                             ClientSessionContext clientSessionCtx) {

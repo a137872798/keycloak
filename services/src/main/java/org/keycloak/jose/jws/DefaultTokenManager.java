@@ -61,6 +61,11 @@ public class DefaultTokenManager implements TokenManager {
         this.session = session;
     }
 
+    /**
+     * 对token进行编码
+     * @param token the token to encode
+     * @return
+     */
     @Override
     public String encode(Token token) {
         String signatureAlgorithm = signatureAlgorithm(token.getCategory());

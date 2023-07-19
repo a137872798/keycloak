@@ -77,12 +77,20 @@ public class UserPropertyMapper extends AbstractOIDCProtocolMapper implements OI
         return "Map a built in user property (email, firstName, lastName) to a token claim.";
     }
 
+    /**
+     * 将信息追加到token中
+     * @param token
+     * @param mappingModel
+     * @param userSession
+     *
+     */
     protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession) {
         UserModel user = userSession.getUser();
         String propertyName = mappingModel.getConfig().get(ProtocolMapperUtils.USER_ATTRIBUTE);
 
         if (propertyName == null || propertyName.trim().isEmpty()) return;
 
+        // 反射拿到属性值
         String propertyValue = ProtocolMapperUtils.getUserModelValue(user, propertyName);
         OIDCAttributeMapperHelper.mapClaim(token, mappingModel, propertyValue);
     }

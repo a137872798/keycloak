@@ -74,6 +74,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * 该端点负责提供用户信息
  * @author pedroigor
  */
 public class UserInfoEndpoint {
@@ -138,10 +139,17 @@ public class UserInfoEndpoint {
         return new CorsErrorResponseException(cors, oauthError, errorMessage, Response.Status.UNAUTHORIZED);
     }
 
+    /**
+     * 通过token 获取用户数据
+     * @param tokenString
+     * @return
+     */
     private Response issueUserInfo(String tokenString) {
+        // 支持跨域请求
         cors = Cors.add(request).auth().allowedMethods(request.getHttpMethod()).auth().exposedHeaders(Cors.ACCESS_CONTROL_ALLOW_METHODS);
 
         try {
+            // TODO
             session.clientPolicy().triggerOnEvent(new UserInfoRequestContext(tokenString));
         } catch (ClientPolicyException cpe) {
             throw new CorsErrorResponseException(cors.allowAllOrigins(), cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
@@ -159,6 +167,7 @@ public class UserInfoEndpoint {
         AccessToken token;
         ClientModel clientModel = null;
         try {
+            // 校验token的一些基础信息
             TokenVerifier<AccessToken> verifier = TokenVerifier.create(tokenString, AccessToken.class).withDefaultChecks()
                     .realmUrl(Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName()));
 
@@ -200,6 +209,7 @@ public class UserInfoEndpoint {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "Client disabled", Response.Status.BAD_REQUEST);
         }
 
+        // 通过token的信息找回会话
         UserSessionModel userSession = findValidSession(token, event, clientModel);
 
         UserModel userModel = userSession.getUser();
@@ -213,6 +223,7 @@ public class UserInfoEndpoint {
 
         // KEYCLOAK-6771 Certificate Bound Token
         // https://tools.ietf.org/html/draft-ietf-oauth-mtls-08#section-3
+        // TODO
         if (OIDCAdvancedConfigWrapper.fromClientModel(clientModel).isUseMtlsHokToken()) {
             if (!MtlsHoKTokenUtil.verifyTokenBindingWithClientCertificate(token, request, session)) {
                 event.error(Errors.NOT_ALLOWED);
@@ -227,8 +238,11 @@ public class UserInfoEndpoint {
         ClientSessionContext clientSessionCtx = DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession, session);
 
         AccessToken userInfo = new AccessToken();
-        
+
+        // 将协议映射对象作用在空的token上
         tokenManager.transformUserInfoAccessToken(session, userInfo, userSession, clientSessionCtx);
+
+        // 下面是填充各种信息
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("sub", userModel.getId());
@@ -255,6 +269,7 @@ public class UserInfoEndpoint {
         Response.ResponseBuilder responseBuilder;
         OIDCAdvancedConfigWrapper cfg = OIDCAdvancedConfigWrapper.fromClientModel(clientModel);
 
+        // 用户信息是否需要加密
         if (cfg.isUserInfoSignatureRequired()) {
             String issuerUrl = Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName());
             String audience = clientModel.getClientId();
@@ -283,6 +298,12 @@ public class UserInfoEndpoint {
         return cors.builder(responseBuilder).build();
     }
 
+    /**
+     * 创建临时会话  这种就是bearerOnly吧 也就是只要在请求头中携带jwt即可 会在每次访问时产生临时会话
+     * @param token
+     * @param client
+     * @return
+     */
     private UserSessionModel createTransientSessionForClient(AccessToken token, ClientModel client) {
         // create a transient session
         UserModel user = TokenManager.lookupUserFromStatelessToken(session, realm, token);
@@ -302,6 +323,13 @@ public class UserInfoEndpoint {
         return userSession;
     }
 
+    /**
+     * 根据token信息找到会话
+     * @param token
+     * @param event
+     * @param client
+     * @return
+     */
     private UserSessionModel findValidSession(AccessToken token, EventBuilder event, ClientModel client) {
         if (token.getSessionState() == null) {
             return createTransientSessionForClient(token, client);
@@ -309,11 +337,14 @@ public class UserInfoEndpoint {
 
         UserSessionModel userSession = new UserSessionCrossDCManager(session).getUserSessionWithClient(realm, token.getSessionState(), false, client.getId());
         UserSessionModel offlineUserSession = null;
+
+        // 会话未过期
         if (AuthenticationManager.isSessionValid(realm, userSession)) {
             checkTokenIssuedAt(token, userSession, event);
             event.session(userSession);
             return userSession;
         } else {
+            // TODO
             offlineUserSession = new UserSessionCrossDCManager(session).getUserSessionWithClient(realm, token.getSessionState(), true, client.getId());
             if (AuthenticationManager.isOfflineSessionValid(realm, offlineUserSession)) {
                 checkTokenIssuedAt(token, offlineUserSession, event);

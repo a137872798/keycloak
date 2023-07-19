@@ -22,6 +22,7 @@ import java.util.Set;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 表明用户给与某个client的授权范围
  */
 public class UserConsentModel {
 

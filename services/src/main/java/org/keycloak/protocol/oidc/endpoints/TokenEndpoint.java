@@ -149,7 +149,16 @@ public class TokenEndpoint {
     private Map<String, String> clientAuthAttributes;
 
     private enum Action {
-        AUTHORIZATION_CODE, REFRESH_TOKEN, PASSWORD, CLIENT_CREDENTIALS, TOKEN_EXCHANGE, PERMISSION
+        // 通过授权码兑换token
+        AUTHORIZATION_CODE,
+        // 刷新token
+        REFRESH_TOKEN,
+        // 通过密码获取token
+        PASSWORD,
+        // 通过client凭证
+        CLIENT_CREDENTIALS,
+        // 更换token
+        TOKEN_EXCHANGE, PERMISSION
     }
 
     // https://tools.ietf.org/html/rfc7636#section-4.2
@@ -189,6 +198,10 @@ public class TokenEndpoint {
         this.event = event;
     }
 
+    /**
+     * 授予token
+     * @return
+     */
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @POST
     public Response processGrantRequest() {
@@ -196,6 +209,7 @@ public class TokenEndpoint {
 
         MultivaluedMap<String, String> formParameters = request.getDecodedFormParameters();
 
+        // 实际上如果没有参数 会在后面的流程报错
         if (formParameters == null) {
             formParameters = new MultivaluedHashMap<>();
         }
@@ -210,23 +224,30 @@ public class TokenEndpoint {
         outputHeaders.putSingle("Cache-Control", "no-store");
         outputHeaders.putSingle("Pragma", "no-cache");
 
+        // 对参数做一些校验
         checkSsl();
         checkRealm();
+        // 根据grant_type 设置action
         checkGrantType();
 
+        // TODO 目前看到的都是 非permission
         if (!action.equals(Action.PERMISSION)) {
+            // 首先要认证客户端
             checkClient();
             checkParameterDuplicated();
         }
 
+        // 根据不同的action 走不同逻辑
         switch (action) {
             case AUTHORIZATION_CODE:
                 return codeToToken();
             case REFRESH_TOKEN:
                 return refreshTokenGrant();
             case PASSWORD:
+                // TODO 通过密码直接访问  先忽略
                 return resourceOwnerPasswordCredentialsGrant();
             case CLIENT_CREDENTIALS:
+                // 需要 client_secret 进行访问
                 return clientCredentialsGrant();
             case TOKEN_EXCHANGE:
                 return tokenExchange();
@@ -267,12 +288,16 @@ public class TokenEndpoint {
     }
 
     private void checkClient() {
+        // 在调用auth时 需要认证用户 而在兑换token时 需要认证client
         AuthorizeClientUtil.ClientAuthResult clientAuth = AuthorizeClientUtil.authorizeClient(session, event, cors);
+
+        // 设置客户端和attr
         client = clientAuth.getClient();
         clientAuthAttributes = clientAuth.getClientAuthAttributes();
 
         cors.allowedOrigins(session, client);
 
+        // 这种模式不允许操作token
         if (client.isBearerOnly()) {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_CLIENT, "Bearer-only not allowed", Response.Status.BAD_REQUEST);
         }
@@ -280,23 +305,31 @@ public class TokenEndpoint {
 
     }
 
+    /**
+     * 校验 grantType
+     */
     private void checkGrantType() {
         if (grantType == null) {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "Missing form parameter: " + OIDCLoginProtocol.GRANT_TYPE_PARAM, Response.Status.BAD_REQUEST);
         }
 
+        // 代表之前采用的是授权码模式  就是用code去兑换token
         if (grantType.equals(OAuth2Constants.AUTHORIZATION_CODE)) {
             event.event(EventType.CODE_TO_TOKEN);
             action = Action.AUTHORIZATION_CODE;
+            // 本次发起的是刷新token的请求
         } else if (grantType.equals(OAuth2Constants.REFRESH_TOKEN)) {
             event.event(EventType.REFRESH_TOKEN);
             action = Action.REFRESH_TOKEN;
+            // 通过密码获取token
         } else if (grantType.equals(OAuth2Constants.PASSWORD)) {
             event.event(EventType.LOGIN);
             action = Action.PASSWORD;
+            // 通过client凭证
         } else if (grantType.equals(OAuth2Constants.CLIENT_CREDENTIALS)) {
             event.event(EventType.CLIENT_LOGIN);
             action = Action.CLIENT_CREDENTIALS;
+            // 更换token
         } else if (grantType.equals(OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE)) {
             event.event(EventType.TOKEN_EXCHANGE);
             action = Action.TOKEN_EXCHANGE;
@@ -320,6 +353,10 @@ public class TokenEndpoint {
         }
     }
 
+    /**
+     * 将授权码兑换成token
+     * @return
+     */
     public Response codeToToken() {
         String code = formParams.getFirst(OAuth2Constants.CODE);
         if (code == null) {
@@ -327,7 +364,10 @@ public class TokenEndpoint {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "Missing parameter: " + OAuth2Constants.CODE, Response.Status.BAD_REQUEST);
         }
 
+        // 解析code 在之前完成auth操作后 会生成授权码 同时在本地存储一些信息 现在是重新取出来
         OAuth2CodeParser.ParseResult parseResult = OAuth2CodeParser.parseCode(session, code, realm, event);
+
+        // 授权码有问题
         if (parseResult.isIllegalCode()) {
             AuthenticatedClientSessionModel clientSession = parseResult.getClientSession();
 
@@ -343,6 +383,7 @@ public class TokenEndpoint {
 
         AuthenticatedClientSessionModel clientSession = parseResult.getClientSession();
 
+        // 授权码有一个有效期 过期后必须重新走auth流程  不过如果之前已经完成了认证 那么cookie中的值还是有效的 就可以跳过第二次的认证了
         if (parseResult.isExpiredCode()) {
             event.error(Errors.EXPIRED_CODE);
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, "Code is expired", Response.Status.BAD_REQUEST);
@@ -372,17 +413,23 @@ public class TokenEndpoint {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, "User disabled", Response.Status.BAD_REQUEST);
         }
 
+        // 上面都是一些校验工作
+
         OAuth2Code codeData = parseResult.getCodeData();
+        // 这是之前auth时 使用的重定向地址
         String redirectUri = codeData.getRedirectUriParam();
+        // 本次兑换token后 使用的重定向地址
         String redirectUriParam = formParams.getFirst(OAuth2Constants.REDIRECT_URI);
 
         // KEYCLOAK-4478 Backwards compatibility with the adapters earlier than KC 3.4.2
+        // 之前没有state 这次的state也会被清理
         if (redirectUriParam != null && redirectUriParam.contains("session_state=") && !redirectUri.contains("session_state=")) {
             redirectUriParam = KeycloakUriBuilder.fromUri(redirectUriParam)
                     .replaceQueryParam(OAuth2Constants.SESSION_STATE, null)
                     .build().toString();
         }
 
+        // 要求2次的重定向地址是一样的
         if (redirectUri != null && !redirectUri.equals(redirectUriParam)) {
             event.error(Errors.INVALID_CODE);
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, "Incorrect redirect_uri", Response.Status.BAD_REQUEST);
@@ -404,6 +451,7 @@ public class TokenEndpoint {
         }
 
         // https://tools.ietf.org/html/rfc7636#section-4.6
+        // 这个是 PKCE 相关的 在auth时多传2个参数(challenge,challenge_method)
         String codeVerifier = formParams.getFirst(OAuth2Constants.CODE_VERIFIER);
         String codeChallenge = codeData.getCodeChallenge();
         String codeChallengeMethod = codeData.getCodeChallengeMethod();
@@ -416,45 +464,58 @@ public class TokenEndpoint {
             authUsername = "unknown";
         }
 
+        // 需要校验PKCE相关的
         if (codeChallengeMethod != null && !codeChallengeMethod.isEmpty()) {
             checkParamsForPkceEnforcedClient(codeVerifier, codeChallenge, codeChallengeMethod, authUserId, authUsername);
         } else {
             // PKCE Activation is OFF, execute the codes implemented in KEYCLOAK-2604
+            // 没有采用PKCE模式
             checkParamsForPkceNotEnforcedClient(codeVerifier, codeChallenge, codeChallengeMethod, authUserId, authUsername);
         }
 
         try {
+            // TODO
             session.clientPolicy().triggerOnEvent(new TokenRequestContext(formParams, parseResult));
         } catch (ClientPolicyException cpe) {
             event.error(cpe.getError());
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_GRANT, cpe.getErrorDetail(), Response.Status.BAD_REQUEST);
         }
 
+        // 更新client会话
         updateClientSession(clientSession);
+        // 更新用户会话
         updateUserSessionFromClientAuth(userSession);
 
         // Compute client scopes again from scope parameter. Check if user still has them granted
         // (but in code-to-token request, it could just theoretically happen that they are not available)
         String scopeParam = codeData.getScope();
+
+        // 将client的默认scope与参数中的scope结合起来
         Supplier<Stream<ClientScopeModel>> clientScopesSupplier = () -> TokenManager.getRequestedClientScopes(scopeParam, client);
+
+        // 确保这些scope 用户都已经授权给了client
         if (!TokenManager.verifyConsentStillAvailable(session, user, client, clientScopesSupplier.get())) {
             event.error(Errors.NOT_ALLOWED);
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_SCOPE, "Client no longer has requested consent from user", Response.Status.BAD_REQUEST);
         }
 
+        // 将session 和client的授权范围包装成一个上下文对象
         ClientSessionContext clientSessionCtx = DefaultClientSessionContext.fromClientSessionAndClientScopes(clientSession, clientScopesSupplier.get(), session);
 
         // Set nonce as an attribute in the ClientSessionContext. Will be used for the token generation
         clientSessionCtx.setAttribute(OIDCLoginProtocol.NONCE_PARAM, codeData.getNonce());
 
+        // 生成token信息
         AccessToken token = tokenManager.createClientAccessToken(session, realm, client, user, userSession, clientSessionCtx);
 
+        // 准备响应结果
         TokenManager.AccessTokenResponseBuilder responseBuilder = tokenManager.responseBuilder(realm, client, event, session, userSession, clientSessionCtx)
                 .accessToken(token)
                 .generateRefreshToken();
 
         // KEYCLOAK-6771 Certificate Bound Token
         // https://tools.ietf.org/html/draft-ietf-oauth-mtls-08#section-3
+        // TODO
         if (OIDCAdvancedConfigWrapper.fromClientModel(client).isUseMtlsHokToken()) {
             AccessToken.CertConf certConf = MtlsHoKTokenUtil.bindTokenWithClientCertificate(request, session);
             if (certConf != null) {
@@ -466,12 +527,14 @@ public class TokenEndpoint {
             }
         }
 
+        // 如果是OIDC 还需要ID token
         if (TokenUtil.isOIDCRequest(scopeParam)) {
             responseBuilder.generateIDToken().generateAccessTokenHash();
         }
         
         AccessTokenResponse res = null;
         try {
+            // 生成结果
             res = responseBuilder.build();
         } catch (RuntimeException re) {
             if ("can not get encryption KEK".equals(re.getMessage())) {
@@ -483,11 +546,20 @@ public class TokenEndpoint {
         
         event.success();
 
+        // 返回结果 内部包含3种token
         return cors.builder(Response.ok(res).type(MediaType.APPLICATION_JSON_TYPE)).build();
     }
 
+    /**
+     * PKCE 模式下需要验证 codeVerifier/codeChallenge/codeChallengeMethod
+     * @param codeVerifier
+     * @param codeChallenge
+     * @param codeChallengeMethod
+     * @param authUserId
+     * @param authUsername
+     */
     private void checkParamsForPkceEnforcedClient(String codeVerifier, String codeChallenge, String codeChallengeMethod, String authUserId, String authUsername) {
-        // check whether code verifier is specified
+        // check whether code verifier is specified   未传入codeVerifier 不符合PKCE协议
         if (codeVerifier == null) {
             logger.warnf("PKCE code verifier not specified, authUserId = %s, authUsername = %s", authUserId, authUsername);
             event.error(Errors.CODE_VERIFIER_MISSING);
@@ -508,6 +580,14 @@ public class TokenEndpoint {
         }
     }
 
+    /**
+     * TODO 验证 codeVerifier是否正确
+     * @param codeVerifier
+     * @param codeChallenge
+     * @param codeChallengeMethod
+     * @param authUserId
+     * @param authUsername
+     */
     private void verifyCodeVerifier(String codeVerifier, String codeChallenge, String codeChallengeMethod, String authUserId, String authUsername) {
         // check whether code verifier is formatted along with the PKCE specification
 
@@ -543,13 +623,20 @@ public class TokenEndpoint {
         }
     }
 
+    /**
+     * 刷新token
+     * @return
+     */
     public Response refreshTokenGrant() {
+
+        // 从请求参数中获取 refreshToken
         String refreshToken = formParams.getFirst(OAuth2Constants.REFRESH_TOKEN);
         if (refreshToken == null) {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "No refresh token", Response.Status.BAD_REQUEST);
         }
 
         try {
+            // TODO
             session.clientPolicy().triggerOnEvent(new TokenRefreshContext(formParams));
         } catch (ClientPolicyException cpe) {
             event.error(cpe.getError());
@@ -559,12 +646,14 @@ public class TokenEndpoint {
         AccessTokenResponse res;
         try {
             // KEYCLOAK-6771 Certificate Bound Token
+            // 刷新token 产生新的 access token/refresh token
             TokenManager.RefreshResult result = tokenManager.refreshAccessToken(session, session.getContext().getUri(), clientConnection, realm, client, refreshToken, event, headers, request);
             res = result.getResponse();
 
             if (!result.isOfflineToken()) {
                 UserSessionModel userSession = session.sessions().getUserSession(realm, res.getSessionState());
                 AuthenticatedClientSessionModel clientSession = userSession.getAuthenticatedClientSessionByClient(client.getId());
+                // 使用表单数据更新会话
                 updateClientSession(clientSession);
                 updateUserSessionFromClientAuth(userSession);
             }
@@ -586,6 +675,10 @@ public class TokenEndpoint {
         return cors.builder(Response.ok(res, MediaType.APPLICATION_JSON_TYPE)).build();
     }
 
+    /**
+     * 更新客户端会话信息
+     * @param clientSession
+     */
     private void updateClientSession(AuthenticatedClientSessionModel clientSession) {
 
         if(clientSession == null) {
@@ -598,11 +691,13 @@ public class TokenEndpoint {
             String adapterSessionHost = formParams.getFirst(AdapterConstants.CLIENT_SESSION_HOST);
             logger.debugf("Adapter Session '%s' saved in ClientSession for client '%s'. Host is '%s'", adapterSessionId, client.getClientId(), adapterSessionHost);
 
+            // state 发生变化
             String oldClientSessionState = clientSession.getNote(AdapterConstants.CLIENT_SESSION_STATE);
             if (!adapterSessionId.equals(oldClientSessionState)) {
                 clientSession.setNote(AdapterConstants.CLIENT_SESSION_STATE, adapterSessionId);
             }
 
+            // host 发生变化
             String oldClientSessionHost = clientSession.getNote(AdapterConstants.CLIENT_SESSION_HOST);
             if (!Objects.equals(adapterSessionHost, oldClientSessionHost)) {
                 clientSession.setNote(AdapterConstants.CLIENT_SESSION_HOST, adapterSessionHost);
@@ -691,7 +786,13 @@ public class TokenEndpoint {
         return cors.builder(Response.ok(res, MediaType.APPLICATION_JSON_TYPE)).build();
     }
 
+    /**
+     * 代表需要 client_secret
+     * @return
+     */
     public Response clientCredentialsGrant() {
+
+        // 不支持这几种方式访问
         if (client.isBearerOnly()) {
             event.error(Errors.INVALID_CLIENT);
             throw new CorsErrorResponseException(cors, OAuthErrorException.UNAUTHORIZED_CLIENT, "Bearer-only client not allowed to retrieve service account", Response.Status.UNAUTHORIZED);
@@ -705,8 +806,10 @@ public class TokenEndpoint {
             throw new CorsErrorResponseException(cors, OAuthErrorException.UNAUTHORIZED_CLIENT, "Client not enabled to retrieve service account", Response.Status.UNAUTHORIZED);
         }
 
+        // 该用户对应一个client
         UserModel clientUser = session.users().getServiceAccount(client);
 
+        // 不存在会触发创建逻辑
         if (clientUser == null || client.getProtocolMapperByName(OIDCLoginProtocol.LOGIN_PROTOCOL, ServiceAccountConstants.CLIENT_ID_PROTOCOL_MAPPER) == null) {
             // May need to handle bootstrap here as well
             logger.debugf("Service account user for client '%s' not found or default protocol mapper for service account not found. Creating now", client.getClientId());
@@ -723,11 +826,14 @@ public class TokenEndpoint {
             throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST, "User '" + clientUsername + "' disabled", Response.Status.UNAUTHORIZED);
         }
 
+        // 从请求参数中获取本次指定的scope
         String scope = getRequestedScopes();
 
+        // 创建会话
         RootAuthenticationSessionModel rootAuthSession = new AuthenticationSessionManager(session).createAuthenticationSession(realm, false);
         AuthenticationSessionModel authSession = rootAuthSession.createAuthenticationSession(client);
 
+        // 这种时候创建的用户是clientUser
         authSession.setAuthenticatedUser(clientUser);
         authSession.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
         authSession.setClientNote(OIDCLoginProtocol.ISSUER, Urls.realmIssuer(session.getContext().getUri().getBaseUri(), realm.getName()));
@@ -742,6 +848,7 @@ public class TokenEndpoint {
             sessionPersistenceState = UserSessionModel.SessionPersistenceState.TRANSIENT;
         }
 
+        // 创建用户会话
         UserSessionModel userSession = session.sessions().createUserSession(authSession.getParentSession().getId(), realm, clientUser, clientUsername,
                 clientConnection.getRemoteAddr(), ServiceAccountConstants.CLIENT_AUTH, false, null, null, sessionPersistenceState);
         event.session(userSession);
@@ -756,10 +863,11 @@ public class TokenEndpoint {
 
         updateUserSessionFromClientAuth(userSession);
 
+        // 生成access token
         TokenManager.AccessTokenResponseBuilder responseBuilder = tokenManager.responseBuilder(realm, client, event, session, userSession, clientSessionCtx)
                 .generateAccessToken();
 
-        // Make refresh token generation optional, see KEYCLOAK-9551
+        // Make refresh token generation optional, see KEYCLOAK-9551  需要生成 refresh token
         if (useRefreshToken) {
             responseBuilder = responseBuilder.generateRefreshToken();
         } else {
@@ -791,6 +899,10 @@ public class TokenEndpoint {
         return scope;
     }
 
+    /**
+     * TODO 更换token
+     * @return
+     */
     public Response tokenExchange() {
         ProfileHelper.requireFeature(Profile.Feature.TOKEN_EXCHANGE);
 

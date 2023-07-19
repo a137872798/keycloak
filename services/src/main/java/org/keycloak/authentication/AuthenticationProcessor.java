@@ -978,7 +978,7 @@ public class AuthenticationProcessor {
 
 
     /**
-     * 创建认证流 并进行认证
+     * 认证client
      * @return
      * @throws AuthenticationFlowException
      */
@@ -1063,7 +1063,7 @@ public class AuthenticationProcessor {
         logger.debug("authenticationAction");
         checkClientSession(true);
 
-        // 确保本次要执行的认证器 已经提前设置到会话中
+        // 代表在展示给用户表单前 执行的是哪个execution  需要重新执行该execution.action
         String current = authenticationSession.getAuthNote(CURRENT_AUTHENTICATION_EXECUTION);
         if (execution == null || !execution.equals(current)) {
             logger.debug("Current execution does not equal executed execution.  Might be a page refresh");
@@ -1072,7 +1072,7 @@ public class AuthenticationProcessor {
         UserModel authUser = authenticationSession.getAuthenticatedUser();
         validateUser(authUser);
 
-        // 找不到认证器
+        // 找不到认证器 重走整个认证流
         AuthenticationExecutionModel model = realm.getAuthenticationExecutionById(execution);
         if (model == null) {
             logger.debug("Cannot find execution, reseting flow");
@@ -1273,7 +1273,7 @@ public class AuthenticationProcessor {
         // 设置客户端会话
         AuthenticationManager.setClientScopesInSession(authenticationSession);
 
-        // 获取下一个认证行为 并进行重定向
+        // 在认证成功后 可能有一些要执行的任务 比如修改密码
         String nextRequiredAction = nextRequiredAction();
         if (nextRequiredAction != null) {
             return AuthenticationManager.redirectToRequiredActions(session, realm, authenticationSession, uriInfo, nextRequiredAction);

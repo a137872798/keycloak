@@ -121,10 +121,18 @@ public class ProtocolMapperUtils {
     }
 
 
+    /**
+     * 加载协议映射器
+     * @param session
+     * @param ctx
+     * @return
+     */
     public static Stream<Entry<ProtocolMapperModel, ProtocolMapper>> getSortedProtocolMappers(KeycloakSession session, ClientSessionContext ctx) {
         KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
         return ctx.getProtocolMappersStream()
                 .flatMap(mapperModel -> {
+
+                    // 拿到协议映射器
                     ProtocolMapper mapper = (ProtocolMapper) sessionFactory.getProviderFactory(ProtocolMapper.class, mapperModel.getProtocolMapper());
                     if (mapper == null)
                         return null;
