@@ -1055,7 +1055,7 @@ public class AuthenticationProcessor {
 
 
     /**
-     * 触发一次认证行为
+     * action 是处理用户针对认证器提交的表单数据
      * @param execution
      * @return
      */

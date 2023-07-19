@@ -33,6 +33,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 目前只有这一个表单认证器
  */
 public class RegistrationPage implements FormAuthenticator, FormAuthenticatorFactory {
 
