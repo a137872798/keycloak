@@ -94,6 +94,18 @@ public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> 
         }
     }
 
+    /**
+     * 解析结果
+     * @param code
+     * @param tabId
+     * @param session
+     * @param realm
+     * @param client
+     * @param event
+     * @param clientSession
+     * @return
+     * @param <CLIENT_SESSION>
+     */
     public static <CLIENT_SESSION extends CommonClientSessionModel> ParseResult<CLIENT_SESSION> parseResult(String code, String tabId,
                                                                                                             KeycloakSession session, RealmModel realm, ClientModel client,
                                                                                                             EventBuilder event, CLIENT_SESSION clientSession) {
@@ -104,6 +116,7 @@ public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> 
             return result;
         }
         try {
+            // 目前只有一种ClientSessionParser   就是AuthenticationSessionModelParser
             CodeGenerateUtil.ClientSessionParser<CLIENT_SESSION> clientSessionParser = CodeGenerateUtil.getParser((Class<CLIENT_SESSION>)clientSession.getClass());
             return parseResult(code, session, realm, result, clientSessionParser);
         } catch (RuntimeException e) {
@@ -112,12 +125,24 @@ public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> 
         }
     }
 
+    /**
+     * 解析
+     * @param code
+     * @param session
+     * @param realm
+     * @param result
+     * @param clientSessionParser
+     * @return
+     * @param <CLIENT_SESSION>
+     */
     private static <CLIENT_SESSION extends CommonClientSessionModel> ParseResult<CLIENT_SESSION> parseResult(String code, KeycloakSession session, RealmModel realm, ParseResult<CLIENT_SESSION> result, CodeGenerateUtil.ClientSessionParser<CLIENT_SESSION> clientSessionParser) {
+        // session 要提前设置才有意义
         if (result.clientSession == null) {
             result.authSessionNotFound = true;
             return result;
         }
 
+        // 验证code 和session 是否匹配
         if (!clientSessionParser.verifyCode(session, code, result.clientSession)) {
             result.illegalHash = true;
             return result;
@@ -155,6 +180,11 @@ public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> 
         return isActionActive(actionType);
     }
 
+    /**
+     * 判断会话是否超时
+     * @param actionType
+     * @return
+     */
     public boolean isActionActive(ActionType actionType) {
         CodeGenerateUtil.ClientSessionParser<CLIENT_SESSION> clientSessionParser = (CodeGenerateUtil.ClientSessionParser<CLIENT_SESSION>) CodeGenerateUtil.getParser(commonLoginSession.getClass());
         int timestamp = clientSessionParser.getTimestamp(commonLoginSession);

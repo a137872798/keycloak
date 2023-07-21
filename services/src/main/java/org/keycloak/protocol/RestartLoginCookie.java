@@ -154,8 +154,19 @@ public class RestartLoginCookie implements Token {
     }
 
 
+    /**
+     * 重启认证会话
+     * @param session
+     * @param realm
+     * @param rootSession       相关的root会话
+     * @param expectedClientId  期望产生的会话是跟哪个client关联的
+     * @return
+     * @throws Exception
+     */
     public static AuthenticationSessionModel restartSession(KeycloakSession session, RealmModel realm,
                                                             RootAuthenticationSessionModel rootSession, String expectedClientId) throws Exception {
+
+        // 如果存在Restart代表 有个执行到一半的认证
         Cookie cook = session.getContext().getRequestHeaders().getCookies().get(KC_RESTART);
         if (cook ==  null) {
             logger.debug("KC_RESTART cookie doesn't exist");
@@ -169,20 +180,24 @@ public class RestartLoginCookie implements Token {
             return null;
         }
 
+        // client已经无效
         ClientModel client = realm.getClientByClientId(cookie.getClientId());
         if (client == null) return null;
 
         // Restart just if client from cookie matches client from the URL.
+        // 之前的认证client 与本次不匹配
         if (!client.getClientId().equals(expectedClientId)) {
             logger.debugf("Skip restarting from the KC_RESTART. Clients doesn't match: Cookie client: %s, Requested client: %s", client.getClientId(), expectedClientId);
             return null;
         }
 
         // Need to create brand new session and setup cookie
+        // 生成一个新的root会话
         if (rootSession == null) {
             rootSession = new AuthenticationSessionManager(session).createAuthenticationSession(realm, true);
         }
 
+        // 基于该client产生认证会话 设置之前的认证方式和重定向地址等
         AuthenticationSessionModel authSession = rootSession.createAuthenticationSession(client);
         authSession.setProtocol(cookie.getAuthMethod());
         authSession.setRedirectUri(cookie.getRedirectUri());

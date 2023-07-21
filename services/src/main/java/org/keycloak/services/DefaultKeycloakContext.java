@@ -39,6 +39,7 @@ import java.util.Map;
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  * 上下文对象 被包含在keycloakSession中
+ * 记录本次交互中的各种属性
  */
 public class DefaultKeycloakContext implements KeycloakContext {
 

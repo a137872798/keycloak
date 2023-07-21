@@ -27,6 +27,7 @@ import java.security.Principal;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 该凭证对象会设置到请求头中
  */
 public class KeycloakPrincipal<T extends KeycloakSecurityContext> implements Principal, Serializable {
     protected final String name;

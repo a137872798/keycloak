@@ -88,7 +88,10 @@ public class KeycloakApplication extends Application {
     protected final PlatformProvider platform = Platform.getPlatform();
 
     // 作为application 存储相关class以及单例对象
+
+    // 注册单例的情况 生命周期就跟程序一致
     protected Set<Object> singletons = new HashSet<Object>();
+    // 代表通过该方法注册到容器上的class 在每次请求响应中会生成一个实例
     protected Set<Class<?>> classes = new HashSet<Class<?>>();
 
     // 该对象用于产生会话

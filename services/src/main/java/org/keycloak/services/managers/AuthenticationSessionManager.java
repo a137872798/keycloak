@@ -137,13 +137,14 @@ public class AuthenticationSessionManager {
      * @return
      */
     public AuthenticationSessionModel getCurrentAuthenticationSession(RealmModel realm, ClientModel client, String tabId) {
+        // 查询该realm关联的存储在cookie中的 session id
         List<String> authSessionCookies = getAuthSessionCookies(realm);
 
         return authSessionCookies.stream().map(oldEncodedId -> {
             AuthSessionId authSessionId = decodeAuthSessionId(oldEncodedId);
             String sessionId = authSessionId.getDecodedId();
 
-            // 上面的方法中返回的是root认证会话    当增加了client tabid 条件后    就可以检索到某个认证会话 对应的维度为 user->client
+            // 上面的方法中返回的是root认证会话id    当增加了client tabid 条件后    就可以检索到某个认证会话 对应的维度为 user->client
             AuthenticationSessionModel authSession = getAuthenticationSessionByIdAndClient(realm, sessionId, client, tabId);
 
             if (authSession != null) {
@@ -265,8 +266,15 @@ public class AuthenticationSessionManager {
     }
 
 
-    // Don't look at cookie. Just lookup authentication session based on the ID and client. Return null if not found
-    // 根据cleint 和tabid 查询会话
+    /**
+     * Don't look at cookie. Just lookup authentication session based on the ID and client. Return null if not found
+     * 根据cleint 和tabid 查询会话
+     * @param realm
+     * @param authSessionId
+     * @param client
+     * @param tabId
+     * @return
+     */
     public AuthenticationSessionModel getAuthenticationSessionByIdAndClient(RealmModel realm, String authSessionId, ClientModel client, String tabId) {
         RootAuthenticationSessionModel rootAuthSession = session.authenticationSessions().getRootAuthenticationSession(realm, authSessionId);
         return rootAuthSession==null ? null : rootAuthSession.getAuthenticationSession(client, tabId);

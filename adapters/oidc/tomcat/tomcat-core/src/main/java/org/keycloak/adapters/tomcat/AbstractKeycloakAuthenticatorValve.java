@@ -52,6 +52,7 @@ import java.io.InputStream;
  * @author <a href="mailto:ungarida@gmail.com">Davide Ungari</a>
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * keycloak认证阀门
  */
 public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticator implements LifecycleListener {
 
@@ -62,13 +63,20 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
     protected AdapterDeploymentContext deploymentContext;
     protected NodesRegistrationManagement nodesRegistrationManagement;
 
+    /**
+     * 收到 tomcat 相关事件
+     * @param event
+     */
     @Override
     public void lifecycleEvent(LifecycleEvent event) {
         if (Lifecycle.START_EVENT.equals(event.getType())) {
+            // 当重启时 要关闭缓存
             cache = false;
         } else if (Lifecycle.AFTER_START_EVENT.equals(event.getType())) {
+            // 启动完毕后 进行keycloak相关的初始化
         	keycloakInit();
         } else if (event.getType() == Lifecycle.BEFORE_STOP_EVENT) {
+            // 进行一些关闭工作
             beforeStop();
         }
     }
@@ -96,6 +104,9 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
     }
 
 
+    /**
+     * 在tomcat启动时 做一些初始化工作
+     */
     @SuppressWarnings("UseSpecificCatch")
     public void keycloakInit() {
         // Possible scenarios:

@@ -107,6 +107,7 @@ import static org.keycloak.authentication.actiontoken.DefaultActionToken.ACTION_
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 每当收到一个login请求时 需要创建一个对应的对象
  */
 public class LoginActionsService {
 
@@ -180,6 +181,11 @@ public class LoginActionsService {
         return baseUriBuilder.path(RealmsResource.class).path(RealmsResource.class, "getLoginActionsService");
     }
 
+    /**
+     *
+     * @param realm
+     * @param event
+     */
     public LoginActionsService(RealmModel realm, EventBuilder event) {
         this.realm = realm;
         this.event = event;
@@ -194,6 +200,16 @@ public class LoginActionsService {
         }
     }
 
+    /**
+     * 检查 session code
+     * @param authSessionId  该参数非必填
+     * @param code
+     * @param execution
+     * @param clientId
+     * @param tabId
+     * @param flowPath
+     * @return
+     */
     private SessionCodeChecks checksForCode(String authSessionId, String code, String execution, String clientId, String tabId, String flowPath) {
         SessionCodeChecks res = new SessionCodeChecks(realm, session.getContext().getUri(), request, clientConnection, session, event, authSessionId, code, execution, clientId, tabId, flowPath);
         res.initialVerify();
@@ -240,29 +256,34 @@ public class LoginActionsService {
 
     /**
      * protocol independent login page entry point
-     *
+     * 登录接口
      * @param code
      * @return
      */
     @Path(AUTHENTICATE_PATH)
     @GET
-    public Response authenticate(@QueryParam(AUTH_SESSION_ID) String authSessionId, // optional, can get from cookie instead
+    public Response authenticate(@QueryParam(AUTH_SESSION_ID) String authSessionId, // optional, can get from cookie instead  尝试检索一个已经存在的会话
                                  @QueryParam(SESSION_CODE) String code,
                                  @QueryParam(Constants.EXECUTION) String execution,
                                  @QueryParam(Constants.CLIENT_ID) String clientId,
                                  @QueryParam(Constants.TAB_ID) String tabId) {
         event.event(EventType.LOGIN);
 
+        // 进行一些检查工作 比如用户会话是不是已经存在 是不是有认证中的会话
         SessionCodeChecks checks = checksForCode(authSessionId, code, execution, clientId, tabId, AUTHENTICATE_PATH);
+        // 不符合条件 提前返回
         if (!checks.verifyActiveAndValidAction(AuthenticationSessionModel.Action.AUTHENTICATE.name(), ClientSessionCode.ActionType.LOGIN)) {
             return checks.getResponse();
         }
 
+        // 获取之前的认证会话
         AuthenticationSessionModel authSession = checks.getAuthenticationSession();
         boolean actionRequest = checks.isActionRequest();
 
+        // TODO
         processLocaleParam(authSession);
 
+        // 开始认证流程
         return processAuthentication(actionRequest, execution, authSession, null);
     }
 
@@ -278,10 +299,31 @@ public class LoginActionsService {
         }
     }
 
+
+    /**
+     * 开始认证流程
+     * @param action
+     * @param execution
+     * @param authSession  上次进行中的认证会话
+     * @param errorMessage
+     * @return
+     */
     protected Response processAuthentication(boolean action, String execution, AuthenticationSessionModel authSession, String errorMessage) {
         return processFlow(action, execution, authSession, AUTHENTICATE_PATH, AuthenticationFlowResolver.resolveBrowserFlow(authSession), errorMessage, new AuthenticationProcessor());
     }
 
+
+    /**
+     * 处理认证流
+     * @param action
+     * @param execution
+     * @param authSession
+     * @param flowPath
+     * @param flow
+     * @param errorMessage
+     * @param processor
+     * @return
+     */
     protected Response processFlow(boolean action, String execution, AuthenticationSessionModel authSession, String flowPath, AuthenticationFlowModel flow, String errorMessage, AuthenticationProcessor processor) {
         processor.setAuthenticationSession(authSession)
                 .setFlowPath(flowPath)
@@ -308,8 +350,10 @@ public class LoginActionsService {
         Response response;
         try {
             if (action) {
+                // 处理表单数据
                 response = processor.authenticationAction(execution);
             } else {
+                // 进行认证流程
                 response = processor.authenticate();
             }
         } catch (WebApplicationException e) {
@@ -320,12 +364,13 @@ public class LoginActionsService {
             authSession = processor.getAuthenticationSession(); // Could be changed (eg. Forked flow)
         }
 
+        // TODO 不重要
         return BrowserHistoryHelper.getInstance().saveResponseAndRedirect(session, authSession, response, action, request);
     }
 
     /**
      * URL called after login page.  YOU SHOULD NEVER INVOKE THIS DIRECTLY!
-     *
+     * post 版本的登录接口
      * @param code
      * @return
      */

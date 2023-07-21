@@ -44,11 +44,15 @@ import java.util.concurrent.Callable;
  * @author <a href="mailto:brad.culley@spartasystems.com">Brad Culley</a>
  * @author <a href="mailto:john.ament@spartasystems.com">John D. Ament</a>
  * @version $Revision: 1 $
+ * 该对象存储了 keycloak 相关的各种基础信息
  */
 public class KeycloakDeployment {
 
     private static final Logger log = Logger.getLogger(KeycloakDeployment.class);
 
+    /**
+     * 代表url是相对路径还是绝对路径
+     */
     protected RelativeUrlsUsed relativeUrls;
     protected String realm;
     protected PublicKeyLocator publicKeyLocator;

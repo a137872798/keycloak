@@ -40,6 +40,7 @@ import java.util.Map;
  * @see JWTClientCredentialsProvider
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端凭证提供者
  */
 public interface ClientCredentialsProvider {
 

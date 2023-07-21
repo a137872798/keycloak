@@ -77,6 +77,7 @@ public class AuthenticationFlowURLHelper {
                 .path(flowPath);
 
         if (executionId != null) {
+            // 代表要进行的认证器  如果为null 就是从头开始
             uriBuilder.queryParam(Constants.EXECUTION, executionId);
         }
         uriBuilder.queryParam(Constants.CLIENT_ID, clientId);

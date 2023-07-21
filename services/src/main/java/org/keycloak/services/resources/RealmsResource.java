@@ -56,6 +56,8 @@ import java.net.URI;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 通过该对象可以获取realm下的各种资源
+ * 包括keycloak管理后台的登录接口也在这里暴露
  */
 @Path("/realms")
 public class RealmsResource {
@@ -165,6 +167,11 @@ public class RealmsResource {
         return Response.seeOther(targetUri).build();
     }
 
+    /**
+     * 返回一个服务对象  该对象暴露有关登录的所有接口
+     * @param name   每个领域的登录服务还是彼此隔离的
+     * @return
+     */
     @Path("{realm}/login-actions")
     public LoginActionsService getLoginActionsService(final @PathParam("realm") String name) {
         RealmModel realm = init(name);
@@ -192,12 +199,18 @@ public class RealmsResource {
         return service;
     }
 
+    /**
+     * 查询realm信息
+     * @param realmName
+     * @return
+     */
     private RealmModel init(String realmName) {
         RealmManager realmManager = new RealmManager(session);
         RealmModel realm = realmManager.getRealmByName(realmName);
         if (realm == null) {
             throw new NotFoundException("Realm does not exist");
         }
+        // 设置本次请求关联的realm   本次收到一个新的请求时 应该会产生一个对应的keycloak_session对象
         session.getContext().setRealm(realm);
         return realm;
     }
