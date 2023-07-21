@@ -40,6 +40,7 @@ import java.util.List;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 该对象在tomcat收到请求 并传给下游servlet前生效
  */
 public class KeycloakAuthenticatorValve extends AbstractKeycloakAuthenticatorValve {
     

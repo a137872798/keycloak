@@ -34,9 +34,17 @@ import java.io.Serializable;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 维护token信息
  */
 public class KeycloakSecurityContext implements Serializable {
+
+    /**
+     * accessToken
+     */
     protected String tokenString;
+    /**
+     * idToken
+     */
     protected String idTokenString;
 
     // Don't store parsed tokens into HTTP session

@@ -79,6 +79,15 @@ public abstract class BrowserHistoryHelper {
 
         private static final Pattern HEAD_END_PATTERN = Pattern.compile("</[hH][eE][aA][dD]>");
 
+        /**
+         * 在将结果返回给浏览器前 做一层加工
+         * @param session
+         * @param authSession
+         * @param response
+         * @param actionRequest
+         * @param httpRequest
+         * @return
+         */
         @Override
         public Response saveResponseAndRedirect(KeycloakSession session, AuthenticationSessionModel authSession, Response response, boolean actionRequest, HttpRequest httpRequest) {
             if (!shouldReplaceBrowserHistory(actionRequest, session)) {

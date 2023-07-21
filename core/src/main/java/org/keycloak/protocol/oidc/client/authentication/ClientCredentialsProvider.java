@@ -37,6 +37,7 @@ import org.keycloak.representations.adapters.config.AdapterConfig;
  * authentication with client certificate)
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 客户端凭证提供者
  */
 public interface ClientCredentialsProvider {
 

@@ -38,7 +38,7 @@ import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFa
 
 /**
  * Keycloak authentication integration for Spring Boot 2
- *
+ * 条件装配 在开启keycloak时生效
  */
 @Configuration
 @ConditionalOnWebApplication
@@ -54,7 +54,9 @@ public class KeycloakAutoConfiguration extends KeycloakBaseSpringBootConfigurati
             public void customize(ConfigurableServletWebServerFactory configurableServletWebServerFactory) {
                 if(configurableServletWebServerFactory instanceof TomcatServletWebServerFactory){
 
+                    // 只看这个
                     TomcatServletWebServerFactory container = (TomcatServletWebServerFactory)configurableServletWebServerFactory;
+                    // 在处理请求前 会通过一个阀门链  这是tomcat的架构
                     container.addContextValves(new KeycloakAuthenticatorValve());
                     container.addContextCustomizers(tomcatKeycloakContextCustomizer());
 
