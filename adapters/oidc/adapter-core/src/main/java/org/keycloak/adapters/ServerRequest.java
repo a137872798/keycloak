@@ -238,6 +238,13 @@ public class ServerRequest {
         }
     }
 
+    /**
+     * 将本节点注册到keycloak上
+     * @param deployment
+     * @param host
+     * @throws HttpFailure
+     * @throws IOException
+     */
     public static void invokeRegisterNode(KeycloakDeployment deployment, String host) throws HttpFailure, IOException {
         String registerNodeUrl = deployment.getRegisterNodeUrl();
         invokeClientManagementRequest(deployment, host, registerNodeUrl);
@@ -248,6 +255,14 @@ public class ServerRequest {
         invokeClientManagementRequest(deployment, host, unregisterNodeUrl);
     }
 
+    /**
+     * 将本节点注册到keycloak上
+     * @param deployment
+     * @param host
+     * @param endpointUrl
+     * @throws HttpFailure
+     * @throws IOException
+     */
     public static void invokeClientManagementRequest(KeycloakDeployment deployment, String host, String endpointUrl) throws HttpFailure, IOException {
         if (endpointUrl == null) {
             throw new IOException("You need to configure URI for register/unregister node for application " + deployment.getResourceName());
@@ -257,10 +272,12 @@ public class ServerRequest {
         formparams.add(new BasicNameValuePair(AdapterConstants.CLIENT_CLUSTER_HOST, host));
 
         HttpPost post = new HttpPost(endpointUrl);
+        // 设置客户端凭证
         ClientCredentialsProviderUtils.setClientCredentials(deployment, post, formparams);
 
         UrlEncodedFormEntity form = new UrlEncodedFormEntity(formparams, "UTF-8");
         post.setEntity(form);
+        // 发起注册请求
         HttpResponse response = deployment.getClient().execute(post);
         int status = response.getStatusLine().getStatusCode();
         if (status != 204) {

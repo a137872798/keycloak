@@ -98,6 +98,7 @@ public class ClientCredentialsProviderUtils {
 
     /**
      * Don't use directly from your JEE apps to avoid HttpClient linkage errors! Instead use the method {@link #setClientCredentials(KeycloakDeployment, Map, Map)}
+     * 设置客户端凭证
      */
     public static void setClientCredentials(KeycloakDeployment deployment, HttpPost post, List<NameValuePair> formparams) {
         Map<String, String> reqHeaders = new HashMap<>();

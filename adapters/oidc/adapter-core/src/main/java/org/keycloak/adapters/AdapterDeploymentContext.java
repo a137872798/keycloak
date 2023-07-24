@@ -38,10 +38,18 @@ import java.util.concurrent.Callable;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 当需要部署keycloak相关的组件时 需要借助该上下文对象 内部有部署需要的配置解析器 和存储配置的对象
  */
 public class AdapterDeploymentContext {
     private static final Logger log = Logger.getLogger(AdapterDeploymentContext.class);
+
+    /**
+     * 该对象维护了keycloak需要的各种属性
+     */
     protected KeycloakDeployment deployment;
+    /**
+     * 配置解析器对象
+     */
     protected KeycloakConfigResolver configResolver;
 
     public AdapterDeploymentContext() {

@@ -105,6 +105,10 @@ public class HttpClientBuilder {
     protected KeyStore clientKeyStore;
     protected String clientPrivateKeyPassword;
     protected boolean disableTrustManager;
+
+    /**
+     * 禁用cookie功能
+     */
     protected boolean disableCookieCache = true;
     protected HostnameVerificationPolicy policy = HostnameVerificationPolicy.WILDCARD;
     protected SSLContext sslContext;
@@ -117,6 +121,10 @@ public class HttpClientBuilder {
     protected TimeUnit socketTimeoutUnits = TimeUnit.MILLISECONDS;
     protected long establishConnectionTimeout = -1;
     protected TimeUnit establishConnectionTimeoutUnits = TimeUnit.MILLISECONDS;
+
+    /**
+     * 产生一个代理地址
+     */
     protected HttpHost proxyHost;
 
 
@@ -240,8 +248,14 @@ public class HttpClientBuilder {
         }
     }
 
+    /**
+     * 基于当前配置生成httpClient
+     * @return
+     */
     public HttpClient build() {
         X509HostnameVerifier verifier = null;
+
+        // 根据host协议生成不同的校验器
         if (this.verifier != null) verifier = new VerifierWrapper(this.verifier);
         else {
             switch (policy) {
@@ -306,6 +320,7 @@ public class HttpClientBuilder {
             }
             DefaultHttpClient client = new DefaultHttpClient(cm, params);
 
+            // 禁用cookie功能
             if (disableCookieCache) {
                 client.setCookieStore(new CookieStore() {
                     @Override
@@ -336,9 +351,15 @@ public class HttpClientBuilder {
         }
     }
 
+    /**
+     * 通过配置项来装配
+     * @param adapterConfig
+     * @return
+     */
     public HttpClient build(AdapterHttpClientConfig adapterConfig) {
         disableCookieCache(true); // disable cookie cache as we don't want sticky sessions for load balancing
 
+        // 无论是key_store 还是 trust_store 存储的都是
         String truststorePath = adapterConfig.getTruststore();
         if (truststorePath != null) {
             truststorePath = EnvUtil.replace(truststorePath);
@@ -360,6 +381,8 @@ public class HttpClientBuilder {
                 throw new RuntimeException("Failed to load keystore", e);
             }
         }
+
+        // 连接池数量
         int size = 10;
         if (adapterConfig.getConnectionPoolSize() > 0)
             size = adapterConfig.getConnectionPoolSize();
@@ -374,6 +397,7 @@ public class HttpClientBuilder {
             trustStore(truststore);
         }
 
+        // 为认证服务区配置代理
         configureProxyForAuthServerIfProvided(adapterConfig);
 
         return build();

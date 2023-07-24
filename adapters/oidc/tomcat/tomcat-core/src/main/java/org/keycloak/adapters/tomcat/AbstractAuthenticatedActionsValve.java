@@ -40,6 +40,7 @@ import java.io.IOException;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 认证阀门的一个抽象类
  */
 public abstract class AbstractAuthenticatedActionsValve extends ValveBase {
     private static final Logger log = Logger.getLogger(AbstractAuthenticatedActionsValve.class);

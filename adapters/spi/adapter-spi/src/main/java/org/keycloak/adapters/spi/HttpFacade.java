@@ -25,6 +25,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 门面对象 可以通过它获取req/res
  */
 public interface HttpFacade {
     Request getRequest();

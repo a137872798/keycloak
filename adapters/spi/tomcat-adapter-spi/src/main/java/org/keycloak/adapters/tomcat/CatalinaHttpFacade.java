@@ -38,6 +38,8 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 使得HttpFacade返回的都是 catalina相关的类
+ * 就是门面模式啊
  */
 public class CatalinaHttpFacade implements HttpFacade {
     protected org.apache.catalina.connector.Request request;

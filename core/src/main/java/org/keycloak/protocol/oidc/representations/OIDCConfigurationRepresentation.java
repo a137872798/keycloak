@@ -27,6 +27,7 @@ import java.util.Map;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 通过访问 /realms/{realm-name}/.well-known/openid-configuration 得到OIDC协议相关的各个地址
  */
 
 public class OIDCConfigurationRepresentation {

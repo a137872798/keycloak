@@ -25,6 +25,7 @@ import org.keycloak.adapters.spi.HttpFacade;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 可以获取keycloak上下文    KeycloakSecurityContext就是维护token信息的
  */
 public interface OIDCHttpFacade extends HttpFacade {
 

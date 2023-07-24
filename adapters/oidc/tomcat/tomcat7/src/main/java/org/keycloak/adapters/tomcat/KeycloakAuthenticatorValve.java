@@ -72,6 +72,13 @@ public class KeycloakAuthenticatorValve extends AbstractKeycloakAuthenticatorVal
         };
     }
 
+    /**
+     * 生成一个认证用的阀门对象
+     * @param deploymentContext
+     * @param next
+     * @param container
+     * @return
+     */
     @Override
     protected AbstractAuthenticatedActionsValve createAuthenticatedActionsValve(AdapterDeploymentContext deploymentContext, Valve next, Container container) {
         return new AuthenticatedActionsValve(deploymentContext, next, container);

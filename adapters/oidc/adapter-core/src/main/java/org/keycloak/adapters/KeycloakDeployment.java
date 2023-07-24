@@ -62,7 +62,10 @@ public class KeycloakDeployment {
     protected String tokenUrl;
     protected KeycloakUriBuilder logoutUrl;
     protected String accountUrl;
+
+    // 注册节点是通过该地址
     protected String registerNodeUrl;
+    // 注销节点使用的地址
     protected String unregisterNodeUrl;
     protected String jwksUrl;
     protected String principalAttribute = "sub";
@@ -74,6 +77,7 @@ public class KeycloakDeployment {
     protected boolean publicClient;
     protected Map<String, Object> resourceCredentials = new HashMap<>();
     protected ClientCredentialsProvider clientAuthenticator;
+    // 通过该函数产生的客户端 通过一个adapterConfig初始化
     protected Callable<HttpClient> client;
 
     protected String scope;
@@ -170,14 +174,18 @@ public class KeycloakDeployment {
      * also allow the adapter to retry loading config for each request until the Keycloak server is ready.
      *
      * In the future we may want to support reloading config at a configurable interval.
+     * 解析keycloak服务器地址
      */
     protected void resolveUrls() {
         if (realmInfoUrl == null) {
             synchronized (this) {
                 if (realmInfoUrl == null) {
+                    // 得到认证地址
                     KeycloakUriBuilder authUrlBuilder = KeycloakUriBuilder
                         .fromUri(authServerBaseUrl);
 
+                    // 第一步就是拼接 /realms/{realm-name}/.well-known/openid-configuration
+                    // 这样就可以得到oidc流程所需要的各个地址了  通过realm得到真正的realm 并进行替换逻辑
                     String discoveryUrl = authUrlBuilder.clone()
                         .path(ServiceUrlConstants.DISCOVERY_URL).build(getRealm()).toString();
                     try {
@@ -185,6 +193,7 @@ public class KeycloakDeployment {
 
                         OIDCConfigurationRepresentation config = getOidcConfiguration(discoveryUrl);
 
+                        // 基于解析出来的地址 设置属性
                         authUrl = KeycloakUriBuilder.fromUri(config.getAuthorizationEndpoint());
                         realmInfoUrl = config.getIssuer();
 
@@ -192,6 +201,7 @@ public class KeycloakDeployment {
                         logoutUrl = KeycloakUriBuilder.fromUri(config.getLogoutEndpoint());
                         accountUrl = KeycloakUriBuilder.fromUri(config.getIssuer()).path("/account")
                             .build().toString();
+
                         registerNodeUrl = authUrlBuilder.clone()
                             .path(ServiceUrlConstants.CLIENTS_MANAGEMENT_REGISTER_NODE_PATH)
                             .build(getRealm()).toString();
@@ -226,6 +236,12 @@ public class KeycloakDeployment {
         jwksUrl = authUrlBuilder.clone().path(ServiceUrlConstants.JWKS_URL).build(getRealm()).toString();
     }
 
+    /**
+     * 请求该地址 得到有关OIDC协议需要的各种地址
+     * @param discoveryUrl
+     * @return
+     * @throws Exception
+     */
     protected OIDCConfigurationRepresentation getOidcConfiguration(String discoveryUrl) throws Exception {
         HttpGet request = new HttpGet(discoveryUrl);
         request.addHeader("accept", "application/json");
