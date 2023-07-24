@@ -91,9 +91,22 @@ public class ServerRequest {
         if (is != null) is.close();
     }
 
+    /**
+     * 将code兑换成token
+     * @param deployment
+     * @param code
+     * @param redirectUri
+     * @param sessionId
+     * @return
+     * @throws IOException
+     * @throws HttpFailure
+     */
     public static AccessTokenResponse invokeAccessCodeToToken(KeycloakDeployment deployment, String code, String redirectUri, String sessionId) throws IOException, HttpFailure {
         List<NameValuePair> formparams = new ArrayList<>();
+
+        // 发起请求前 去掉code和state
         redirectUri = stripOauthParametersFromRedirect(redirectUri);
+        // 重新设置
         formparams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, "authorization_code"));
         formparams.add(new BasicNameValuePair(OAuth2Constants.CODE, code));
         formparams.add(new BasicNameValuePair(OAuth2Constants.REDIRECT_URI, redirectUri));
@@ -195,6 +208,14 @@ public class ServerRequest {
         }
     }
 
+    /**
+     * 发起刷新token请求 并得到结果
+     * @param deployment
+     * @param refreshToken
+     * @return
+     * @throws IOException
+     * @throws HttpFailure
+     */
     public static AccessTokenResponse invokeRefresh(KeycloakDeployment deployment, String refreshToken) throws IOException, HttpFailure {
         List<NameValuePair> formparams = new ArrayList<NameValuePair>();
         formparams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.REFRESH_TOKEN));

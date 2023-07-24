@@ -47,6 +47,7 @@ import javax.ws.rs.core.UriBuilder;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * 用于管理接入keycloak的客户端  所有客户端在认证前 需要注册到keycloak上
  */
 public class ClientsManagementService {
 
@@ -93,6 +94,7 @@ public class ClientsManagementService {
      * @param authorizationHeader
      * @param formData
      * @return
+     * 嵌入keycloak sdk 的客户端在使用前会将自身注册到keycloak服务器上
      */
     @Path("register-node")
     @POST
@@ -109,6 +111,7 @@ public class ClientsManagementService {
             throw new NotAuthorizedException("Realm not enabled");
         }
 
+        // 通过客户端认证器处理req后 可以解析出client_id
         ClientModel client = authorizeClient();
         String nodeHost = getClientClusterHost(formData);
 
@@ -116,6 +119,7 @@ public class ClientsManagementService {
         logger.debugf("Registering cluster host '%s' for client '%s'", nodeHost, client.getClientId());
 
         try {
+            // 注册节点
             client.registerNode(nodeHost, Time.currentTime());
         } catch (RuntimeException e) {
             event.error(e.getMessage());
@@ -164,6 +168,7 @@ public class ClientsManagementService {
     }
 
     protected ClientModel authorizeClient() {
+        //
         ClientModel client = AuthorizeClientUtil.authorizeClient(session, event, null).getClient();
 
         if (client.isPublicClient()) {
@@ -175,6 +180,11 @@ public class ClientsManagementService {
         return client;
     }
 
+    /**
+     * 从表单数据中解析出节点地址
+     * @param formData
+     * @return
+     */
     protected String getClientClusterHost(MultivaluedMap<String, String> formData) {
         String clientClusterHost = formData.getFirst(AdapterConstants.CLIENT_CLUSTER_HOST);
         if (clientClusterHost == null || clientClusterHost.length() == 0) {

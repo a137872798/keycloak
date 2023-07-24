@@ -54,6 +54,8 @@ public class KeycloakBaseSpringBootConfiguration {
      */
     protected KeycloakSpringBootProperties keycloakProperties;
 
+    // 该对象辅助KeycloakSpringBootConfigResolverWrapper
+
     @Autowired
     public void setKeycloakSpringBootProperties(KeycloakSpringBootProperties keycloakProperties) {
         this.keycloakProperties = keycloakProperties;
@@ -65,6 +67,7 @@ public class KeycloakBaseSpringBootConfiguration {
         KeycloakSpringBootConfigResolverWrapper.setApplicationContext(context);
     }
 
+    // 不同的对象 对应不同的web服务器  TODO
     static class KeycloakBaseUndertowDeploymentInfoCustomizer  {
 
         protected final KeycloakSpringBootProperties keycloakProperties;
@@ -235,6 +238,9 @@ public class KeycloakBaseSpringBootConfiguration {
         }
     }
 
+    /**
+     * 对应tomcat服务器   就是将boot配置下 有关权限拦截的路径设置到 tomcat中
+     */
     static class KeycloakBaseTomcatContextCustomizer {
 
         protected final KeycloakSpringBootProperties keycloakProperties;
@@ -258,6 +264,7 @@ public class KeycloakBaseSpringBootConfiguration {
                 }
             }
 
+            // 将需要认证才能访问的地址 添加到tomcat配置中
             for (KeycloakSpringBootProperties.SecurityConstraint constraint : keycloakProperties.getSecurityConstraints()) {
                 SecurityConstraint tomcatConstraint = new SecurityConstraint();
                 for (String authRole : constraint.getAuthRoles()) {

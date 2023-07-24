@@ -34,6 +34,7 @@ import java.util.Collection;
  *
  * @author <a href="mailto:srossillo@smartling.com">Scott Rossillo</a>
  * @version $Revision: 1 $
+ * 使用keycloak信息生成的账号
  */
 public class KeycloakAuthenticationToken extends AbstractAuthenticationToken implements Authentication {
 

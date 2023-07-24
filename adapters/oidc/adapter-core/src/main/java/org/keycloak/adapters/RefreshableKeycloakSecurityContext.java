@@ -32,6 +32,7 @@ import java.io.IOException;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 具备刷新能力
  */
 public class RefreshableKeycloakSecurityContext extends KeycloakSecurityContext {
 
@@ -87,6 +88,10 @@ public class RefreshableKeycloakSecurityContext extends KeycloakSecurityContext 
         }
     }
 
+    /**
+     * 检查token是否有效    还要求token创建时间必须比deployment晚
+     * @return
+     */
     public boolean isActive() {
         return token != null && this.token.isActive() && deployment!=null && this.token.getIssuedAt() >= deployment.getNotBefore();
     }
@@ -107,6 +112,7 @@ public class RefreshableKeycloakSecurityContext extends KeycloakSecurityContext 
     /**
      * @param checkActive if true, then we won't send refresh request if current accessToken is still active.
      * @return true if accessToken is active or was successfully refreshed
+     * 检查token是否过期
      */
     public boolean refreshExpiredToken(boolean checkActive) {
         if (checkActive) {
@@ -116,6 +122,7 @@ public class RefreshableKeycloakSecurityContext extends KeycloakSecurityContext 
             if (isActive() && isTokenTimeToLiveSufficient(this.token)) return true;
         }
 
+        // 没有refreshToken 无法刷新token
         if (this.deployment == null || refreshToken == null) return false; // Might be serialized in HttpSession?
 
         if (!this.getRealm().equals(this.deployment.getRealm())) {
@@ -136,6 +143,8 @@ public class RefreshableKeycloakSecurityContext extends KeycloakSecurityContext 
                 log.trace("Checking whether token has been refreshed in another thread already.");
                 if (isActive() && isTokenTimeToLiveSufficient(this.token)) return true;
             }
+
+            // 发起刷新token的请求    refreshToken的有效期应该是比普通的token要久的 当访问时发现token过期会触发刷新 而当refreshToken也过期时 就需要重新认证
             AccessTokenResponse response;
             try {
                 response = ServerRequest.invokeRefresh(deployment, refreshToken);

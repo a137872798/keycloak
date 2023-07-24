@@ -37,6 +37,7 @@ import java.util.logging.Logger;
 /**
  * @author <a href="mailto:ungarida@gmail.com">Davide Ungari</a>
  * @version $Revision: 1 $
+ * keycloak 创建触发认证逻辑时  会创建该对象  与req一一对应
  */
 public class CatalinaRequestAuthenticator extends RequestAuthenticator {
     private static final Logger log = Logger.getLogger(""+CatalinaRequestAuthenticator.class);
@@ -58,6 +59,10 @@ public class CatalinaRequestAuthenticator extends RequestAuthenticator {
         return new OAuthRequestAuthenticator(this, facade, deployment, sslRedirectPort, tokenStore);
     }
 
+    /**
+     * 通过  OAuth完成认证时 触发该方法
+     * @param skp
+     */
     @Override
     protected void completeOAuthAuthentication(final KeycloakPrincipal<RefreshableKeycloakSecurityContext> skp) {
         final RefreshableKeycloakSecurityContext securityContext = skp.getKeycloakSecurityContext();
@@ -85,6 +90,11 @@ public class CatalinaRequestAuthenticator extends RequestAuthenticator {
         this.tokenStore.saveAccountInfo(account);
     }
 
+    /**
+     * 当基于 Bearer的认证成功后触发该方法
+     * @param principal
+     * @param method
+     */
     @Override
     protected void completeBearerAuthentication(KeycloakPrincipal<RefreshableKeycloakSecurityContext> principal, String method) {
         RefreshableKeycloakSecurityContext securityContext = principal.getKeycloakSecurityContext();
@@ -92,6 +102,8 @@ public class CatalinaRequestAuthenticator extends RequestAuthenticator {
         if (log.isLoggable(Level.FINE)) {
             log.fine("Completing bearer authentication. Bearer roles: " + roles);
         }
+
+        // 将从token中解析出来的用户名 role 包装成generalPrincipal后  设置到req上
         Principal generalPrincipal = principalFactory.createPrincipal(request.getContext().getRealm(), principal, roles);
         request.setUserPrincipal(generalPrincipal);
         request.setAuthType(method);

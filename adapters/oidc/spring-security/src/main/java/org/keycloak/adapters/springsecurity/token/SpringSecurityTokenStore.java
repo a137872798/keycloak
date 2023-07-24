@@ -38,6 +38,7 @@ import javax.servlet.http.HttpSession;
  *
  * @author <a href="mailto:srossillo@smartling.com">Scott Rossillo</a>
  * @version $Revision: 1 $
+ * 存储token的仓库
  */
 public class SpringSecurityTokenStore implements AdapterTokenStore {
 
@@ -53,11 +54,19 @@ public class SpringSecurityTokenStore implements AdapterTokenStore {
         this.request = request;
     }
 
+    /**
+     * 无法验证token是否还有效
+     */
     @Override
     public void checkCurrentToken() {
         // no-op
     }
 
+    /**
+     * 判断是否已经缓存了token
+     * @param authenticator used for actual request authentication
+     * @return
+     */
     @Override
     public boolean isCached(RequestAuthenticator authenticator) {
 
@@ -98,6 +107,7 @@ public class SpringSecurityTokenStore implements AdapterTokenStore {
     @Override
     public void saveAccountInfo(OidcKeycloakAccount account) {
 
+        // 当认证成功后 就会将账号信息绑定到上下文
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication != null) {
@@ -113,6 +123,7 @@ public class SpringSecurityTokenStore implements AdapterTokenStore {
     @Override
     public void logout() {
 
+        // 清除会话
         logger.debug("Handling logout request");
         HttpSession session = request.getSession(false);
 

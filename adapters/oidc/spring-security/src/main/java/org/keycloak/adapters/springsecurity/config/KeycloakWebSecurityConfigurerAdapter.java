@@ -60,6 +60,7 @@ public abstract class KeycloakWebSecurityConfigurerAdapter extends WebSecurityCo
     @Autowired(required = false)
     private KeycloakConfigResolver keycloakConfigResolver;
 
+    // 产生包含KeycloakDeployment的上下文对象
     @Bean
     protected AdapterDeploymentContext adapterDeploymentContext() throws Exception {
         AdapterDeploymentContextFactoryBean factoryBean;
@@ -117,9 +118,13 @@ public abstract class KeycloakWebSecurityConfigurerAdapter extends WebSecurityCo
                 .sessionManagement()
                 .sessionAuthenticationStrategy(sessionAuthenticationStrategy())
                 .and()
+                // 认证前起作用
                 .addFilterBefore(keycloakPreAuthActionsFilter(), LogoutFilter.class)
+                // 认证处理器
                 .addFilterBefore(keycloakAuthenticationProcessingFilter(), LogoutFilter.class)
+                // 刷新token
                 .addFilterAfter(keycloakSecurityContextRequestFilter(), SecurityContextHolderAwareRequestFilter.class)
+                // 认证后起作用
                 .addFilterAfter(keycloakAuthenticatedActionsRequestFilter(), KeycloakSecurityContextRequestFilter.class)
                 .exceptionHandling().authenticationEntryPoint(authenticationEntryPoint())
                 .and()

@@ -36,6 +36,7 @@ import java.util.Objects;
  * client configuration or a {@link KeycloakConfigResolver} for multi-tenant environments.
  *
  * @author <a href="mailto:thomas.raehalme@aitiofinland.com">Thomas Raehalme</a>
+ * 该对象可以产生 AdapterDeploymentContext
  */
 public class AdapterDeploymentContextFactoryBean
         implements FactoryBean<AdapterDeploymentContext>, InitializingBean {
@@ -73,6 +74,7 @@ public class AdapterDeploymentContextFactoryBean
         else {
             log.info("Loading Keycloak deployment from configuration file: {}", keycloakConfigFileResource);
 
+            // 加载resource 生成KeycloakDeployment
             KeycloakDeployment deployment = loadKeycloakDeployment();
             adapterDeploymentContext = new AdapterDeploymentContext(deployment);
         }

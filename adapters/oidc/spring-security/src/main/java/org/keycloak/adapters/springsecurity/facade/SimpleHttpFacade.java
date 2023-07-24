@@ -54,6 +54,10 @@ public class SimpleHttpFacade implements OIDCHttpFacade {
         this.response = response;
     }
 
+    /**
+     * 本来 tomcat层的门面对象是从req中获取上下文的
+     * @return
+     */
     @Override
     public KeycloakSecurityContext getSecurityContext() {
 

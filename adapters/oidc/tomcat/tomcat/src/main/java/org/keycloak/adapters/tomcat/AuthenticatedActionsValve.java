@@ -5,7 +5,7 @@ import org.apache.catalina.Valve;
 import org.keycloak.adapters.AdapterDeploymentContext;
 
 /**
- * 在tomcat层起作用的阀门对象   认证动作
+ * 该对象紧跟在 KeycloakAuthenticatorValve后
  */
 public class AuthenticatedActionsValve extends AbstractAuthenticatedActionsValve {
 

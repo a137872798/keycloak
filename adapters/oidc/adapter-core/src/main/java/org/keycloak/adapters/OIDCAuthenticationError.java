@@ -27,6 +27,7 @@ import org.keycloak.adapters.spi.AuthenticationError;
  */
 public class OIDCAuthenticationError implements AuthenticationError {
     public static enum Reason {
+        // 代表请求中没有 bearer token
         NO_BEARER_TOKEN,
         NO_REDIRECT_URI,
         INVALID_STATE_COOKIE,

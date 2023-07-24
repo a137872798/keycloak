@@ -22,10 +22,18 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 可以对所有会话进行统一操作
  */
 public interface UserSessionManagement {
 
+    /**
+     * 对所有会话执行登出操作
+     */
     void logoutAll();
 
+    /**
+     * 对命中id的会话进行登出操作
+     * @param ids
+     */
     void logoutHttpSessions(List<String> ids);
 }

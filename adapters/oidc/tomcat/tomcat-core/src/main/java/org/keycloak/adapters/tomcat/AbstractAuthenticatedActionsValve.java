@@ -40,7 +40,6 @@ import java.io.IOException;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
- * 认证阀门的一个抽象类
  */
 public abstract class AbstractAuthenticatedActionsValve extends ValveBase {
     private static final Logger log = Logger.getLogger(AbstractAuthenticatedActionsValve.class);
@@ -59,6 +58,8 @@ public abstract class AbstractAuthenticatedActionsValve extends ValveBase {
         CatalinaHttpFacade facade = new OIDCCatalinaHttpFacade(request, response);
         KeycloakDeployment deployment = deploymentContext.resolveDeployment(facade);
         if (deployment != null && deployment.isConfigured()) {
+
+            // 尝试通过一个已认证后的handler处理
             AuthenticatedActionsHandler handler = new AuthenticatedActionsHandler(deployment, new OIDCCatalinaHttpFacade(request, response));
             if (handler.handledRequest()) {
                 return;

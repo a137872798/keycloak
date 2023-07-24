@@ -29,18 +29,32 @@ import org.springframework.context.ApplicationContext;
  * instance must be used across the different stacks.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ *
+ * KeycloakSpringConfigResolverWrapper 是一个代理对象 通过req信息生成keycloakDeployment对象
  */
 public class KeycloakSpringBootConfigResolverWrapper extends KeycloakSpringConfigResolverWrapper {
 
+    /**
+     * spring 上下文对象
+     */
     private static ApplicationContext context;
+
+    /**
+     * 通过加载spring配置文件得到的keycloak配置
+     */
     private static KeycloakSpringBootProperties adapterConfig;
 
     public KeycloakSpringBootConfigResolverWrapper() {
+
+        // 生成一个普通对象
         super(new KeycloakSpringBootConfigResolver());
         try {
+            // 尝试从bean工厂中加载
             setDelegate(context.getBean(KeycloakConfigResolver.class));
         } catch (NoSuchBeanDefinitionException ignore) {
         }
+
+        // 设置配置信息 
         if (getDelegate() instanceof KeycloakSpringBootConfigResolver) {
             KeycloakSpringBootConfigResolver.class.cast(getDelegate()).setAdapterConfig(adapterConfig);
         }

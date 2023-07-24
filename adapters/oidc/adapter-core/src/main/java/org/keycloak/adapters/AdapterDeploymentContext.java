@@ -93,13 +93,17 @@ public class AdapterDeploymentContext {
      * @return
      */
     public KeycloakDeployment resolveDeployment(HttpFacade facade) {
+
+        // 在初始化该对象时 可以选择通过configResolver 或者 deployment 2种方式进行初始化
         if (null != configResolver) {
             return configResolver.resolve(facade.getRequest());
         }
 
         if (deployment == null) return null;
+        // 没有认证地址信息 代表不需要手动去获取一些配置
         if (deployment.getAuthServerBaseUrl() == null) return deployment;
 
+        // 有认证地址信息 可能需要手动获取
         KeycloakDeployment resolvedDeployment = resolveUrls(deployment, facade);
         if (resolvedDeployment.getPublicKeyLocator() == null) {
             throw new RuntimeException("KeycloakDeployment was never initialized through appropriate SPIs");
@@ -108,10 +112,12 @@ public class AdapterDeploymentContext {
     }
 
     protected KeycloakDeployment resolveUrls(KeycloakDeployment deployment, HttpFacade facade) {
+        // 绝对路径的话地址认为已经被设置
         if (deployment.relativeUrls == RelativeUrlsUsed.NEVER) {
             // Absolute URI are already set to everything
             return deployment;
         } else {
+            // 从本次请求中抽取host port 并进行初始化    delegate对象的含义是优先使用新的配置 没有的话采用本deployment
             DeploymentDelegate delegate = new DeploymentDelegate(this.deployment);
             delegate.setAuthServerBaseUrl(getBaseBuilder(facade, this.deployment.getAuthServerBaseUrl()).build().toString());
             return delegate;
@@ -513,9 +519,17 @@ public class AdapterDeploymentContext {
         }
     }
 
+    /**
+     *
+     * @param facade
+     * @param base  基础url 其他地址可以通过加工该地址获得
+     * @return
+     */
     protected KeycloakUriBuilder getBaseBuilder(HttpFacade facade, String base) {
         KeycloakUriBuilder builder = KeycloakUriBuilder.fromUri(base);
         URI request = URI.create(facade.getRequest().getURI());
+
+        // 根据本次请求的host/port 初始化builder
         String scheme = request.getScheme();
         if (deployment.getSslRequired().isRequired(facade.getRequest().getRemoteAddr())) {
             scheme = "https";

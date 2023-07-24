@@ -17,6 +17,10 @@ public class KeycloakRestTemplateCustomizer implements RestTemplateCustomizer {
         this.keycloakInterceptor = keycloakInterceptor;
     }
 
+    /**
+     * 在spring boot 内部的http客户端上追加一个keycloak拦截器
+     * @param restTemplate
+     */
     @Override
     public void customize(RestTemplate restTemplate) {
         restTemplate.getInterceptors().add(keycloakInterceptor);

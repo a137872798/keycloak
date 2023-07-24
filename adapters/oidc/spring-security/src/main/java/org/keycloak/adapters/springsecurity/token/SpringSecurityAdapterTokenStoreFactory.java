@@ -29,6 +29,7 @@ import javax.servlet.http.HttpServletResponse;
  * {@link AdapterTokenStoreFactory} that returns a new {@link SpringSecurityTokenStore} for each request.
  *
  * @author <a href="mailto:srossillo@smartling.com">Scott Rossillo</a>
+ * 根据要求的仓库类型 生成不同对象
  */
 public class SpringSecurityAdapterTokenStoreFactory implements AdapterTokenStoreFactory {
 

@@ -32,6 +32,11 @@ public class KeycloakSpringBootConfigResolver implements org.keycloak.adapters.K
     @Autowired(required=false)
     private AdapterConfig adapterConfig;
 
+    /**
+     * 该对象基于req信息 生成与keycloak有关的对象
+     * @param request  这跟req也没啥关系啊
+     * @return
+     */
     @Override
     public KeycloakDeployment resolve(OIDCHttpFacade.Request request) {
         if (keycloakDeployment != null) {

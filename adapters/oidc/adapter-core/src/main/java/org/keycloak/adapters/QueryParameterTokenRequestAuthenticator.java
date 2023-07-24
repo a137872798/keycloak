@@ -25,6 +25,7 @@ import org.keycloak.adapters.spi.HttpFacade;
  * @author <a href="mailto:brad.culley@spartasystems.com">Brad Culley</a>
  * @author <a href="mailto:john.ament@spartasystems.com">John D. Ament</a>
  * @version $Revision: 1 $
+ * 创建基于请求参数的认证器
  */
 public class QueryParameterTokenRequestAuthenticator extends BearerTokenRequestAuthenticator {
     public static final String ACCESS_TOKEN = "access_token";

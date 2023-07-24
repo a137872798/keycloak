@@ -99,6 +99,7 @@ public class KeycloakAuthenticationEntryPoint implements AuthenticationEntryPoin
      * Redirects to the login page. If HTTP sessions are disabled, the redirect URL is saved in a
      * cookie now, to be retrieved by the {@link KeycloakAuthenticationSuccessHandler} or the
      * {@link KeycloakAuthenticationFailureHandler} when the login sequence completes.
+     * 回到登录页面
      */
     protected void commenceLoginRedirect(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (request.getSession(false) == null && KeycloakCookieBasedRedirect.getRedirectUrlFromCookie(request) == null) {
@@ -117,6 +118,12 @@ public class KeycloakAuthenticationEntryPoint implements AuthenticationEntryPoin
         response.sendRedirect(contextAwareLoginUri);
     }
 
+    /**
+     * 未认证
+     * @param request
+     * @param response
+     * @throws IOException
+     */
     protected void commenceUnauthorizedResponse(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.addHeader(HttpHeaders.WWW_AUTHENTICATE, String.format("Bearer realm=\"%s\"", realm));
         response.sendError(HttpStatus.UNAUTHORIZED.value(), HttpStatus.UNAUTHORIZED.getReasonPhrase());
