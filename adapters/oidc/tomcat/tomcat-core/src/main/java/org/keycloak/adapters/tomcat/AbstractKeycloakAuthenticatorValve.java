@@ -127,7 +127,7 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
         // 4) The deployment doesn't have a keycloak.config.resolver nor keycloak.json (or equivalent)
         //    Outcome: adapter is left unconfigured
 
-        // 在tomcat的context中 可以获取到初始化参数
+        // 在tomcat的context中 可以获取到初始化参数   当上层使用spring boot时 对应KeycloakSpringBootConfigResolverWrapper
         String configResolverClass = context.getServletContext().getInitParameter("keycloak.config.resolver");
 
         // 从上下文配置可以拿到一个配置解析器
@@ -219,13 +219,19 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
         try {
             // 将req/res包装成门面对象
             CatalinaHttpFacade facade = new OIDCCatalinaHttpFacade(request, response);
+            // session通过该对象维护
             Manager sessionManager = request.getContext().getManager();
             CatalinaUserSessionManagementWrapper sessionManagementWrapper = new CatalinaUserSessionManagementWrapper(userSessionManagement, sessionManager);
+            // 在认证前起作用的handler  能够被该对象处理的请求 都是一些特殊命令 JWT也是直接以请求体的方式传递
             PreAuthActionsHandler handler = new PreAuthActionsHandler(sessionManagementWrapper, deploymentContext, facade);
+            // 代表请求已经被处理完毕了
             if (handler.handleRequest()) {
                 return;
             }
+
+            // 先找到TokenStore 然后检查会话 如果过期自动进行续约 如果无法续约删除会话
             checkKeycloakSession(request, facade);
+            // super.invoke 会检查本次请求是否需要认证  如果需要会触发doAuthenticate
             super.invoke(request, response);
         } finally {
         }
@@ -243,20 +249,39 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
      */
     protected abstract AbstractAuthenticatedActionsValve createAuthenticatedActionsValve(AdapterDeploymentContext deploymentContext, Valve next, Container container);
 
+
+    /**
+     * 认证逻辑
+     * @param request
+     * @param response
+     * @param loginConfig
+     * @return
+     * @throws IOException
+     */
     protected boolean authenticateInternal(Request request, HttpServletResponse response, Object loginConfig) throws IOException {
+
         CatalinaHttpFacade facade = new OIDCCatalinaHttpFacade(request, response);
         KeycloakDeployment deployment = deploymentContext.resolveDeployment(facade);
+
+        // keycloak的配置有问题 无法使用 也就无法认证
         if (deployment == null || !deployment.isConfigured()) {
             //needed for the EAP6/AS7 adapter relying on the tomcat core adapter
             facade.getResponse().sendError(401);
             return false;
         }
+
+        // 获取之前创建的store
         AdapterTokenStore tokenStore = getTokenStore(request, facade, deployment);
 
+        // 每个应用在配置中需要声明clientId 现在在借助keycloak的认证能力前 需要先注册  就是在keycloak服务器的表中增加一个client-node的关联关系 包括node的注册时间
         nodesRegistrationManagement.tryRegister(deployment);
 
+        // 创建请求认证器
         CatalinaRequestAuthenticator authenticator = createRequestAuthenticator(request, facade, deployment, tokenStore);
+        // 需要的参数都已经设置进去了 直接触发认证逻辑即可
         AuthOutcome outcome = authenticator.authenticate();
+
+        // 已通过认证
         if (outcome == AuthOutcome.AUTHENTICATED) {
             if (facade.isEnded()) {
                 return false;
@@ -267,6 +292,7 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
         if (challenge != null) {
             challenge.challenge(facade);
         }
+        // 返回false 会导致流程提前结束
         return false;
     }
 
@@ -281,14 +307,25 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
      */
     protected void checkKeycloakSession(Request request, HttpFacade facade) {
         KeycloakDeployment deployment = deploymentContext.resolveDeployment(facade);
+        // 找到存储token的仓库  如果没有则新建 并且会绑定在req上
         AdapterTokenStore tokenStore = getTokenStore(request, facade, deployment);
         tokenStore.checkCurrentToken();
     }
 
+    /**
+     * 在tokenStore中会触发该方法
+     * @param request
+     * @throws IOException
+     */
     public void keycloakSaveRequest(Request request) throws IOException {
         saveRequest(request, request.getSessionInternal(true));
     }
 
+    /**
+     *
+     * @param request
+     * @return
+     */
     public boolean keycloakRestoreRequest(Request request) {
         try {
             return restoreRequest(request, request.getSessionInternal());
@@ -297,15 +334,26 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
         }
     }
 
+    /**
+     * 获取存储token的仓库
+     * @param request
+     * @param facade
+     * @param resolvedDeployment
+     * @return
+     */
     protected AdapterTokenStore getTokenStore(Request request, HttpFacade facade, KeycloakDeployment resolvedDeployment) {
+
+        // 代表req中已经记录了store 直接使用
         AdapterTokenStore store = (AdapterTokenStore)request.getNote(TOKEN_STORE_NOTE);
         if (store != null) {
             return store;
         }
 
+        // token 默认存储在session中
         if (resolvedDeployment.getTokenStore() == TokenStore.SESSION) {
             store = createSessionTokenStore(request, resolvedDeployment);
         } else {
+            // TODO
             store = new CatalinaCookieTokenStore(request, facade, resolvedDeployment, createPrincipalFactory());
         }
 
@@ -313,6 +361,12 @@ public abstract class AbstractKeycloakAuthenticatorValve extends FormAuthenticat
         return store;
     }
 
+    /**
+     * 为每个请求创建一个tokenStore
+     * @param request
+     * @param resolvedDeployment
+     * @return
+     */
     private AdapterTokenStore createSessionTokenStore(Request request, KeycloakDeployment resolvedDeployment) {
         AdapterTokenStore store;
         store = new CatalinaSessionTokenStore(request, resolvedDeployment, userSessionManagement, createPrincipalFactory(), this);

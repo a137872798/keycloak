@@ -34,12 +34,14 @@ import org.springframework.security.web.session.HttpSessionDestroyedEvent;
  *
  * @author <a href="mailto:srossillo@smartling.com">Scott Rossillo</a>
  * @version $Revision: 1 $
+ * 会话管理器
  */
 public class HttpSessionManager implements ApplicationListener<ApplicationEvent>, UserSessionManagement {
 
     private static final Logger log = LoggerFactory.getLogger(HttpSessionManager.class);
     private SessionManagementStrategy sessions = new LocalSessionManagementStrategy();
 
+    // 监听事件 修改会话
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
         if (event instanceof HttpSessionCreatedEvent) {

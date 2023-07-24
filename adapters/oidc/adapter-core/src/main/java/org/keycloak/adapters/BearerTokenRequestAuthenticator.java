@@ -38,7 +38,11 @@ public class BearerTokenRequestAuthenticator {
     protected String tokenString;
     protected AccessToken token;
     protected String surrogate;
+
     protected AuthChallenge challenge;
+    /**
+     * 存储使用keycloak需要的各种属性
+     */
     protected KeycloakDeployment deployment;
 
     public BearerTokenRequestAuthenticator(KeycloakDeployment deployment) {
@@ -61,9 +65,17 @@ public class BearerTokenRequestAuthenticator {
         return surrogate;
     }
 
+    /**
+     * 通过请求参数进行认证   这个认证的是已经登录成功后设置的token
+     * @param exchange
+     * @return
+     */
     public AuthOutcome authenticate(HttpFacade exchange)  {
+
+        // 要求设置请求头 Authorization Bearer xxxx
         List<String> authHeaders = exchange.getRequest().getHeaders("Authorization");
         if (authHeaders == null || authHeaders.isEmpty()) {
+            // 通过该对象可以获取错误信息
             challenge = challengeResponse(exchange, OIDCAuthenticationError.Reason.NO_BEARER_TOKEN, null, null);
             return AuthOutcome.NOT_ATTEMPTED;
         }
@@ -80,14 +92,23 @@ public class BearerTokenRequestAuthenticator {
             }
         }
 
+        // 解析token失败
         if (tokenString == null) {
             challenge = challengeResponse(exchange, OIDCAuthenticationError.Reason.NO_BEARER_TOKEN, null, null);
             return AuthOutcome.NOT_ATTEMPTED;
         }
 
+        // 验证token有效性
         return (authenticateToken(exchange, tokenString));
     }
-    
+
+
+    /**
+     * 认证token
+     * @param exchange
+     * @param tokenString
+     * @return
+     */
     protected AuthOutcome authenticateToken(HttpFacade exchange, String tokenString) {
         log.debug("Verifying access_token");
         if (log.isTraceEnabled()) {
@@ -100,6 +121,8 @@ public class BearerTokenRequestAuthenticator {
             }
         }
         try {
+
+            // token的加密算法是确定的 只要反向解密即可
             token = AdapterTokenVerifier.verifyToken(tokenString, deployment);
         } catch (VerificationException e) {
             log.debug("Failed to verify token");
@@ -160,6 +183,14 @@ public class BearerTokenRequestAuthenticator {
     }
 
 
+    /**
+     * 产生结果
+     * @param facade
+     * @param reason
+     * @param error
+     * @param description
+     * @return
+     */
     protected AuthChallenge challengeResponse(HttpFacade facade, final OIDCAuthenticationError.Reason reason, final String error, final String description) {
         StringBuilder header = new StringBuilder("Bearer realm=\"");
         header.append(deployment.getRealm()).append("\"");

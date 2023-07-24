@@ -36,6 +36,11 @@ public class AdapterUtils {
         return UUID.randomUUID().toString();
     }
 
+    /**
+     * 从token中解析出角色信息
+     * @param session
+     * @return
+     */
     public static Set<String> getRolesFromSecurityContext(RefreshableKeycloakSecurityContext session) {
         Set<String> roles = null;
         AccessToken accessToken = session.getToken();

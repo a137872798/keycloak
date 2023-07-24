@@ -60,6 +60,9 @@ public class SpringSecurityCookieTokenStore extends SpringSecurityTokenStore {
         this.facade = new SimpleHttpFacade(request, response);
     }
 
+    /**
+     * 检查当前是否有会话
+     */
     @Override
     public void checkCurrentToken() {
         final KeycloakPrincipal<RefreshableKeycloakSecurityContext> principal =
@@ -117,6 +120,7 @@ public class SpringSecurityCookieTokenStore extends SpringSecurityTokenStore {
      * @return valid principal
      */
     private KeycloakPrincipal<RefreshableKeycloakSecurityContext> checkPrincipalFromCookie() {
+        // 读取cookie的值 还原出该对象
         KeycloakPrincipal<RefreshableKeycloakSecurityContext> principal =
                 CookieTokenStore.getPrincipalFromCookie(deployment, facade, this);
         if (principal == null) {
@@ -127,6 +131,8 @@ public class SpringSecurityCookieTokenStore extends SpringSecurityTokenStore {
         RefreshableKeycloakSecurityContext session = principal.getKeycloakSecurityContext();
 
         if (session.isActive() && !session.getDeployment().isAlwaysRefreshToken()) return principal;
+
+        // 会自动刷新
         boolean success = session.refreshExpiredToken(false);
         if (success && session.isActive()) {
             refreshCallback(session);

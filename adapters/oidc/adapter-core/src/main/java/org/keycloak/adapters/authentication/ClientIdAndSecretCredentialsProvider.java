@@ -48,6 +48,12 @@ public class ClientIdAndSecretCredentialsProvider implements ClientCredentialsPr
         clientSecret = (String) config;
     }
 
+    /**
+     * 在将请求发往keycloak服务器前 需要添加一些请求头
+     * @param deployment Fully resolved deployment
+     * @param requestHeaders You should put any HTTP request headers you want to use for authentication of client. These headers will be attached to the HTTP request sent to Keycloak server
+     * @param formParams You should put any request parameters you want to use for authentication of client. These parameters will be attached to the HTTP request sent to Keycloak server
+     */
     @Override
     public void setClientCredentials(KeycloakDeployment deployment, Map<String, String> requestHeaders, Map<String, String> formParams) {
         String clientId = deployment.getResourceName();

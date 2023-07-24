@@ -92,6 +92,10 @@ public class KeycloakAuthenticatorValve extends AbstractKeycloakAuthenticatorVal
         logoutInternal(request);
     }
 
+    /**
+     * 创建存储用户凭证 的对象
+     * @return
+     */
     @Override
     protected GenericPrincipalFactory createPrincipalFactory() {
         return new GenericPrincipalFactory() {

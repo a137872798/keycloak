@@ -45,6 +45,7 @@ import java.util.Map;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 进行认证操作
  */
 public class OAuthRequestAuthenticator {
     private static final Logger log = Logger.getLogger(OAuthRequestAuthenticator.class);
@@ -139,7 +140,13 @@ public class OAuthRequestAuthenticator {
         return getQueryParamValue(OAuth2Constants.CODE);
     }
 
+    /**
+     * 生成回调地址
+     * @param state
+     * @return
+     */
     protected String getRedirectUri(String state) {
+        // 本次要请求的地址就是回调地址 相当于是完成认证后重新访问
         String url = getRequestUrl();
         log.debugf("callback uri: %s", url);
       
@@ -172,9 +179,11 @@ public class OAuthRequestAuthenticator {
         String uiLocales = getQueryParamValue(OAuth2Constants.UI_LOCALES_PARAM);
         url = UriUtils.stripQueryParam(url, OAuth2Constants.UI_LOCALES_PARAM);
 
+        // 将auth地址放在最前面
         KeycloakUriBuilder redirectUriBuilder = deployment.getAuthUrl().clone()
                 .queryParam(OAuth2Constants.RESPONSE_TYPE, OAuth2Constants.CODE)
                 .queryParam(OAuth2Constants.CLIENT_ID, deployment.getResourceName())
+                // 上面生成的是回调地址
                 .queryParam(OAuth2Constants.REDIRECT_URI, rewrittenRedirectUri(url))
                 .queryParam(OAuth2Constants.STATE, state)
                 .queryParam("login", "true");
@@ -226,6 +235,8 @@ public class OAuthRequestAuthenticator {
                 tokenStore.saveRequest();
                 log.debug("Sending redirect to login page: " + redirect);
                 exchange.getResponse().setStatus(302);
+
+                // 发起请求前会设置state 当回调触发时 需要匹配2个state
                 exchange.getResponse().setCookie(deployment.getStateCookieName(), state, "/", null, -1, deployment.getSslRequired().isRequired(facade.getRequest().getRemoteAddr()), true);
                 exchange.getResponse().setHeader("Location", redirect);
                 return true;
@@ -260,8 +271,13 @@ public class OAuthRequestAuthenticator {
 
     }
 
+    /**
+     * 进行认证
+     * @return
+     */
     public AuthOutcome authenticate() {
         String code = getCode();
+        // 还没有code的情况下 先触发认证逻辑
         if (code == null) {
             log.debug("there was no code");
             String error = getError();
@@ -276,6 +292,7 @@ public class OAuthRequestAuthenticator {
                 return AuthOutcome.NOT_ATTEMPTED;
             }
         } else {
+            // code 兑换token
             log.debug("there was a code, resolving");
             challenge = resolveCode(code);
             if (challenge != null) {
@@ -314,6 +331,7 @@ public class OAuthRequestAuthenticator {
      * protocol specific query parameters are removed.
      *
      * @return null if an access token was obtained, otherwise a challenge is returned
+     * 已经获取到code的情况下 解析兑换token
      */
     protected AuthChallenge resolveCode(String code) {
         // abort if not HTTPS
@@ -331,7 +349,9 @@ public class OAuthRequestAuthenticator {
     
         try {
             // For COOKIE store we don't have httpSessionId and single sign-out won't be available
+            // 这里可以理解为首次设置session
             String httpSessionId = deployment.getTokenStore() == TokenStore.SESSION ? reqAuthenticator.changeHttpSessionId(true) : null;
+            // 将code兑换成token
             tokenResponse = ServerRequest.invokeAccessCodeToToken(deployment, code, strippedOauthParametersRequestUri, httpSessionId);
         } catch (ServerRequest.HttpFailure failure) {
             log.error("failed to turn code into token");
@@ -358,6 +378,7 @@ public class OAuthRequestAuthenticator {
         }
 
         try {
+            // 验证token
             AdapterTokenVerifier.VerifiedTokens tokens = AdapterTokenVerifier.verifyTokens(tokenString, idTokenString, deployment);
             token = tokens.getAccessToken();
             idToken = tokens.getIdToken();

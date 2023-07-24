@@ -44,7 +44,13 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
     private static final Logger log = Logger.getLogger("" + CatalinaSessionTokenStore.class);
 
     private KeycloakDeployment deployment;
+    /**
+     * 该对象负责会话登出
+     */
     private CatalinaUserSessionManagement sessionManagement;
+    /**
+     * 该对象创建用户凭证
+     */
     protected GenericPrincipalFactory principalFactory;
 
 
@@ -58,10 +64,16 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
         this.principalFactory = principalFactory;
     }
 
+    /**
+     * 检查当前会话
+     */
     @Override
     public void checkCurrentToken() {
+        // 还未创建本次请求关联的session 直接返回
         Session catalinaSession = request.getSessionInternal(false);
         if (catalinaSession == null) return;
+
+        // 获取session上绑定的账号信息
         SerializableKeycloakAccount account = (SerializableKeycloakAccount) catalinaSession.getSession().getAttribute(SerializableKeycloakAccount.class.getName());
         if (account == null) {
             return;
@@ -71,8 +83,10 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
         if (session == null) return;
 
         // just in case session got serialized
+        // 如果会话的deployment还未设置 需要进行设置
         if (session.getDeployment() == null) session.setCurrentRequestInfo(deployment, this);
 
+        // 会话还有效 并且不是每次访问都刷新的情况下 将账号信息和上下文设置到req中
         if (session.isActive() && !session.getDeployment().isAlwaysRefreshToken()) {
             request.setAttribute(KeycloakSecurityContext.class.getName(), session);
             request.setUserPrincipal(account.getPrincipal());
@@ -80,9 +94,14 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
             return;
         }
 
+        // 内部的token已经过期
+
         // FYI: A refresh requires same scope, so same roles will be set.  Otherwise, refresh will fail and token will
         // not be updated
+
+        // 当已登录过的用户尝试重新登录时 会先尝试自动刷新
         boolean success = session.refreshExpiredToken(false);
+        // 刷新成功 照常使用
         if (success && session.isActive()) {
             request.setAttribute(KeycloakSecurityContext.class.getName(), session);
             request.setUserPrincipal(account.getPrincipal());
@@ -91,6 +110,7 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
         }
 
         // Refresh failed, so user is already logged out from keycloak. Cleanup and expire our session
+        // 刷新失败 清除残留会话
         log.fine("Cleanup and expire session " + catalinaSession.getId() + " after failed refresh");
         request.setUserPrincipal(null);
         request.setAuthType(null);
@@ -106,8 +126,14 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
         catalinaSession.setAuthType(null);
     }
 
+    /**
+     * 检查是否可以从会话中拿到 之前存入的认证信息
+     * @param authenticator used for actual request authentication
+     * @return
+     */
     @Override
     public boolean isCached(RequestAuthenticator authenticator) {
+        // 无session 或者 session没有关联账号信息
         Session session = request.getSessionInternal(false);
         if (session == null) return false;
         SerializableKeycloakAccount account = (SerializableKeycloakAccount) session.getSession().getAttribute(SerializableKeycloakAccount.class.getName());
@@ -142,9 +168,18 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
         return true;
     }
 
+    /**
+     * 这是session上绑定的keycloak账号
+     */
     public static class SerializableKeycloakAccount implements OidcKeycloakAccount, Serializable {
+
+        // 角色信息
         protected Set<String> roles;
+
+        // 账号信息
         protected Principal principal;
+
+        // 存储token信息
         protected RefreshableKeycloakSecurityContext securityContext;
 
         public SerializableKeycloakAccount(Set<String> roles, Principal principal, RefreshableKeycloakSecurityContext securityContext) {
@@ -180,6 +215,10 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
         }
     }
 
+    /**
+     * 当用户通过OAuth协议拿到用户数据后 触发该方法
+     * @param account
+     */
     @Override
     public void saveAccountInfo(OidcKeycloakAccount account) {
         RefreshableKeycloakSecurityContext securityContext = (RefreshableKeycloakSecurityContext) account.getKeycloakSecurityContext();
@@ -187,6 +226,8 @@ public class CatalinaSessionTokenStore extends CatalinaAdapterSessionStore imple
         GenericPrincipal principal = principalFactory.createPrincipal(request.getContext().getRealm(), account.getPrincipal(), roles);
 
         SerializableKeycloakAccount sAccount = new SerializableKeycloakAccount(roles, account.getPrincipal(), securityContext);
+
+        // 创建一个会话对象
         Session session = request.getSessionInternal(true);
         session.setPrincipal(principal);
         session.setAuthType("KEYCLOAK");

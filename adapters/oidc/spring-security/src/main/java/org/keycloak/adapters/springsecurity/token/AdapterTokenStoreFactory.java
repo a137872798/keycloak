@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletRequest;
  * Creates a per-request adapter token store.
  *
  * @author <a href="mailto:srossillo@smartling.com">Scott Rossillo</a>
+ * 生成存储token的仓库
  */
 public interface AdapterTokenStoreFactory {
 

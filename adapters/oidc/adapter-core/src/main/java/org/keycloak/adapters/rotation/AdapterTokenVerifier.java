@@ -67,6 +67,7 @@ public class AdapterTokenVerifier {
     public static VerifiedTokens verifyTokens(String accessTokenString, String idTokenString, KeycloakDeployment deployment) throws VerificationException {
         // Adapters currently do most of the checks including signature etc on the access token
         TokenVerifier<AccessToken> tokenVerifier = createVerifier(accessTokenString, deployment, true, AccessToken.class);
+        // 认证拿到token
         AccessToken accessToken = tokenVerifier.verify().getToken();
 
         if (idTokenString != null) {

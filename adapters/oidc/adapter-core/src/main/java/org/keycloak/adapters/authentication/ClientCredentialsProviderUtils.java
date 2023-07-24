@@ -37,6 +37,11 @@ public class ClientCredentialsProviderUtils {
 
     private static Logger logger = Logger.getLogger(ClientCredentialsProviderUtils.class);
 
+    /**
+     * 设置客户端凭证
+     * @param deployment
+     * @return
+     */
     public static ClientCredentialsProvider bootstrapClientAuthenticator(KeycloakDeployment deployment) {
         String clientId = deployment.getResourceName();
         Map<String, Object> clientCredentials = deployment.getResourceCredentials();

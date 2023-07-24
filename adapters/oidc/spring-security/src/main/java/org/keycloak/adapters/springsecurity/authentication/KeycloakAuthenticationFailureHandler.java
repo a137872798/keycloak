@@ -29,7 +29,7 @@ import java.io.IOException;
  * To return the forbidden code with the corresponding message.
  * 
  * @author emilienbondu
- *
+ * 认证失败时触发
  */
 public class KeycloakAuthenticationFailureHandler implements AuthenticationFailureHandler {
 

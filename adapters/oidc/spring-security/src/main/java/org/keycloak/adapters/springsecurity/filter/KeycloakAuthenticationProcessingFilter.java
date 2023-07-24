@@ -66,6 +66,7 @@ import org.springframework.util.Assert;
  *
  * @author <a href="mailto:srossillo@smartling.com">Scott Rossillo</a>
  * @version $Revision: 1 $
+ * 包含认证逻辑的过滤器
  */
 public class KeycloakAuthenticationProcessingFilter extends AbstractAuthenticationProcessingFilter implements ApplicationContextAware {
     public static final String AUTHORIZATION_HEADER = "Authorization";
@@ -73,6 +74,7 @@ public class KeycloakAuthenticationProcessingFilter extends AbstractAuthenticati
     /**
      * Request matcher that matches requests to the {@link KeycloakAuthenticationEntryPoint#DEFAULT_LOGIN_URI default login URI}
      * and any request with a <code>Authorization</code> header or an {@link AdapterStateCookieRequestMatcher adapter state cookie}.
+     * 满足任意一个即可  这些都是需要认证的
      */
     public static final RequestMatcher DEFAULT_REQUEST_MATCHER =
             new OrRequestMatcher(
@@ -135,6 +137,17 @@ public class KeycloakAuthenticationProcessingFilter extends AbstractAuthenticati
         super.afterPropertiesSet();
     }
 
+    /**
+     * 认证逻辑的入口
+     * @param request   from which to extract parameters and perform the authentication
+     * @param response  the response, which may be needed if the implementation has to do a redirect as part of a
+     *                  multi-stage authentication process (such as OpenID).
+     *
+     * @return
+     * @throws AuthenticationException
+     * @throws IOException
+     * @throws ServletException
+     */
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException, IOException, ServletException {
@@ -147,10 +160,12 @@ public class KeycloakAuthenticationProcessingFilter extends AbstractAuthenticati
         // using Spring authenticationFailureHandler
         deployment.setDelegateBearerErrorResponseSending(true);
 
+        // 创建存储token的对象
         AdapterTokenStore tokenStore = adapterTokenStoreFactory.createAdapterTokenStore(deployment, request, response);
         RequestAuthenticator authenticator
                 = requestAuthenticatorFactory.createRequestAuthenticator(facade, request, deployment, tokenStore, -1);
 
+        // 逻辑跟tomcat那套是一样的
         AuthOutcome result = authenticator.authenticate();
         log.debug("Auth outcome: {}", result);
 
@@ -190,6 +205,15 @@ public class KeycloakAuthenticationProcessingFilter extends AbstractAuthenticati
         }
     }
 
+    /**
+     * 认证成功时触发
+     * @param request
+     * @param response
+     * @param chain
+     * @param authResult the object returned from the <tt>attemptAuthentication</tt> method.
+     * @throws IOException
+     * @throws ServletException
+     */
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
                                             Authentication authResult) throws IOException, ServletException {

@@ -51,6 +51,7 @@ public class CookieTokenStore {
         facade.getResponse().setCookie(AdapterConstants.KEYCLOAK_ADAPTER_STATE_COOKIE, cookie, cookiePath, null, -1, deployment.getSslRequired().isRequired(facade.getRequest().getRemoteAddr()), true);
     }
 
+    // 从cookie上获取
     public static KeycloakPrincipal<RefreshableKeycloakSecurityContext> getPrincipalFromCookie(KeycloakDeployment deployment, HttpFacade facade, AdapterTokenStore tokenStore) {
         OIDCHttpFacade.Cookie cookie = facade.getRequest().getCookie(AdapterConstants.KEYCLOAK_ADAPTER_STATE_COOKIE);
         if (cookie == null) {

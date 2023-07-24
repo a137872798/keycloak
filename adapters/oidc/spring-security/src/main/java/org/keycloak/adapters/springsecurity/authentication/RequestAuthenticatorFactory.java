@@ -9,6 +9,7 @@ import org.keycloak.adapters.spi.HttpFacade;
 
 /**
  * Creates {@link RequestAuthenticator}s.
+ * 认证器工厂
  */
 public interface RequestAuthenticatorFactory {
     /**

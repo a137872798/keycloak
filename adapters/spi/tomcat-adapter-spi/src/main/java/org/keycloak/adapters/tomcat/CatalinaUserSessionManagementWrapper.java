@@ -27,6 +27,9 @@ import java.util.List;
  */
 public class CatalinaUserSessionManagementWrapper implements UserSessionManagement {
 
+    /**
+     * 该对象是一个session 监听器
+     */
     private final CatalinaUserSessionManagement delegate;
     private final Manager sessionManager;
 

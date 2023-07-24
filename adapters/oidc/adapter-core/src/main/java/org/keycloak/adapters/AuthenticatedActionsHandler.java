@@ -38,6 +38,7 @@ import java.util.Set;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 在认证结束后才能使用的处理器
  */
 public class AuthenticatedActionsHandler {
     private static final Logger log = Logger.getLogger(AuthenticatedActionsHandler.class);
@@ -49,6 +50,10 @@ public class AuthenticatedActionsHandler {
         this.facade = facade;
     }
 
+    /**
+     * 返回true 会导致流程提前结束
+     * @return
+     */
     public boolean handledRequest() {
         log.debugv("AuthenticatedActionsValve.invoke {0}", facade.getRequest().getURI());
         if (corsRequest()) return true;

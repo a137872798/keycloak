@@ -78,6 +78,7 @@ public class KeycloakSecurityContextRequestFilter extends GenericFilterBean impl
                 refreshableSecurityContext.setCurrentRequestInfo(deployment, adapterTokenStore);
             }
 
+            // 主要是刷新
             if (!refreshableSecurityContext.isActive() || deployment.isAlwaysRefreshToken()) {
                 if (refreshableSecurityContext.refreshExpiredToken(false)) {
                     request.setAttribute(KeycloakSecurityContext.class.getName(), refreshableSecurityContext);

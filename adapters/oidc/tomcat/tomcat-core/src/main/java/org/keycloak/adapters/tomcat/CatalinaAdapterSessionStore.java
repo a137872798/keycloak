@@ -25,9 +25,18 @@ import java.io.IOException;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 基于catalina
  */
 public class CatalinaAdapterSessionStore implements AdapterSessionStore {
+
+    /**
+     * 本次的请求对象
+     */
     protected Request request;
+
+    /**
+     * 接入keycloak认证逻辑的阀门对象
+     */
     protected AbstractKeycloakAuthenticatorValve valve;
 
     public CatalinaAdapterSessionStore(Request request, AbstractKeycloakAuthenticatorValve valve) {

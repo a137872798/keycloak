@@ -44,15 +44,21 @@ import java.io.IOException;
  *
  * @author <a href="mailto:srossillo@smartling.com">Scott Rossillo</a>
  * @version $Revision: 1 $
+ * 在认证前起作用的过滤器
  */
 public class KeycloakPreAuthActionsFilter extends GenericFilterBean implements ApplicationContextAware {
 
     private static final Logger log = LoggerFactory.getLogger(KeycloakPreAuthActionsFilter.class);
 
+    // 该对象负责将自己注册到keycloak上
     private NodesRegistrationManagement nodesRegistrationManagement = new NodesRegistrationManagement();
     private ApplicationContext applicationContext;
+    // 维护keycloak部署相关的信息
     private AdapterDeploymentContext deploymentContext;
+    // 维护会话的对象
     private UserSessionManagement userSessionManagement;
+
+    // 产生拦截对象
     private PreAuthActionsHandlerFactory preAuthActionsHandlerFactory = new PreAuthActionsHandlerFactory();
 
     public KeycloakPreAuthActionsFilter() {
@@ -74,6 +80,14 @@ public class KeycloakPreAuthActionsFilter extends GenericFilterBean implements A
         nodesRegistrationManagement.stop();
     }
 
+    /**
+     * 到了 servlet层起作用的过滤器
+     * @param request
+     * @param response
+     * @param chain
+     * @throws IOException
+     * @throws ServletException
+     */
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
@@ -93,6 +107,7 @@ public class KeycloakPreAuthActionsFilter extends GenericFilterBean implements A
         if (handler.handleRequest()) {
             log.debug("Pre-auth filter handled request: {}", ((HttpServletRequest) request).getRequestURI());
         } else {
+            // 没有被预处理器拦截的情况 往下传递
             chain.doFilter(request, response);
         }
     }

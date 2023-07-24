@@ -47,6 +47,10 @@ import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFa
 public class KeycloakAutoConfiguration extends KeycloakBaseSpringBootConfiguration {
 
 
+    /**
+     * 通过该方法对web容器进行定制
+     * @return
+     */
     @Bean
     public WebServerFactoryCustomizer<ConfigurableServletWebServerFactory> getKeycloakContainerCustomizer() {
         return new WebServerFactoryCustomizer<ConfigurableServletWebServerFactory>() {

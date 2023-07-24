@@ -60,11 +60,14 @@ public class KeycloakAuthenticatedActionsFilter extends GenericFilterBean implem
 
         request.setAttribute(FILTER_APPLIED, Boolean.TRUE);
 
+        // 获取当前线程绑定的认证上下文
         KeycloakSecurityContext keycloakSecurityContext = getKeycloakPrincipal();
 
         if (keycloakSecurityContext instanceof RefreshableKeycloakSecurityContext) {
             HttpFacade facade = new SimpleHttpFacade((HttpServletRequest) request, (HttpServletResponse) response);
             KeycloakDeployment deployment = resolveDeployment(request, response);
+
+            // 尝试进行认证后的处理
             AuthenticatedActionsHandler actions = new AuthenticatedActionsHandler(deployment, OIDCHttpFacade.class.cast(facade));
             if (actions.handledRequest()) {
                 return;

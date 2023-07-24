@@ -27,6 +27,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
  * cookie.
  *
  * @author <a href="mailto:scranen@gmail.com">Sjoerd Cranen</a>
+ * 包含 KEYCLOAK_ADAPTER_STATE_COOKIE cookie的请求
  */
 public class AdapterStateCookieRequestMatcher implements RequestMatcher {
 

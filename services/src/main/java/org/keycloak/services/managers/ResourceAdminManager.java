@@ -287,6 +287,7 @@ public class ResourceAdminManager {
         return result;
     }
 
+    // TODO 发送登出请求  让某个client下的某个会话失效
     protected Response sendLogoutRequest(RealmModel realm, ClientModel resource, List<String> adapterSessionIds, List<String> userSessions, int notBefore, String managementUrl) {
         LogoutAction adminAction = new LogoutAction(TokenIdGenerator.generateId(), Time.currentTime() + 30, resource.getClientId(), adapterSessionIds, notBefore, userSessions);
         String token = session.tokens().encode(adminAction);

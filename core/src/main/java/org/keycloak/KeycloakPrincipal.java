@@ -30,6 +30,10 @@ import java.security.Principal;
  * 该凭证对象会设置到请求头中
  */
 public class KeycloakPrincipal<T extends KeycloakSecurityContext> implements Principal, Serializable {
+
+    /**
+     * 对应用户名
+     */
     protected final String name;
     protected final T context;
 

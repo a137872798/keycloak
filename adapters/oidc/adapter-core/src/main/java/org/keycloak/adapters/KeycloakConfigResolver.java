@@ -32,6 +32,7 @@ import org.keycloak.adapters.spi.HttpFacade.Request;
  *
  * @see KeycloakDeploymentBuilder
  * @author Juraci Paixão Kröhling <juraci at kroehling.de>
+ *     该对象可以根据每次的请求对象生成对应的 keycloakDeployment
  */
 public interface KeycloakConfigResolver {
 

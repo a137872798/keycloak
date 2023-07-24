@@ -34,6 +34,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
  * 
  * @see KeycloakCookieBasedRedirect
  * @see KeycloakAuthenticationEntryPoint#commenceLoginRedirect
+ * 认证成功时 触发
  */
 public class KeycloakAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 

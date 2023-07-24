@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by scott on 4/24/15.
+ * 本地会话管理器
  */
 public class LocalSessionManagementStrategy implements SessionManagementStrategy {
 

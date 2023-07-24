@@ -54,6 +54,10 @@ public abstract class RequestAuthenticator {
         return challenge;
     }
 
+    /**
+     * 进行认证逻辑
+     * @return
+     */
     public AuthOutcome authenticate() {
         if (log.isTraceEnabled()) {
             log.trace("--> authenticate()");
@@ -64,6 +68,7 @@ public abstract class RequestAuthenticator {
             log.trace("try bearer");
         }
 
+        // 先使用 bearerToken进行认证
         AuthOutcome outcome = bearer.authenticate(facade);
         if (outcome == AuthOutcome.FAILED) {
             challenge = bearer.getChallenge();
@@ -93,6 +98,7 @@ public abstract class RequestAuthenticator {
             return AuthOutcome.AUTHENTICATED;
         }
 
+        // 解析 Authorization Basic xxxx
         if (deployment.isEnableBasicAuth()) {
             BasicAuthRequestAuthenticator basicAuth = createBasicAuthAuthenticator();
             if (log.isTraceEnabled()) {
@@ -128,6 +134,7 @@ public abstract class RequestAuthenticator {
             log.trace("try oauth");
         }
 
+        // 可以从会话中获取认证信息
         if (tokenStore.isCached(this)) {
             if (verifySSL()) return AuthOutcome.FAILED;
             log.debug("AUTHENTICATED: was cached");
@@ -147,6 +154,7 @@ public abstract class RequestAuthenticator {
 
         if (verifySSL()) return AuthOutcome.FAILED;
 
+        // 通过 OAuth完成认证  也就是code兑换到token
         completeAuthentication(oauth);
 
         // redirect to strip out access code and state query parameters
@@ -199,6 +207,10 @@ public abstract class RequestAuthenticator {
 
     protected abstract OAuthRequestAuthenticator createOAuthAuthenticator();
 
+    /**
+     * 创建 bearerToken 认证器
+     * @return
+     */
     protected BearerTokenRequestAuthenticator createBearerTokenAuthenticator() {
         return new BearerTokenRequestAuthenticator(deployment);
     }
@@ -211,6 +223,10 @@ public abstract class RequestAuthenticator {
         return new QueryParameterTokenRequestAuthenticator(deployment);
     }
 
+    /**
+     * 当通过 OAuth 完成认证时触发该方法
+     * @param oauth
+     */
     protected void completeAuthentication(OAuthRequestAuthenticator oauth) {
         RefreshableKeycloakSecurityContext session = new RefreshableKeycloakSecurityContext(deployment, tokenStore, oauth.getTokenString(), oauth.getToken(), oauth.getIdTokenString(), oauth.getIdToken(), oauth.getRefreshToken());
         final KeycloakPrincipal<RefreshableKeycloakSecurityContext> principal = new KeycloakPrincipal<>(AdapterUtils.getPrincipalName(deployment, oauth.getToken()), session);
@@ -230,7 +246,13 @@ public abstract class RequestAuthenticator {
      */
     protected abstract String changeHttpSessionId(boolean create);
 
+    /**
+     * 在认证通过前会触发该方法
+     * @param bearer
+     * @param method
+     */
     protected void completeAuthentication(BearerTokenRequestAuthenticator bearer, String method) {
+        // 将token包装成context
         RefreshableKeycloakSecurityContext session = new RefreshableKeycloakSecurityContext(deployment, null, bearer.getTokenString(), bearer.getToken(), null, null, null);
         final KeycloakPrincipal<RefreshableKeycloakSecurityContext> principal = new KeycloakPrincipal<>(AdapterUtils.getPrincipalName(deployment, bearer.getToken()), session);
         completeBearerAuthentication(principal, method);
