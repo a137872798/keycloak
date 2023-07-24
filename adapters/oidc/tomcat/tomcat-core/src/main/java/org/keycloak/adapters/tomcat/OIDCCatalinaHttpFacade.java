@@ -32,6 +32,10 @@ public class OIDCCatalinaHttpFacade extends CatalinaHttpFacade implements OIDCHt
         super(response, request);
     }
 
+    /**
+     * 代表请求很早就被设置了 keycloak相关的上下文对象  在创建该对象后 可以随时取出上下文
+     * @return
+     */
     @Override
     public KeycloakSecurityContext getSecurityContext() {
         return (KeycloakSecurityContext)request.getAttribute(KeycloakSecurityContext.class.getName());

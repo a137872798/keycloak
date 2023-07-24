@@ -32,14 +32,23 @@ import java.util.List;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 监听tomcat会话相关的事件
  */
 public class CatalinaUserSessionManagement implements SessionListener {
     private static final Logger log = Logger.getLogger(CatalinaUserSessionManagement.class);
 
+    /**
+     * 当产生一个新的session时  就将本对象注册成监听器
+     * @param session
+     */
     public void login(Session session) {
         session.addSessionListener(this);
     }
 
+    /**
+     * 所有会话完成登出
+     * @param sessionManager
+     */
     public void logoutAll(Manager sessionManager) {
         Session[] allSessions = sessionManager.findSessions();
         for (Session session : allSessions) {
@@ -55,6 +64,11 @@ public class CatalinaUserSessionManagement implements SessionListener {
         }
     }
 
+    /**
+     * 通过id查找 并触发登出
+     * @param manager
+     * @param httpSessionId
+     */
     protected void logoutSession(Manager manager, String httpSessionId) {
         log.debug("logoutHttpSession: " + httpSessionId);
 
@@ -69,16 +83,26 @@ public class CatalinaUserSessionManagement implements SessionListener {
         logoutSession(session);
     }
 
+    /**
+     * 将会话标记成过期
+     * @param session
+     */
     protected void logoutSession(Session session) {
         try {
+            // 这个举动会产生session事件 并触发监听器
             if (session != null) session.expire();
         } catch (Exception e) {
             log.debug("Session not present or already invalidated.", e);
         }
     }
 
+    /**
+     * 当收到会话事件时 触发该方法
+     * @param event
+     */
     public void sessionEvent(SessionEvent event) {
         // We only care about session destroyed events
+        // 只关注会话销毁事件
         if (!Session.SESSION_DESTROYED_EVENT.equals(event.getType()))
             return;
 
@@ -88,6 +112,8 @@ public class CatalinaUserSessionManagement implements SessionListener {
 
         GenericPrincipal principal = (GenericPrincipal) session.getPrincipal();
         if (principal == null) return;
+
+        // 就是将principal 从session上移除
         session.setPrincipal(null);
         session.setAuthType(null);
     }

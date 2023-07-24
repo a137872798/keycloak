@@ -55,6 +55,11 @@ public class KeycloakDeploymentBuilder {
     }
 
 
+    /**
+     * 通过一个配置对象进行初始化
+     * @param adapterConfig
+     * @return
+     */
     protected KeycloakDeployment internalBuild(final AdapterConfig adapterConfig) {
         if (adapterConfig.getRealm() == null) throw new RuntimeException("Must set 'realm' in config");
         deployment.setRealm(adapterConfig.getRealm());
@@ -172,6 +177,11 @@ public class KeycloakDeploymentBuilder {
         return deployment;
     }
 
+    /**
+     * 包装deployment返回的client
+     * @param adapterConfig
+     * @return
+     */
     private Callable<HttpClient> createHttpClientProducer(final AdapterConfig adapterConfig) {
         return new Callable<HttpClient>() {
             private HttpClient client;
@@ -189,12 +199,22 @@ public class KeycloakDeploymentBuilder {
         };
     }
 
+    /**
+     * 通过配置对象进行初始化
+     * @param is
+     * @return
+     */
     public static KeycloakDeployment build(InputStream is) {
         CryptoIntegration.init(KeycloakDeploymentBuilder.class.getClassLoader());
         AdapterConfig adapterConfig = loadAdapterConfig(is);
         return new KeycloakDeploymentBuilder().internalBuild(adapterConfig);
     }
 
+    /**
+     * 解析json
+     * @param is
+     * @return
+     */
     public static AdapterConfig loadAdapterConfig(InputStream is) {
         ObjectMapper mapper = new ObjectMapper(new SystemPropertiesJsonParserFactory());
         mapper.setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
