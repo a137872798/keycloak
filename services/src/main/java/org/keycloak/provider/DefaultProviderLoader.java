@@ -33,6 +33,9 @@ import java.util.ServiceLoader;
  */
 public class DefaultProviderLoader implements ProviderLoader {
 
+    /**
+     * 包含一些信息的简单bean对象
+     */
     private KeycloakDeploymentInfo info;
     private ClassLoader classLoader;
 
@@ -58,7 +61,7 @@ public class DefaultProviderLoader implements ProviderLoader {
     public List<ProviderFactory> load(Spi spi) {
         List<ProviderFactory> list = new LinkedList<>();
         if (info.hasServices()) {
-            // 加载出关联的factory对象
+            // spi.getProviderFactoryClass 返回的是一个接口类型 然后通过ServiceLoader加载该接口的所有实现类
             for (ProviderFactory f : ServiceLoader.load(spi.getProviderFactoryClass(), classLoader)) {
                 list.add(f);
             }

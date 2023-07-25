@@ -40,6 +40,9 @@ public class ProviderManager {
 
     // 每个Loader对象都可以加载SPI对象
     private List<ProviderLoader> loaders = new LinkedList<ProviderLoader>();
+
+    // spi可以加载一组工厂实例 而这组工厂都是用来产生期望的provider的  注意这是一个MultivaluedHashMap对象
+    // Provider 描述的是接口  ProviderFactory 描述的是实现类
     private MultivaluedHashMap<Class<? extends Provider>, ProviderFactory> cache = new MultivaluedHashMap<>();
 
 
@@ -51,7 +54,8 @@ public class ProviderManager {
     public ProviderManager(KeycloakDeploymentInfo info, ClassLoader baseClassLoader, String... resources) {
         this.info = info;
         List<ProviderLoaderFactory> factories = new LinkedList<ProviderLoaderFactory>();
-        // 获取加载器的工厂 加载器创建加载对象 加载对象负责加载SPI对象
+        // ProviderLoaderFactory决定了会加载到哪些 ProviderLoader    每个ProviderLoader 又可以加载一组Spi对象
+        // 每个Spi对象又可以加载一组 ProviderFactory
         for (ProviderLoaderFactory f : ServiceLoader.load(ProviderLoaderFactory.class, getClass().getClassLoader())) {
             factories.add(f);
         }
@@ -62,7 +66,7 @@ public class ProviderManager {
         loaders.add(new DefaultProviderLoader(info, baseClassLoader));
         loaders.add(new DeploymentProviderLoader(info));
 
-        // 代表从外部指定了 provider名字
+        // 描述需要加载哪些providerLoader
         if (resources != null) {
             for (String r : resources) {
                 String type = r.substring(0, r.indexOf(':'));
