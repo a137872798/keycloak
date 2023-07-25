@@ -5,13 +5,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// 存储provider信息的容器
+// 这是静态对象
 public class KeycloakDeploymentInfo {
 
     private String name;
     private boolean services;
     private boolean themes;
     private boolean themeResources;
+
+    /**
+     * 每个Spi对象是可以加载一组ProviderFactory的
+     */
     private Map<Class<? extends Spi>, List<ProviderFactory>> providers = new HashMap<>();
 
     public boolean isProvider() {

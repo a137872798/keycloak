@@ -99,7 +99,7 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
         ProviderManager pm = new ProviderManager(KeycloakDeploymentInfo.create().services(), getClass().getClassLoader(), Config.scope().getArray("providers"));
         spis.addAll(pm.loadSpis());
 
-        // 有关SPI加载的
+        // 借助spi 把能够提供某个provider的所有工厂都加载出来了
         factoriesMap = loadFactories(pm);
 
         synchronized (ProviderManagerRegistry.SINGLETON) {
@@ -266,6 +266,8 @@ public class DefaultKeycloakSessionFactory implements KeycloakSessionFactory, Pr
                 }
 
             } else {
+
+                // 没有指定的情况下要全部加载
                 for (ProviderFactory factory : pm.load(spi)) {
                     Config.Scope scope = Config.scope(spi.getName(), factory.getId());
                     if (isEnabled(factory, scope)) {
