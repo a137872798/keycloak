@@ -337,7 +337,7 @@ public class DefaultAuthenticationFlows {
         execution = new AuthenticationExecutionModel();
         execution.setParentFlow(forms.getId());
         execution.setRequirement(AuthenticationExecutionModel.Requirement.REQUIRED);
-        execution.setAuthenticator("auth-username-password-form");
+        execution.setAuthenticator("customer-auth-username-password-form");
         execution.setPriority(10);
         execution.setAuthenticatorFlow(false);
         realm.addAuthenticatorExecution(execution);
