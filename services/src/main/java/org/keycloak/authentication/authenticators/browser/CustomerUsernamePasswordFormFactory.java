@@ -1,11 +1,9 @@
 package org.keycloak.authentication.authenticators.browser;
 
+import org.jboss.logging.Logger;
 import org.keycloak.Config;
-import org.keycloak.OAuth2Constants;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.authentication.AuthenticatorFactory;
-import org.keycloak.authentication.DisplayTypeAuthenticatorFactory;
-import org.keycloak.authentication.authenticators.console.ConsoleUsernamePasswordAuthenticator;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
@@ -18,8 +16,9 @@ import java.util.List;
  * author: xuelei.guo
  * date: 2023/7/24 21:59
  */
-public class CustomerUsernamePasswordFormFactory implements AuthenticatorFactory, DisplayTypeAuthenticatorFactory {
+public class CustomerUsernamePasswordFormFactory implements AuthenticatorFactory {
 
+    private static final Logger logger = Logger.getLogger(CustomerUsernamePasswordFormFactory.class);
     public static final String PROVIDER_ID = "customer-auth-username-password-form";
     public static final CustomerUsernamePasswordForm SINGLETON = new CustomerUsernamePasswordForm();
 
@@ -28,17 +27,14 @@ public class CustomerUsernamePasswordFormFactory implements AuthenticatorFactory
         return SINGLETON;
     }
 
-    @Override
-    public Authenticator createDisplay(KeycloakSession session, String displayType) {
-        if (displayType == null) return SINGLETON;
-        if (!OAuth2Constants.DISPLAY_CONSOLE.equalsIgnoreCase(displayType)) return null;
-        return ConsoleUsernamePasswordAuthenticator.SINGLETON;
-    }
 
     @Override
     public void init(Config.Scope config) {
-        SINGLETON.setLoginUrl(config.get("customer-form-url"));
+        String loginHtmlName = config.get("LOGIN_HTML_NAME");
+        logger.debug("登录页面名称为:" + loginHtmlName);
+        SINGLETON.setLoginHtmlName(loginHtmlName);
     }
+
 
     @Override
     public void postInit(KeycloakSessionFactory factory) {

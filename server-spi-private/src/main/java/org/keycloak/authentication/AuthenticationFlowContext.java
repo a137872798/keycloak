@@ -25,6 +25,7 @@ import org.keycloak.sessions.AuthenticationSessionModel;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This interface encapsulates information about an execution in an AuthenticationFlow.  It is also used to set
@@ -89,6 +90,15 @@ public interface AuthenticationFlowContext extends AbstractAuthenticationFlowCon
      * @return
      */
     URI getActionUrl(String code);
+
+    /**
+     * Get the action URL for the required action.
+     *
+     * @param code
+     * @param params
+     * @return
+     */
+    URI getActionUrl(String code, Map<String, Object> params);
 
     /**
      * Get the action URL for the required action.

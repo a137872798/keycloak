@@ -43,6 +43,7 @@ public class Validation {
     public static final String FIELD_FIRST_NAME = "firstName";
     public static final String FIELD_PASSWORD = "password";
     public static final String FIELD_USERNAME = "username";
+    public static final String FIELD_CAPTCHA = "captcha";
     public static final String FIELD_OTP_CODE = "totp";
     public static final String FIELD_OTP_LABEL = "userLabel";
 

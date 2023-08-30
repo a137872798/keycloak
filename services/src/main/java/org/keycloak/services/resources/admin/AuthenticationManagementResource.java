@@ -181,6 +181,7 @@ public class AuthenticationManagementResource {
     @NoCache
     @Produces(MediaType.APPLICATION_JSON)
     public Stream<AuthenticationFlowRepresentation> getFlows() {
+        // 检查能否正常展示
         auth.realm().requireViewAuthenticationFlows();
 
         return realm.getAuthenticationFlowsStream()
