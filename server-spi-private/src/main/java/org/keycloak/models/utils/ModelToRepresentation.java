@@ -871,6 +871,7 @@ public class ModelToRepresentation {
         rep.setProviderId(model.getProviderId());
         rep.setAlias(model.getAlias());
         rep.setDescription(model.getDescription());
+        // 读取每个环节
         rep.setAuthenticationExecutions(realm.getAuthenticationExecutionsStream(model.getId())
                 .map(e -> toRepresentation(realm, e)).collect(Collectors.toList()));
         return rep;

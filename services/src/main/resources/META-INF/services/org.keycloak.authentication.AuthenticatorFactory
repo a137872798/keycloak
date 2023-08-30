@@ -16,6 +16,7 @@
 #
 
 org.keycloak.authentication.authenticators.browser.CookieAuthenticatorFactory
+org.keycloak.authentication.authenticators.browser.CustomerUsernamePasswordFormFactory
 org.keycloak.authentication.authenticators.browser.UsernamePasswordFormFactory
 org.keycloak.authentication.authenticators.browser.UsernameFormFactory
 org.keycloak.authentication.authenticators.browser.PasswordFormFactory
