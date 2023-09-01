@@ -142,7 +142,7 @@ public class ClientSessionCode<CLIENT_SESSION extends CommonClientSessionModel> 
             return result;
         }
 
-        // 验证code 和session 是否匹配
+        // 验证本次传入的code 与 session之前存储的code是否相同
         if (!clientSessionParser.verifyCode(session, code, result.clientSession)) {
             result.illegalHash = true;
             return result;

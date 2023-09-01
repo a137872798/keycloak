@@ -322,6 +322,8 @@ public class SessionCodeChecks {
 
             ClientSessionCode.ParseResult<AuthenticationSessionModel> result = ClientSessionCode.parseResult(code, tabId, session, realm, client, event, authSession);
             clientCode = result.getCode();
+
+            // 因为校验code失败 不会设置clientCode
             if (clientCode == null) {
 
                 // In case that is replayed action, but sent to the same FORM like actual FORM, we just re-render the page
