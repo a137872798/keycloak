@@ -3,6 +3,9 @@ package org.keycloak.authentication.authenticators.browser;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
+import org.keycloak.models.KeycloakContext;
+import org.keycloak.services.managers.AuthenticationManager;
+import org.keycloak.services.util.CookieHelper;
 import org.keycloak.services.validation.Validation;
 import org.keycloak.utils.CaptchaUtils;
 import org.keycloak.utils.MediaType;
@@ -16,6 +19,8 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+
+import static org.keycloak.services.resources.LoginActionsService.SESSION_CODE;
 
 /**
  * author: xuelei.guo
@@ -49,6 +54,8 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
     protected boolean validateForm(AuthenticationFlowContext context, MultivaluedMap<String, String> formData) {
         String checkCaptcha = context.getAuthenticationSession().getClientNote("checkCaptcha");
 
+        logger.info("checkCaptcha: " + checkCaptcha);
+
         // 代表需要校验验证码
         if (!Validation.isBlank(checkCaptcha) && Boolean.valueOf(checkCaptcha)) {
 
@@ -57,7 +64,7 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
             // 参数中不包含验证码
             if (!formData.containsKey("captcha")
                     // 验证码错误
-                    || !captcha.equals(context.getAuthenticationSession().getClientNote("captcha"))) {
+                    || !captcha.equalsIgnoreCase(context.getAuthenticationSession().getClientNote("captcha"))) {
                 Response challengeResponse = challenge(context, "", Validation.FIELD_CAPTCHA);
                 context.failureChallenge(AuthenticationFlowError.INVALID_CAPTCHA, challengeResponse);
                 return false;
@@ -86,13 +93,16 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
 
         String accessCode = context.generateAccessCode();
 
+        KeycloakContext keycloakContext = context.getSession().getContext();
+        String cookiePath = AuthenticationManager.getRealmCookiePath(keycloakContext.getRealm(), keycloakContext.getUri());
+        CookieHelper.addCookie(SESSION_CODE, accessCode, cookiePath, null, null, -1, false, false);
+
         //定义response输出类型为image/jpeg类型，使用response输出流输出图片的byte数组
         captchaChallengeAsJpeg = jpegOutputStream.toByteArray();
         Response.ResponseBuilder builder = Response.status(Response.Status.OK)
                 .header("Cache-Control", "no-store")
                 .header("Pragma", "no-cache")
                 .header("Expires", 0)
-                .header("SessionCode", accessCode)
                 .type("image/jpeg")
                 .entity(captchaChallengeAsJpeg);
         return builder.build();
