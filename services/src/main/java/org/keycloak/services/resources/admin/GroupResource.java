@@ -55,6 +55,7 @@ import java.util.stream.Stream;
 /**
  * @resource Groups
  * @author Bill Burke
+ * 针对group下面属性的crud
  */
 public class GroupResource {
 
@@ -72,11 +73,6 @@ public class GroupResource {
         this.group = group;
     }
 
-     /**
-     *
-     *
-     * @return
-     */
     @GET
     @NoCache
     @Produces(MediaType.APPLICATION_JSON)

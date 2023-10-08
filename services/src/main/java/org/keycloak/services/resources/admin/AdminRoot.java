@@ -150,6 +150,11 @@ public class AdminRoot {
     }
 
 
+    /**
+     * 从请求头 解析token 因为像keycloak发起请求的客户端会自动带上请求头
+     * @param headers
+     * @return
+     */
     protected AdminAuth authenticateRealmAdminRequest(HttpHeaders headers) {
         String tokenString = AppAuthManager.extractAuthorizationHeaderToken(headers);
         if (tokenString == null) throw new NotAuthorizedException("Bearer");

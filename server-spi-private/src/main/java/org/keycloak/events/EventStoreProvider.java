@@ -28,6 +28,7 @@ public interface EventStoreProvider extends EventListenerProvider {
     // 产生一个可以查询事件的对象
     EventQuery createQuery();
 
+    // 产生一个 admin事件的查询
     AdminEventQuery createAdminQuery();
 
     void clear();

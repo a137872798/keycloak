@@ -19,6 +19,7 @@ package org.keycloak.events.admin;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 对应一个事件
  */
 public class AdminEvent {
 

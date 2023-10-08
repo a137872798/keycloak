@@ -124,12 +124,21 @@ import org.keycloak.utils.ServicesUtils;
  * @resource Realms Admin
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 在解析path时 会一层层产生resource对象
  */
 public class RealmAdminResource {
     protected static final Logger logger = Logger.getLogger(RealmAdminResource.class);
+
+    /**
+     * 该对象负责权限校验
+     */
     protected AdminPermissionEvaluator auth;
     protected RealmModel realm;
     private TokenManager tokenManager;
+
+    /**
+     * 针对admin执行的操作会产生事件
+     */
     private AdminEventBuilder adminEvent;
 
     @Context
@@ -802,6 +811,8 @@ public class RealmAdminResource {
      * @param firstResult
      * @param maxResults Maximum results size (defaults to 100)
      * @return
+     *
+     * 查询管理事件
      */
     @Path("admin-events")
     @GET
@@ -813,8 +824,10 @@ public class RealmAdminResource {
                                                     @QueryParam("dateTo") String dateTo, @QueryParam("first") Integer firstResult,
                                                     @QueryParam("max") Integer maxResults,
                                                     @QueryParam("resourceTypes") List<String> resourceTypes) {
+        // 首先要求当前登录用户对应的client 包含查看事件的角色
         auth.realm().requireViewEvents();
 
+        // 产生查询对象并添加查询条件
         EventStoreProvider eventStore = session.getProvider(EventStoreProvider.class);
         AdminEventQuery query = eventStore.createAdminQuery().realm(realm.getId());;
 

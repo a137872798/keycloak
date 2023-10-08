@@ -56,6 +56,7 @@ import java.util.function.Predicate;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 评估用户权限的对象
  */
 class UserPermissions implements UserPermissionEvaluator, UserPermissionManagement {
 
@@ -73,6 +74,9 @@ class UserPermissions implements UserPermissionEvaluator, UserPermissionManageme
 
     private final KeycloakSession session;
     private final AuthorizationProvider authz;
+    /**
+     * 创建该对象的对象
+     */
     private final MgmtPermissions root;
     private final PolicyStore policyStore;
     private final ResourceStore resourceStore;
@@ -229,17 +233,23 @@ class UserPermissions implements UserPermissionEvaluator, UserPermissionManageme
      */
     @Override
     public boolean canManage() {
+        // 先检查本次请求client是否有相关角色
         if (canManageDefault()) {
             return true;
         }
 
+        // 还有其他方式检查  比如当前用户修改的是自己的realm
         if (!root.isAdminSameRealm()) {
             return false;
         }
 
+        // 剩下的就是检查resource是否包含 manage
         return hasPermission(MgmtPermissions.MANAGE_SCOPE);
     }
 
+    /**
+     *
+     */
     @Override
     public void requireManage() {
         if (!canManage()) {

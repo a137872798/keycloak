@@ -38,13 +38,26 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
+/**
+ * 产生事件
+ */
 public class AdminEventBuilder {
 
     protected static final Logger logger = Logger.getLogger(AdminEventBuilder.class);
 
+    /**
+     * 存储事件的仓库 默认使用JPA  同时还具备监听事件能力
+     */
     private EventStoreProvider store;
+    /**
+     * 其他事件监听器
+     */
     private Map<String, EventListenerProvider> listeners;
     private RealmModel realm;
+
+    /**
+     * 产生的事件对象
+     */
     private AdminEvent adminEvent;
 
     public AdminEventBuilder(RealmModel realm, AdminAuth auth, KeycloakSession session, ClientConnection clientConnection) {
@@ -52,6 +65,7 @@ public class AdminEventBuilder {
         adminEvent = new AdminEvent();
 
         this.listeners = new HashMap<>();
+        // 更新事件存储
         updateStore(session);
         addListeners(session);
 
@@ -83,7 +97,13 @@ public class AdminEventBuilder {
         return this.updateStore(session).addListeners(session);
     }
 
+    /**
+     *
+     * @param session
+     * @return
+     */
     private AdminEventBuilder updateStore(KeycloakSession session) {
+        // 首先要开启事件
         if (realm.isAdminEventsEnabled() && store == null) {
             this.store = session.getProvider(EventStoreProvider.class);
             if (store == null) {
@@ -93,6 +113,11 @@ public class AdminEventBuilder {
         return this;
     }
 
+    /**
+     * 从db中加载
+     * @param session
+     * @return
+     */
     private AdminEventBuilder addListeners(KeycloakSession session) {
         realm.getEventsListenersStream()
                 .filter(((Predicate<String>) listeners::containsKey).negate())
@@ -232,7 +257,11 @@ public class AdminEventBuilder {
         send();
     }
 
+    /**
+     * 在结束时发送事件
+     */
     private void send() {
+        // 表示是否要输出详情
         boolean includeRepresentation = realm.isAdminEventsDetailsEnabled();
 
         // Event needs to be copied because the same builder can be used with another event

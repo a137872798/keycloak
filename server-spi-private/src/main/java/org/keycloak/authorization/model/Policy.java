@@ -28,6 +28,7 @@ import java.util.Set;
  * Represents an authorization policy and all the configuration associated with it.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 授权策略和关联的配置
  */
 public interface Policy {
 

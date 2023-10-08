@@ -26,6 +26,7 @@ import org.keycloak.representations.idm.authorization.PolicyEnforcementMode;
  * client application in Keycloak that will also act as a resource server.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 资源服务器 对其资源进行管理
  */
 public interface ResourceServer {
 
@@ -40,6 +41,7 @@ public interface ResourceServer {
      * Indicates if the resource server is allowed to manage its own resources remotely using the Protection API.
      *
      * {@code true} if the resource server is allowed to managed them remotely
+     * 描述是否允许远程管理
      */
     boolean isAllowRemoteResourceManagement();
 

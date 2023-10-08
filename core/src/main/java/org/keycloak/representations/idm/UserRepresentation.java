@@ -30,6 +30,7 @@ import java.util.Set;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 维护用户基础信息
  */
 public class UserRepresentation {
 

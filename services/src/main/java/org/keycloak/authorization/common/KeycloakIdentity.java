@@ -48,14 +48,21 @@ import java.util.Map;
 
 /**
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 通过解析JWT得到各种信息
  */
 public class KeycloakIdentity implements Identity {
 
     protected final AccessToken accessToken;
     protected final RealmModel realm;
     protected final KeycloakSession keycloakSession;
+    /**
+     * 包含各种信息
+     */
     protected final Attributes attributes;
     private final boolean resourceServer;
+    /**
+     * 对应JWT解析出来的用户id
+     */
     private final String id;
 
     public KeycloakIdentity(KeycloakSession keycloakSession) {
@@ -167,6 +174,11 @@ public class KeycloakIdentity implements Identity {
         this.attributes = Attributes.from(attributes);
     }
 
+    /**
+     *
+     * @param accessToken   JWT
+     * @param keycloakSession
+     */
     public KeycloakIdentity(AccessToken accessToken, KeycloakSession keycloakSession) {
         if (accessToken == null) {
             throw new ErrorResponseException("invalid_bearer_token", "Could not obtain bearer access_token from request.", Status.FORBIDDEN);
@@ -210,25 +222,30 @@ public class KeycloakIdentity implements Identity {
                 }
             }
 
+            // 这个是角色信息  这个是realm级别的角色
             AccessToken.Access realmAccess = accessToken.getRealmAccess();
 
             if (realmAccess != null) {
                 attributes.put("kc.realm.roles", realmAccess.getRoles());
             }
 
+            // 还可以设置client级别的角色
             Map<String, AccessToken.Access> resourceAccess = accessToken.getResourceAccess();
 
             if (resourceAccess != null) {
                 resourceAccess.forEach((clientId, access) -> attributes.put("kc.client." + clientId + ".roles", access.getRoles()));
             }
 
+            // 获取token关联的client
             ClientModel clientModel = getTargetClient();
             UserModel clientUser = null;
 
+            // TODO
             if (clientModel != null) {
                 clientUser = this.keycloakSession.users().getServiceAccount(clientModel);
             }
 
+            // 从JWT上解析出用户信息
             UserModel userSession = getUserFromToken();
 
             this.resourceServer = clientUser != null && userSession.getId().equals(clientUser.getId());

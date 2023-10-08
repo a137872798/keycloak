@@ -63,6 +63,10 @@ import static org.keycloak.utils.StreamsUtil.throwIfEmpty;
  */
 public class RealmsAdminResource {
     protected static final Logger logger = Logger.getLogger(RealmsAdminResource.class);
+
+    /**
+     * 解析请求JWT后得到的对象
+     */
     protected AdminAuth auth;
     protected TokenManager tokenManager;
 
@@ -162,20 +166,26 @@ public class RealmsAdminResource {
      * @param headers
      * @param name realm name (not id!)
      * @return
+     * 这次返回绑定realm的对象
      */
     @Path("{realm}")
     public RealmAdminResource getRealmAdmin(@Context final HttpHeaders headers,
                                             @PathParam("realm") final String name) {
         RealmManager realmManager = new RealmManager(session);
+        // 找到realm
         RealmModel realm = realmManager.getRealmByName(name);
         if (realm == null) throw new NotFoundException("Realm not found.");
 
+        // 主域可以访问其他域  否则必须要realm匹配
         if (!auth.getRealm().equals(realmManager.getKeycloakAdminstrationRealm())
                 && !auth.getRealm().equals(realm)) {
             throw new ForbiddenException();
         }
+
+        // 产生一个权限评估对象
         AdminPermissionEvaluator realmAuth = AdminPermissions.evaluator(session, realm, auth);
 
+        // 针对admin的操作 看来会产生一个event 便于追迹
         AdminEventBuilder adminEvent = new AdminEventBuilder(realm, auth, session, clientConnection);
         session.getContext().setRealm(realm);
 

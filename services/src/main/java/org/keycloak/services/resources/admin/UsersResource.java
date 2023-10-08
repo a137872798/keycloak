@@ -63,6 +63,7 @@ import java.util.stream.Stream;
  * @resource Users
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * keycloak提供有关用户的接口
  */
 public class UsersResource {
 
@@ -71,8 +72,14 @@ public class UsersResource {
 
     protected RealmModel realm;
 
+    /**
+     * 在进行一些用户操作前 需要先校验权限
+     */
     private AdminPermissionEvaluator auth;
 
+    /**
+     * 本次admin操作产生的事件
+     */
     private AdminEventBuilder adminEvent;
 
     @Context
@@ -103,6 +110,7 @@ public class UsersResource {
     public Response createUser(final UserRepresentation rep) {
         // first check if user has manage rights
         try {
+            // 检查当前登录用户是否有足够权限
             auth.users().requireManage();
         }
         catch (ForbiddenException exception) {
@@ -125,6 +133,7 @@ public class UsersResource {
         }
 
         String username = rep.getUsername();
+        // 代表使用email作为username
         if(realm.isRegistrationEmailAsUsername()) {
             username = rep.getEmail();
         }
@@ -146,12 +155,14 @@ public class UsersResource {
             }
         }
 
+        // 代表支持email重复
         try {
             Response response = UserResource.validateUserProfile(null, rep, session);
             if (response != null) {
                 return response;
             }
 
+            // 写入持久层
             UserModel user = session.users().addUser(realm, username);
 
             UserResource.updateUserFromRep(user, rep, session, false);
@@ -159,6 +170,7 @@ public class UsersResource {
             RepresentationToModel.createGroups(rep, realm, user);
 
             RepresentationToModel.createCredentials(rep, session, realm, user, true);
+            // 生成事件
             adminEvent.operation(OperationType.CREATE).resourcePath(session.getContext().getUri(), user.getId()).representation(rep).success();
 
             if (session.getTransactionManager().isActive()) {

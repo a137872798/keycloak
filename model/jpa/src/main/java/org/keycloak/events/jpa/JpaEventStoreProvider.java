@@ -41,6 +41,7 @@ import java.util.UUID;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 存储事件
  */
 public class JpaEventStoreProvider implements EventStoreProvider {
 
@@ -114,6 +115,10 @@ public class JpaEventStoreProvider implements EventStoreProvider {
         }
     }
 
+    /**
+     * 当监听到事件后 进行写入
+     * @param event to be triggered
+     */
     @Override
     public void onEvent(Event event) {
         em.persist(convertEvent(event));

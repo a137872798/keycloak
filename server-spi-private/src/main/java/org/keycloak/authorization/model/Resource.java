@@ -26,6 +26,7 @@ import java.util.Set;
  * Represents a resource, which is usually protected by a set of policies within a resource server.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 描述一个资源
  */
 public interface Resource {
 
@@ -70,6 +71,7 @@ public interface Resource {
      * Returns a {@link List} containing all {@link java.net.URI} that uniquely identify this resource.
      *
      * @return a {@link List} if {@link java.net.URI} for this resource or empty list if not defined.
+     * 获取资源关联的一组 uri
      */
     Set<String> getUris();
 
@@ -99,6 +101,7 @@ public interface Resource {
      * Returns a {@link List} containing all the {@link Scope} associated with this resource.
      *
      * @return a list with all scopes associated with this resource
+     * 返回包含该资源的所有scope
      */
      List<Scope> getScopes();
 

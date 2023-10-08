@@ -23,6 +23,7 @@ package org.keycloak.authorization.model;
  * or a specific access context.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 表示一个范围 与多个resource关联
  */
 public interface Scope {
 

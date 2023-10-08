@@ -39,9 +39,18 @@ import org.keycloak.representations.idm.authorization.PolicyEnforcementMode;
 
 /**
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 默认策略评估器
  */
 public class DefaultPolicyEvaluator implements PolicyEvaluator {
 
+    /**
+     *
+     * @param permission  描述某个资源 及其权限
+     * @param authorizationProvider
+     * @param executionContext
+     * @param decision a {@link Decision} point to where notifications events will be delivered during the evaluation
+     * @param decisionCache
+     */
     @Override
     public void evaluate(ResourcePermission permission, AuthorizationProvider authorizationProvider, EvaluationContext executionContext, Decision decision, Map<Policy, Map<Object, Decision.Effect>> decisionCache) {
         StoreFactory storeFactory = authorizationProvider.getStoreFactory();
