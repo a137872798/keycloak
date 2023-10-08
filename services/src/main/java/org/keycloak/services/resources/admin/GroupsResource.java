@@ -99,6 +99,7 @@ public class GroupsResource {
      *
      * @param id
      * @return
+     * 定位到某个具体的group
      */
     @Path("{id}")
     public GroupResource getGroupById(@PathParam("id") String id) {

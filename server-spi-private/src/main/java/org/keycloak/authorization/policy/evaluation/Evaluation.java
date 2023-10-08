@@ -34,6 +34,7 @@ public interface Evaluation {
      * Returns the {@link ResourcePermission} to be evaluated.
      *
      * @return the permission to be evaluated
+     * 包含权限评估需要的各种信息
      */
     ResourcePermission getPermission();
 
@@ -41,6 +42,7 @@ public interface Evaluation {
      * Returns the {@link EvaluationContext}. Which provides access to the whole evaluation runtime context.
      *
      * @return the evaluation context
+     * 提供评估过程中需要的信息
      */
     EvaluationContext getContext();
 

@@ -24,21 +24,25 @@ import org.keycloak.util.EnumWithStableIndex;
  * The policy enforcement mode dictates how authorization requests are handled by the server.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 描述如何处理授权请求
  */
 public enum PolicyEnforcementMode implements EnumWithStableIndex {
 
     /**
      * Requests are denied by default even when there is no policy associated with a given resource.
+     * 表示要求资源一定要关联授权策略
      */
     ENFORCING(0),
 
     /**
      * Requests are allowed even when there is no policy associated with a given resource.
+     * 在资源没有关联授权策略时 允许访问
      */
     PERMISSIVE(1),
 
     /**
      * Completely disables the evaluation of policies and allow access to any resource.
+     * 允许访问任何资源
      */
     DISABLED(2);
 

@@ -36,12 +36,26 @@ import java.util.Set;
  * Represents a permission for a given resource.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 描述该资源相关的权限
  */
 public class ResourcePermission {
 
+    /**
+     * 该资源对象
+     */
     private final Resource resource;
+    /**
+     * 包含该资源的所有scope
+     */
     private final Collection<Scope> scopes;
+    /**
+     * 包含访问策略模式和决策模式
+     */
     private ResourceServer resourceServer;
+
+    /**
+     * 描述要求
+     */
     private Map<String, Set<String>> claims;
     private boolean granted;
 

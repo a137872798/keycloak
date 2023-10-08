@@ -617,6 +617,7 @@ public class UserResource {
      * Set up a new password for the user.
      *
      * @param cred The representation must contain a rawPassword with the plain-text password
+     *             重置密码
      */
     @Path("reset-password")
     @PUT

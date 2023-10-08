@@ -25,6 +25,7 @@ import org.keycloak.representations.AccessToken;
 
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
+ * 解析JWT后的结果
  */
 public class AdminAuth {
 
@@ -62,6 +63,7 @@ public class AdminAuth {
         if (client instanceof ClientModel) {
             RoleModel roleModel = realm.getRole(role);
             if (roleModel == null) return false;
+            // 确保角色和client都包含该role
             return user.hasRole(roleModel) && client.hasScope(roleModel);
         } else {
             AccessToken.Access access = token.getRealmAccess();

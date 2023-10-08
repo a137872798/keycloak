@@ -55,6 +55,10 @@ public class AccessToken extends IDToken {
             return access;
         }
 
+        /**
+         * JWT中是包含了用户角色的
+         * @return
+         */
         public Set<String> getRoles() {
             return roles;
         }

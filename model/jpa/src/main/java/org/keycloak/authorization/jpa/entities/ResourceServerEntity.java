@@ -40,9 +40,15 @@ public class ResourceServerEntity {
     @Column(name = "ALLOW_RS_REMOTE_MGMT")
     private boolean allowRemoteResourceManagement;
 
+    /**
+     * 描述访问资源时的模式
+     */
     @Column(name = "POLICY_ENFORCE_MODE")
     private PolicyEnforcementMode policyEnforcementMode = PolicyEnforcementMode.ENFORCING;
 
+    /**
+     * 决定策略
+     */
     @Column(name = "DECISION_STRATEGY")
     private DecisionStrategy decisionStrategy = DecisionStrategy.UNANIMOUS;
 

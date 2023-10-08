@@ -67,6 +67,7 @@ import org.keycloak.utils.ReservedCharValidator;
  *
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 该对象暴露了一些realm相关的api
  */
 public class RealmManager {
 

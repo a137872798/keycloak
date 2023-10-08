@@ -48,10 +48,14 @@ import java.util.List;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 提供方各种权限校验
  */
 class MgmtPermissions implements AdminPermissionEvaluator, AdminPermissionManagement, RealmsPermissionEvaluator {
     protected RealmModel realm;
     protected KeycloakSession session;
+    /**
+     * 鉴权对象
+     */
     protected AuthorizationProvider authz;
     protected AdminAuth auth;
     protected Identity identity;
@@ -76,6 +80,12 @@ class MgmtPermissions implements AdminPermissionEvaluator, AdminPermissionManage
         }
     }
 
+    /**
+     * 初始化鉴权对象
+     * @param session
+     * @param realm
+     * @param auth  该对象内部包含了解析JWT后的用户信息
+     */
     MgmtPermissions(KeycloakSession session, RealmModel realm, AdminAuth auth) {
         this(session, realm);
         this.auth = auth;
@@ -95,12 +105,18 @@ class MgmtPermissions implements AdminPermissionEvaluator, AdminPermissionManage
         initIdentity(session, auth);
     }
 
+    /**
+     * 根据本次client类型 走不同分支
+     * @param session
+     * @param auth
+     */
     private void initIdentity(KeycloakSession session, AdminAuth auth) {
+        // 从命令行或者控制台进来
         if (Constants.ADMIN_CLI_CLIENT_ID.equals(auth.getToken().getIssuedFor())
                 || Constants.ADMIN_CONSOLE_CLIENT_ID.equals(auth.getToken().getIssuedFor())) {
             this.identity = new UserModelIdentity(auth.getRealm(), auth.getUser());
-
         } else {
+            // 如果是业务客户端调用keycloak服务器接口 应该是创建该对象
             this.identity = new KeycloakIdentity(auth.getToken(), session);
         }
     }
@@ -158,6 +174,12 @@ class MgmtPermissions implements AdminPermissionEvaluator, AdminPermissionManage
         return hasOneAdminRole(realm, adminRoles);
     }
 
+    /**
+     * 检查client是否有相关角色
+     * @param realm
+     * @param adminRoles
+     * @return
+     */
     public boolean hasOneAdminRole(RealmModel realm, String... adminRoles) {
         String clientId;
         RealmManager realmManager = new RealmManager(session);
@@ -204,6 +226,7 @@ class MgmtPermissions implements AdminPermissionEvaluator, AdminPermissionManage
     @Override
     public UserPermissions users() {
         if (users != null) return users;
+        // 产生用户权限对象
         users = new UserPermissions(session, authz, this);
         return users;
     }

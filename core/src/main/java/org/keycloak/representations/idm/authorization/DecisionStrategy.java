@@ -25,22 +25,26 @@ import org.keycloak.util.EnumWithStableIndex;
  * is obtained.
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 描述有关如何做出最终决策
  */
 public enum DecisionStrategy implements EnumWithStableIndex {
 
     /**
      * Defines that at least one policy must evaluate to a positive decision in order to the overall decision be also positive.
+     * 看来一个资源是有可能绑定多个验证选项的 应该是只要满足一个即可
      */
     AFFIRMATIVE(0),
 
     /**
      * Defines that all policies must evaluate to a positive decision in order to the overall decision be also positive.
+     * 要求所有关联决策都是积极的
      */
     UNANIMOUS(1),
 
     /**
      * Defines that the number of positive decisions must be greater than the number of negative decisions. If the number of positive and negative is the same,
      * the final decision will be negative.
+     * 积极的超过消极的即可
      */
     CONSENSUS(2);
 

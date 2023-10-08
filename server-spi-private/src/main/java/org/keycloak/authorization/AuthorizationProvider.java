@@ -71,10 +71,16 @@ import org.keycloak.representations.idm.authorization.AbstractPolicyRepresentati
  * </pre>
  *
  * @author <a href="mailto:psilva@redhat.com">Pedro Igor</a>
+ * 认证对象
  */
 public final class AuthorizationProvider implements Provider {
 
+    /**
+     * 策略评估对象
+     */
     private final PolicyEvaluator policyEvaluator;
+
+    // 创建时 这2个还未设置
     private StoreFactory storeFactory;
     private StoreFactory storeFactoryDelegate;
     private final KeycloakSession keycloakSession;
@@ -137,6 +143,7 @@ public final class AuthorizationProvider implements Provider {
      *
      * @param type the type of the policy provider
      * @return a {@link PolicyProviderFactory} with the given <code>type</code>
+     * 返回某个策略相关的工厂
      */
     public PolicyProviderFactory getProviderFactory(String type) {
         return (PolicyProviderFactory) keycloakSession.getKeycloakSessionFactory().getProviderFactory(PolicyProvider.class, type);
@@ -176,6 +183,11 @@ public final class AuthorizationProvider implements Provider {
 
     }
 
+    /**
+     * 生成代理对象
+     * @param storeFactory
+     * @return
+     */
     private StoreFactory createStoreFactory(StoreFactory storeFactory) {
         return new StoreFactory() {
 

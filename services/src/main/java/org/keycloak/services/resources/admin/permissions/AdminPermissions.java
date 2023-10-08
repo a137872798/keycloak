@@ -34,7 +34,13 @@ import org.keycloak.services.resources.admin.AdminAuth;
  */
 public class AdminPermissions {
 
-
+    /**
+     * 产生一个权限评估对象
+     * @param session
+     * @param realm
+     * @param auth
+     * @return
+     */
     public static AdminPermissionEvaluator evaluator(KeycloakSession session, RealmModel realm, AdminAuth auth) {
         return new MgmtPermissions(session, realm, auth);
     }
