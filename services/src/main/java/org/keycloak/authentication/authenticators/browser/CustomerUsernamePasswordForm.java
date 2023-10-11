@@ -95,7 +95,7 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
 
         KeycloakContext keycloakContext = context.getSession().getContext();
         String cookiePath = AuthenticationManager.getRealmCookiePath(keycloakContext.getRealm(), keycloakContext.getUri());
-        CookieHelper.addCookie(SESSION_CODE, accessCode, cookiePath, null, null, -1, false, false);
+        CookieHelper.addCookie(SESSION_CODE, accessCode, cookiePath, null, null, -1, false, false, context.getSession());
 
         //定义response输出类型为image/jpeg类型，使用response输出流输出图片的byte数组
         captchaChallengeAsJpeg = jpegOutputStream.toByteArray();
