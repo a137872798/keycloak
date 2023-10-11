@@ -100,7 +100,7 @@ public class JpaEventQuery implements EventQuery {
     
     @Override
     public EventQuery ipAddress(String ipAddress) {
-        predicates.add(cb.equal(root.get("ipAddress"), ipAddress));
+        predicates.add(cb.like(root.get("ipAddress"), "%" + ipAddress + "%"));
         return this;
     }
 

@@ -16,18 +16,19 @@
  */
 package org.keycloak.models;
 
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.specimpl.ResteasyUriBuilder;
 import org.keycloak.urls.HostnameProvider;
 import org.keycloak.urls.UrlType;
+import org.keycloak.utils.StringUtil;
 
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.PathSegment;
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.*;
 import java.net.URI;
 import java.util.List;
 
 public class KeycloakUriInfo implements UriInfo {
+
+    protected static final Logger logger = Logger.getLogger(KeycloakUriInfo.class);
 
     private final UriInfo delegate;
     private final String hostname;
@@ -43,11 +44,39 @@ public class KeycloakUriInfo implements UriInfo {
         this.delegate = delegate;
 
         HostnameProvider hostnameProvider = session.getProvider(HostnameProvider.class);
-        this.scheme = hostnameProvider.getScheme(delegate, type);
-        this.hostname = hostnameProvider.getHostname(delegate, type);
-        this.port = hostnameProvider.getPort(delegate, type);
+
+        String schema = getRealSchema(session.getContext().getRequestHeaders());
+
+        String hostStr = getRealHost(session.getContext().getRequestHeaders());
+
+        String hostname = null;
+        String port = null;
+        if (StringUtil.isNotBlank(hostStr)) {
+            String[] hostArr = hostStr.split(":");
+            hostname = hostArr[0];
+            port = hostArr[1];
+        }
+
+        this.hostname = StringUtil.isBlank(hostname) ? hostnameProvider.getHostname(delegate, type) : hostname;
+        this.port = StringUtil.isBlank(port) ? hostnameProvider.getPort(delegate, type) : Integer.valueOf(port);
+        this.scheme = StringUtil.isBlank(schema) ? hostnameProvider.getScheme(delegate, type) : schema;
         this.contextPath = hostnameProvider.getContextPath(delegate, type);
     }
+
+    private String getRealSchema(HttpHeaders httpHeaders) {
+        if (httpHeaders.getRequestHeaders().containsKey("X-Forwarded-Proto")) {
+            return httpHeaders.getRequestHeaders().getFirst("X-Forwarded-Proto");
+        }
+        return null;
+    }
+
+    private String getRealHost(HttpHeaders httpHeaders) {
+        if (httpHeaders.getRequestHeaders().containsValue("Host")) {
+            return httpHeaders.getRequestHeaders().getFirst("Host");
+        }
+        return null;
+    }
+
 
     public UriInfo getDelegate() {
         return delegate;
