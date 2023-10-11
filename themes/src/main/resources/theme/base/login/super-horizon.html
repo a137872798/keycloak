@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>超·视界</title>
+    <script src="/auth/resources/jxuks/login/keycloak/img/vue.min.js"></script>
+    <style>
+        html,
+        body,
+        #app {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: PingFangSC-Medium, PingFang SC, Source Han Sans CN-Medium, Source Han Sans CN, Microsoft YaHei;
+        }
+
+        .login-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        video {
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+
+        .description-container {
+            width: 582px;
+            position: absolute;
+            left: 212px;
+            top: 232px;
+            color: #fff;
+        }
+
+        .title {
+            font-size: 48px;
+            line-height: 58px;
+        }
+
+        .sub-title {
+            font-size: 24px;
+            line-height: 58px;
+            margin-bottom: 26px;
+        }
+
+        .description {
+            font-size: 22px;
+            line-height: 36px;
+            color: rgba(176, 225, 255, 0.55);
+        }
+
+        .link {
+            font-size: 18px;
+            line-height: 36px;
+            cursor: pointer;
+        }
+
+        .form-container {
+            background: #fff;
+            width: 484px;
+            height: 100vh;
+            position: absolute;
+            top: 0px;
+            right: 0px;
+            min-width: 320px;
+        }
+
+        .form-top {
+            width: 100%;
+            height: 234px;
+            position: relative;
+            box-shadow: 0px 4px 10px 0px rgba(190, 190, 190, 0.302);
+        }
+
+        .corporation-img {
+            width: 137px;
+            height: 30px;
+            position: absolute;
+            top: 36px;
+            right: 46px;
+        }
+
+        .line-box {
+            width: 100%;
+            height: 100%;
+            background: url('/auth/resources/jxuks/login/keycloak/img/bg.png') no-repeat;
+            /* background-size: cover; */
+            position: relative;
+        }
+
+        .title-img {
+            width: 133px;
+            height: 76px;
+            position: absolute;
+            left: 48px;
+            bottom: 31px;
+        }
+
+        .form-middle {
+            padding: 60px 48px 0;
+        }
+
+        .form-group input {
+            width: 100%;
+            height: 30px;
+            border-radius: 4px;
+            border: 1px solid #fff;
+            text-indent: 8px;
+            background-color: #FFF;
+            background-image: none;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-weight: 500;
+            color: #333333;
+            font-size: 14px;
+            display: inline-block;
+            height: 40px;
+            line-height: 39px;
+            outline: 0;
+            padding: 0 0;
+            font-family: PingFangSC-Medium, PingFang SC, Source Han Sans CN-Medium, Source Han Sans CN, Microsoft YaHei;
+        }
+
+        .form-group input::placeholder {
+            color: #CECECE;
+            font-weight: 400;
+        }
+
+        .form-input-out {
+            display: flex;
+            align-items: center;
+            border-radius: 4px;
+            border: 1px solid #CECECE;
+            margin-bottom: 40px;
+        }
+
+        .input-icon {
+            width: 16px;
+            height: 16px;
+            padding-left: 12px;
+        }
+
+        .code-out-div {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .code-out-div .form-input-out {
+            margin-bottom: 0;
+        }
+
+        .code-out-div .code-div {
+            width: 30%;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .form-group .pf-m-primary {
+            text-indent: 0;
+            cursor: pointer;
+            background: #0068A9;
+            border-radius: 4px;
+            color: #fff;
+            height: 40px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #FFFFFF;
+            margin-top: 75px;
+        }
+
+        .form-bottom {
+            position: absolute;
+            bottom: 32px;
+            left: 180px;
+            text-align: center;
+            color: #959595;
+            font-size: 12px;
+            line-height: 19px;
+        }
+
+        .usernameError,
+        .passwordError,
+        .formError {
+            color: red;
+            font-size: 14px;
+            line-height: 14px;
+            margin-top: 6px;
+            top: 100%;
+            left: 0;
+        }
+
+        @media screen and (width <=1440px) {
+            .description-container {
+                /* display: none; */
+                left: 50px !important;
+                width: 484px !important;
+            }
+        }
+
+        @media(max-width:1025px) {
+            .description-container {
+                display: none;
+            }
+        }
+
+        @media screen and (width <=650px) {
+            .form-container {
+                width: 97% !important;
+                bottom: 0;
+                left: 0;
+                margin: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="login-container">
+
+            <video src="/auth/resources/jxuks/login/keycloak/img/bg_video.mp4" autoplay="autoplay" loop="loop" muted="muted">
+            </video>
+
+            <div class="description-container">
+                <div class="title">数字资产风险监测平台</div>
+                <div class="sub-title">解析流量行为数据，预见趋势变迁</div>
+                <div class="description">智能分析数据，全面评估资产风险。采用自主研发引擎，实现精准的异常检测。构建动态风险防控体系，持续提升资产管理能力。更多详情请访问</div>
+                <u class="link">产品介绍页</u>
+            </div>
+
+            <div class="form-container">
+
+                <div class="form-top">
+                    <img src="/auth/resources/jxuks/login/keycloak/img/corporation.png" class="corporation-img">
+                    <div class="line-box">
+                        <img src="/auth/resources/jxuks/login/keycloak/img/title.png" class="title-img">
+                    </div>
+                </div>
+
+                <div class="form-middle">
+                    <form id="kc-form-login" onsubmit="login.disabled = true; return true;"
+                        :action="reqUrl + '&session_code=' + formSessionCode" method="post">
+                        <div class="form-group form-input-out">
+                            <!-- <label for="username" class="pf-c-form__label pf-c-form__label-text">Username or email</label> -->
+                            <img class="input-icon" src="/auth/resources/jxuks/login/keycloak/img/username.png" />
+                            <input placeholder="请输入用户名" tabindex="1" id="username" class="pf-c-form-control"
+                                name="username" value="" type="text" autofocus autocomplete="off" aria-invalid="" />
+                        </div>
+
+                        <div class="form-group form-input-out">
+                            <img class="input-icon" src="/auth/resources/jxuks/login/keycloak/img/password.png" />
+                            <input placeholder="请输入密码" tabindex="2" id="password" class="pf-c-form-control"
+                                name="password" type="password" autocomplete="off" aria-invalid="" />
+                        </div>
+
+                        <div class="code-out-div">
+                            <div class="form-group form-input-out" style="width: 70%;">
+                                <img class="input-icon" src="/auth/resources/jxuks/login/keycloak/img/code.png" />
+                                <div>
+                                    <input style="width: 100%;" placeholder="请输入验证码" tabindex="3" id="captcha"
+                                        class="pf-c-form-control" name="captcha" type="text" autocomplete="off"
+                                        aria-invalid="" />
+                                </div>
+                            </div>
+                            <div class="code-div">
+                                <img class="code-img" :src="codeImg" @click="changeCodeImg(1)" />
+                            </div>
+                        </div>
+
+                        <div class="formError"></div>
+
+                        <div class="form-group login-pf-settings">
+                            <div id="kc-form-options">
+                            </div>
+                            <div class="">
+                            </div>
+
+                        </div>
+
+                        <div id="kc-form-buttons" class="form-group">
+                            <input type="hidden" id="id-hidden-input" name="credentialId" />
+                            <input tabindex="4" class="pf-c-button pf-m-primary pf-m-block btn-lg" name="login"
+                                id="kc-login" type="submit" value="登 录" />
+
+                        </div>
+                    </form>
+                </div>
+
+                <div class="form-bottom">
+                    <div>Copyright © 2023</div>
+                    <div>杭州超级科技有限公司</div>
+                    <div>版权所有</div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</body>
+
+
+<script>
+    new Vue(
+        {
+            el: "#app",
+            data: {
+                codeImg: '',
+                reqUrl: '',
+                captchaUrl: '',
+                sessionCode: '',
+                formSessionCode: '',
+            },
+            methods: {
+                changeCodeImg(val) {
+                    if (val === 1) {
+                        this.sessionCode = this.getCookie('session_code')
+                    }
+                    this.codeImg = `${this.captchaUrl}&session_code=${this.sessionCode}`;
+                    setTimeout(() => {
+                        this.formSessionCode = this.getCookie('session_code')
+                    }, 1000);
+                },
+                getCookie(name) {
+                    let strcookie = document.cookie;
+                    let arrcookie = strcookie.split("; ");
+                    //遍历匹配
+                    for (let i = 0; i < arrcookie.length; i++) {
+                        let arr = arrcookie[i].split("=");
+                        if (arr[0] == name) {
+                            return arr[1];
+                        }
+                    }
+                    return "";
+                }
+            },
+            mounted() {
+                this.changeCodeImg()
+            },
+        }
+    );
+</script>
+
+</html>

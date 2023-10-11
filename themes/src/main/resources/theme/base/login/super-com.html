@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8"/>
+    <title>超·自合</title>
+    <link rel="stylesheet" href="/auth/resources/jxuks/login/keycloak/img/element-ui.css">
+    <script src="/auth/resources/jxuks/login/keycloak/img/vue.js"></script>
+    <script src="/auth/resources/jxuks/login/keycloak/img/index.js"></script>
+    <style>
+        html,
+        body,
+        #app {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .login-container {
+            height: 100%;
+            min-height: 550px;
+            background-image: url("/auth/resources/jxuks/login/keycloak/img/keycloak-super-com-bg.gif");
+            background-size: 100% 100%;
+            background-size: cover;
+        }
+
+        .login-box {
+            position: relative;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            height: 100%;
+        }
+
+        .dark {
+            position: absolute;
+            top: 13px;
+            right: 18px;
+        }
+
+        .login-left {
+            width: 800px;
+            margin-right: 10px;
+            padding-top: 300px;
+            padding-left: 50px;
+        }
+
+        .login-form {
+            width: 420px;
+            background-color: #fff;
+
+        }
+
+        .login-icon {
+            width: 48px;
+            height: 48px;
+        }
+
+        .el-form-item {
+            margin-bottom: 40px;
+        }
+
+        .login-btn {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 40px;
+            white-space: nowrap;
+        }
+
+        .el-button {
+            width: 185px;
+        }
+
+        @media screen and (width <= 1250px) {
+            .login-left {
+                display: none;
+            }
+        }
+
+        @media screen and (width <= 600px) {
+            .login-form {
+                width: 97% !important;
+            }
+        }
+
+        .form-group input {
+            width: 100%;
+            height: 30px;
+            border-radius: 4px;
+            border: 1px solid #fff;
+            text-indent: 8px;
+            background-color: #FFF;
+            background-image: none;
+            border-radius: 4px;
+            box-sizing: border-box;
+            color: #606266;
+            display: inline-block;
+            height: 40px;
+            line-height: 40px;
+            outline: 0;
+            padding: 0 0;
+        }
+
+        .form-group .pf-m-primary {
+            text-indent: 0;
+            cursor: pointer;
+            background: #0068A9;
+            border-radius: 4px;
+            color: #fff;
+            height: 40px;
+            font-size: 16px;
+            font-family: PingFangSC-Medium, PingFang SC;
+            font-weight: 500;
+            color: #FFFFFF;
+        }
+
+        .usernameError,
+        .passwordError,
+        .formError {
+            margin-bottom: 26px;
+            color: #F56C6C;
+            font-size: 12px;
+            line-height: 1;
+            padding-top: 4px;
+            top: 100%;
+            left: 0;
+        }
+
+        .formError {
+            margin-bottom: 26px;
+        }
+
+        .left-text {
+            font-size: 48px;
+            font-family: PingFangSC-Semibold, PingFang SC;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .left-subtext {
+            font-size: 24px;
+            font-family: Helvetica;
+            color: #FFFFFF;
+        }
+
+        .left-subtext1 {
+            font-size: 24px;
+            font-family: PingFangSC-Regular, PingFang SC;
+            font-weight: 400;
+            color: #B0E1FF;
+            margin-top: 35px;
+            width: 482px;
+        }
+
+        .left-subtext2 {
+            font-size: 24px;
+            font-family: PingFangSC-Medium, PingFang SC;
+            font-weight: 500;
+            color: #FFFFFF;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .left-subtext2:hover {
+            opacity: .8;
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-family: AlimamaShuHeiTi-Bold, AlimamaShuHeiTi;
+            font-weight: bold;
+            color: #0068A9;
+            margin: 0;
+        }
+
+        .logo-subtext {
+            font-size: 20px;
+            font-family: SourceHanSansCN-Medium, SourceHanSansCN;
+            font-weight: 500;
+            color: #98A1AB;
+            margin: 0;
+            line-height: 10px;
+            margin-bottom: 20px;
+        }
+
+        .login-logo {
+            width: 100%;
+            height: 241px;
+            background: url('/auth/resources/jxuks/login/keycloak/img/keycloak-top-bg.png');
+            background-size: cover;
+            position: relative;
+            box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-form-right {
+            width: 520px;
+            background-color: #fff;
+        }
+
+        .login-inner {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+            height: calc(100% - 251px);
+            justify-content: space-around;
+            flex-direction: column;
+            position: relative;
+        }
+
+        #kc-form-login {
+            width: calc(100% - 120px);
+            height: 330px;
+            top: 60px;
+            position: absolute;
+            transform: translateX(-50%);
+            margin-left: 50%;
+        }
+
+        .bottom-div {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            bottom: 30px;
+            font-size: 12px;
+            font-family: PingFangSC-Regular, PingFang SC;
+            font-weight: 400;
+            color: #999999;
+            flex-wrap: wrap;
+        }
+
+        .bottom-div div {
+            width: 100%;
+            text-align: center;
+        }
+
+        .bottom-div img {
+            width: 132px;
+        }
+
+        .input-icon {
+            width: 14px;
+            height: 14px;
+            padding-left: 12px;
+        }
+
+        .form-input-out {
+            display: flex;
+            align-items: center;
+            border-radius: 4px;
+            border: 1px solid #CECECE;
+            margin-bottom: 24px;
+        }
+
+        .code-out-div {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .code-out-div .form-input-out {
+            margin-bottom: 0;
+        }
+
+        .code-out-div .code-div {
+            width: 40%;
+            display: flex;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+
+<body>
+<div id="app">
+    <div class="login-container flx-center">
+        <div class="login-box">
+            <div class="login-left">
+                <div class="left-text">
+                    超级合规自动化平台
+                </div>
+                <div class="left-subtext">
+                    让信任成为你的竞争优势
+                </div>
+                <div class="left-subtext1">
+                    Make Trust Your Competitive Advantage.更多详情请访问
+                </div>
+                <div class="left-subtext2">
+                    产品介绍页
+                </div>
+            </div>
+            <div class="login-form-right">
+                <div class="login-logo">
+                </div>
+                <div class="login-inner">
+                    <form id="kc-form-login" onsubmit="login.disabled = true; return true;"
+                          :action="reqUrl + '&session_code=' + formSessionCode" method="post">
+                        <div class="form-group form-input-out">
+                            <!-- <label for="username" class="pf-c-form__label pf-c-form__label-text">Username or email</label> -->
+                            <img class="input-icon"
+                                 src="/auth/resources/jxuks/login/keycloak/img/keycloak-login-account.png"/>
+                            <input placeholder="请输入用户名" tabindex="1" id="username" class="pf-c-form-control"
+                                   name="username"
+                                   value="" type="text" autofocus autocomplete="off" aria-invalid=""/>
+                        </div>
+
+                        <div class="form-group form-input-out">
+                            <img class="input-icon"
+                                 src="/auth/resources/jxuks/login/keycloak/img/keycloak-login-password.png"/>
+                            <input placeholder="请输入密码" tabindex="2" id="password" class="pf-c-form-control"
+                                   name="password"
+                                   type="password" autocomplete="off" aria-invalid=""/>
+                        </div>
+                        <div class="code-out-div">
+                            <div class="form-group form-input-out" style="width: 60%;">
+                                <img class="input-icon"
+                                     src="/auth/resources/jxuks/login/keycloak/img/keycloak-login-code.png"/>
+                                <div>
+                                    <input style="width: 100%;" placeholder="请输入验证码" tabindex="3" id="captcha"
+                                           class="pf-c-form-control"
+                                           name="captcha" type="text" autocomplete="off" aria-invalid=""/>
+                                </div>
+                            </div>
+                            <div class="code-div">
+                                <img class="code-img" :src="codeImg" @click="changeCodeImg(1)"/>
+                            </div>
+                        </div>
+
+                        <div class="formError"></div>
+
+                        <div class="form-group login-pf-settings">
+                            <div id="kc-form-options">
+                            </div>
+                            <div class="">
+                            </div>
+
+                        </div>
+
+                        <div id="kc-form-buttons" class="form-group">
+                            <input type="hidden" id="id-hidden-input" name="credentialId"/>
+                            <input tabindex="4" class="pf-c-button pf-m-primary pf-m-block btn-lg" name="login"
+                                   id="kc-login"
+                                   type="submit" value="登 录"/>
+
+                        </div>
+                    </form>
+                    <div class="bottom-div">
+                        <div>Copyright © 2023</div>
+                        <div>杭州超级科技有限公司</div>
+                        <div>版权所有</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    new Vue(
+        {
+            el: "#app",
+            data: {
+                codeImg: '',
+                reqUrl: '',
+                captchaUrl: '',
+                sessionCode: '',
+                formSessionCode: ''
+            },
+            methods: {
+                changeCodeImg(val) {
+                    if (val === 1) {
+                        this.sessionCode = this.getCookie('session_code')
+                    }
+                    console.log(this.sessionCode)
+                    this.codeImg = `${this.captchaUrl}&session_code=${this.sessionCode}`;
+                    setTimeout(() => {
+                        this.formSessionCode = this.getCookie('session_code')
+                    }, 1000)
+                },
+                getCookie(name) {
+                    let strcookie = document.cookie;
+                    let arrcookie = strcookie.split("; ");
+                    //遍历匹配
+                    for (let i = 0; i < arrcookie.length; i++) {
+                        let arr = arrcookie[i].split("=");
+                        if (arr[0] == name) {
+                            return arr[1];
+                        }
+                    }
+                    return "";
+                }
+            },
+            mounted() {
+                this.changeCodeImg()
+            },
+        }
+    );
+</script>
+
+</html>
