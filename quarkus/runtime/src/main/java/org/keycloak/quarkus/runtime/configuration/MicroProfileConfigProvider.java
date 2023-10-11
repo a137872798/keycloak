@@ -38,6 +38,8 @@ public class MicroProfileConfigProvider implements Config.ConfigProvider {
     public static final String NS_QUARKUS = "quarkus";
     public static final String NS_QUARKUS_PREFIX = "quarkus" + ".";
 
+    private Config.ConfigProvider fallback = new Config.SystemPropertiesConfigProvider();
+
     private final org.eclipse.microprofile.config.Config config;
 
     public MicroProfileConfigProvider() {
@@ -50,12 +52,14 @@ public class MicroProfileConfigProvider implements Config.ConfigProvider {
 
     @Override
     public String getProvider(String spi) {
-        return scope(spi).get("provider");
+//        return scope(spi).get("provider");
+        return fallback.getProvider(spi);
     }
 
     @Override
     public Config.Scope scope(String... scope) {
-        return new MicroProfileScope(scope);
+//        return new MicroProfileScope(scope);
+        return fallback.scope(scope);
     }
 
     public class MicroProfileScope implements Config.Scope {

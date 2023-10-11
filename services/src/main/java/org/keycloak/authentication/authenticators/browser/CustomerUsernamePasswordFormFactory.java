@@ -30,8 +30,9 @@ public class CustomerUsernamePasswordFormFactory implements AuthenticatorFactory
 
     @Override
     public void init(Config.Scope config) {
+        logger.info(config.getClass().getName());
         String loginHtmlName = config.get("LOGIN_HTML_NAME");
-        logger.debug("登录页面名称为:" + loginHtmlName);
+        logger.info("登录页面名称为:" + loginHtmlName);
         SINGLETON.setLoginHtmlName(loginHtmlName);
     }
 

@@ -7,6 +7,7 @@ import org.keycloak.models.KeycloakContext;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.util.CookieHelper;
 import org.keycloak.services.validation.Validation;
+import org.keycloak.theme.Theme;
 import org.keycloak.utils.CaptchaUtils;
 import org.keycloak.utils.MediaType;
 
@@ -16,6 +17,7 @@ import javax.ws.rs.core.Response;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -109,7 +111,7 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
     }
 
     protected Response challenge(AuthenticationFlowContext context, MultivaluedMap<String, String> formData) {
-        if (Validation.isBlank(loginHtmlName)) {
+        if (Validation.isBlank(loginHtmlName) || "null".equals(loginHtmlName)) {
             logger.info("未设置loginHtmlName, 使用默认页面");
             return super.challenge(context, formData);
         }
@@ -122,11 +124,18 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
         // 获取不包含 accessCode的url
         URI action = context.getRefreshExecutionUrl();
 
-        File file = new File("/opt/bitnami/keycloak/themes/custom/dist/" + loginHtmlName + ".html");
+        InputStream inputStream = null;
+        try {
+            URL url = context.getSession().theme().getTheme(Theme.Type.LOGIN).getTemplate(loginHtmlName + ".html");
+            inputStream = url.openConnection().getInputStream();
+        } catch (IOException e) {
+            logger.error("加载登录页失败", e);
+            return Response.serverError().build();
+        }
 
         StringBuilder stringBuilder = new StringBuilder();
         try {
-            BufferedReader reader = new BufferedReader(new FileReader(file));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String a;
             while ((a = reader.readLine()) != null) {
                 if (a.contains("sessionCode: ''")) {

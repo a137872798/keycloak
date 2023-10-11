@@ -140,8 +140,6 @@ public class LegacyMigrationManager implements MigrationManager {
         if (databaseVersion == null || databaseVersion.lessThan(currentVersion)) {
             model.setStoredVersion(currentVersion.toString());
         }
-
-        logger.error("2");
         Version.RESOURCES_VERSION = model.getResourcesTag();
     }
 

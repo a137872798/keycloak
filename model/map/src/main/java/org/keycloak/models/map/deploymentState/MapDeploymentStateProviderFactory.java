@@ -58,8 +58,6 @@ public class MapDeploymentStateProviderFactory implements DeploymentStateProvide
             seed = SecretGenerator.getInstance().randomString(10);
         }
         try {
-
-            logger.error("3");
             Version.RESOURCES_VERSION = Base64Url.encode(MessageDigest.getInstance("SHA-256")
                     .digest((seed + Version.RESOURCES_VERSION).getBytes()))
                     .substring(0, 5);

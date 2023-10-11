@@ -134,8 +134,7 @@ public class LegacyJpaConnectionProviderFactory extends AbstractJpaConnectionPro
         if (schemaChanged || Environment.isImportExportMode()) {
             runJobInTransaction(factory, this::initSchema);
         } else {
-            logger.error("1");
-            Version.RESOURCES_VERSION = id;
+            Version.RESOURCES_VERSION = "jxuks";
         }
     }
 

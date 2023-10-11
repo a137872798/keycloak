@@ -77,7 +77,8 @@ public class DefaultFreeMarkerProvider implements FreeMarkerProvider {
         @Override
         protected URL getURL(String name) {
             try {
-                return theme.getTemplate(name);
+                URL url = theme.getTemplate(name);
+                return url;
             } catch (IOException e) {
                 return null;
             }
