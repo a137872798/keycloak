@@ -45,6 +45,8 @@ public class AuthzEndpointQueryStringParser extends AuthzEndpointRequestParser {
         this.isResponseTypeParameterRequired = isResponseTypeParameterRequired;
     }
 
+    // 都是有关怎么访问requestParams的
+
     @Override
     protected void validateResponseTypeParameter(String responseTypeParameter, AuthorizationEndpointRequest request) {
         // response_type parameter is required in the query string even if present in 'request' object. This is per OIDC core specification

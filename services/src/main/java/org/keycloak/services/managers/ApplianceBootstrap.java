@@ -33,16 +33,20 @@ import org.keycloak.services.ServicesLogger;
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
+ * 应用引导
  */
 public class ApplianceBootstrap {
 
+    // 可以通过session拿到各种对象
     private final KeycloakSession session;
 
     public ApplianceBootstrap(KeycloakSession session) {
         this.session = session;
     }
 
+    // 代表默认realm还没有创建
     public boolean isNewInstall() {
+        // 表中已经有默认realm数据
         if (session.realms().getRealm(Config.getAdminRealm()) != null) {
             return false;
         } else {
@@ -50,21 +54,30 @@ public class ApplianceBootstrap {
         }
     }
 
+    /**
+     * 代表 master realm下还没有用户
+     * @return
+     */
     public boolean isNoMasterUser() {
         RealmModel realm = session.realms().getRealmByName(Config.getAdminRealm());
         return session.users().getUsersCount(realm) == 0;
     }
 
+    // 创建master realm 并存储到持久层
     public boolean createMasterRealm() {
         if (!isNewInstall()) {
             throw new IllegalStateException("Can't create default realm as realms already exists");
         }
 
+        // 获取default realm名
         String adminRealmName = Config.getAdminRealm();
         ServicesLogger.LOGGER.initializingAdminRealm(adminRealmName);
 
         RealmManager manager = new RealmManager(session);
+        // 填入名字创建realm  这里会有一个冗长的创建流程
         RealmModel realm = manager.createRealm(adminRealmName, adminRealmName);
+
+        // 设置一些默认参数
         realm.setName(adminRealmName);
         realm.setDisplayName(Version.NAME);
         realm.setDisplayNameHtml(Version.NAME_HTML);
@@ -86,12 +99,18 @@ public class ApplianceBootstrap {
         realm.setRegistrationAllowed(false);
         realm.setRegistrationEmailAsUsername(false);
 
+        // 将新建的realm 设置到本次会话中
         session.getContext().setRealm(realm);
         DefaultKeyProviders.createProviders(realm);
 
         return true;
     }
 
+    /**
+     * 创建realm的默认用户
+     * @param username
+     * @param password
+     */
     public void createMasterRealmUser(String username, String password) {
         RealmModel realm = session.realms().getRealmByName(Config.getAdminRealm());
         session.getContext().setRealm(realm);
@@ -100,12 +119,16 @@ public class ApplianceBootstrap {
             throw new IllegalStateException("Can't create initial user as users already exists");
         }
 
+        // 创建默认用户
         UserModel adminUser = session.users().addUser(realm, username);
         adminUser.setEnabled(true);
 
+        // 将密码作为用户凭证
         UserCredentialModel usrCredModel = UserCredentialModel.password(password);
+        // 更新用户凭证信息
         session.userCredentialManager().updateCredential(realm, adminUser, usrCredModel);
 
+        // 设置默认角色 会触发db的写入操作
         RoleModel adminRole = realm.getRole(AdminRoles.ADMIN);
         adminUser.grantRole(adminRole);
     }

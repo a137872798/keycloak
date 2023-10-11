@@ -170,6 +170,13 @@ public class ClientStorageManager implements ClientProvider {
         return query((p, f, m) -> p.searchClientsByClientIdStream(realm, clientId, f, m), realm, firstResult, maxResults);
     }
 
+    /**
+     * 为realm追加一个client
+     * @param realm Realm owning this client.
+     * @param clientId String that identifies the client to the external parties.
+     *   Maps to {@code client_id} in OIDC or {@code entityID} in SAML.
+     * @return
+     */
     @Override
     public Stream<ClientModel> searchClientsByAttributes(RealmModel realm, Map<String, String> attributes, Integer firstResult, Integer maxResults) {
         return query((p, f, m) -> p.searchClientsByAttributes(realm, attributes, f, m), realm, firstResult, maxResults);
