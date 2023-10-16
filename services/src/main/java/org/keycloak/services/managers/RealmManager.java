@@ -243,7 +243,7 @@ public class RealmManager {
         realm.setBrowserSecurityHeaders(BrowserSecurityHeaders.realmDefaultHeaders);
 
         // brute force
-        realm.setBruteForceProtected(false); // default settings off for now todo set it on
+        realm.setBruteForceProtected(true); // default settings off for now todo set it on
         realm.setPermanentLockout(false);
         realm.setMaxFailureWaitSeconds(900);
         realm.setMinimumQuickLoginWaitSeconds(60);

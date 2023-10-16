@@ -16,6 +16,8 @@
  */
 package org.keycloak.services.resources.admin;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.authentication.RequiredActionProvider;
@@ -140,6 +142,8 @@ public class UserResource {
     protected final KeycloakSession session;
 
     protected final HttpHeaders headers;
+
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     
     public UserResource(KeycloakSession session, UserModel user, AdminPermissionEvaluator auth, AdminEventBuilder adminEvent) {
         this.session = session;
@@ -235,6 +239,11 @@ public class UserResource {
                 errors.add(new ErrorRepresentation(error.getFormattedMessage(adminMessageFormatter)));
             }
 
+            try {
+                logger.error("属性校验失败:" + OBJECT_MAPPER.writeValueAsString(errors));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
             throw ErrorResponse.errors(errors, Status.BAD_REQUEST);
         }
 

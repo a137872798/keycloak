@@ -738,23 +738,23 @@ public class RealmAdminResource {
         }
 
         if(dateFrom != null) {
-            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             Date from = null;
             try {
                 from = df.parse(dateFrom);
             } catch (ParseException e) {
-                throw new BadRequestException("Invalid value for 'Date(From)', expected format is yyyy-MM-dd");
+                throw new BadRequestException("Invalid value for 'Date(From)', expected format is yyyy-MM-dd HH:mm:ss");
             }
             query.fromDate(from);
         }
 
         if(dateTo != null) {
-            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             Date to = null;
             try {
                 to = df.parse(dateTo);
             } catch (ParseException e) {
-                throw new BadRequestException("Invalid value for 'Date(To)', expected format is yyyy-MM-dd");
+                throw new BadRequestException("Invalid value for 'Date(To)', expected format is yyyy-MM-dd HH:mm:ss");
             }
             query.toDate(to);
         }

@@ -112,76 +112,88 @@ public class UsersResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     public Response createUser(final UserRepresentation rep) {
-        // first check if user has manage rights
         try {
-            auth.users().requireManage();
-        } catch (ForbiddenException exception) {
-            if (!canCreateGroupMembers(rep)) {
-                throw exception;
-            }
-        }
-
-        String username = rep.getUsername();
-        if(realm.isRegistrationEmailAsUsername()) {
-            username = rep.getEmail();
-        }
-        if (ObjectUtil.isBlank(username)) {
-            throw ErrorResponse.error("User name is missing", Response.Status.BAD_REQUEST);
-        }
-
-        // Double-check duplicated username and email here due to federation
-        if (session.users().getUserByUsername(realm, username) != null) {
-            throw ErrorResponse.exists("User exists with same username");
-        }
-        if (rep.getEmail() != null && !realm.isDuplicateEmailsAllowed()) {
+            // first check if user has manage rights
             try {
-                if(session.users().getUserByEmail(realm, rep.getEmail()) != null) {
+                auth.users().requireManage();
+            } catch (ForbiddenException exception) {
+                if (!canCreateGroupMembers(rep)) {
+                    logger.error("用户无操作权限");
+                    throw exception;
+                }
+            }
+
+            String username = rep.getUsername();
+            if (realm.isRegistrationEmailAsUsername()) {
+                username = rep.getEmail();
+            }
+            if (ObjectUtil.isBlank(username)) {
+                logger.error("用户名为空");
+                throw ErrorResponse.error("User name is missing", Response.Status.BAD_REQUEST);
+            }
+
+            // Double-check duplicated username and email here due to federation
+            if (session.users().getUserByUsername(realm, username) != null) {
+                logger.error("用户名已存在");
+                throw ErrorResponse.exists("User exists with same username");
+            }
+            if (rep.getEmail() != null && !realm.isDuplicateEmailsAllowed()) {
+                try {
+                    if (session.users().getUserByEmail(realm, rep.getEmail()) != null) {
+                        logger.error("邮箱已存在");
+                        throw ErrorResponse.exists("User exists with same email");
+                    }
+                } catch (ModelDuplicateException e) {
+                    logger.error("邮箱已存在");
                     throw ErrorResponse.exists("User exists with same email");
                 }
+            }
+
+            UserProfileProvider profileProvider = session.getProvider(UserProfileProvider.class);
+
+            UserProfile profile = profileProvider.create(USER_API, rep.toAttributes());
+
+            try {
+                Response response = UserResource.validateUserProfile(profile, session, auth.adminAuth());
+                if (response != null) {
+                    return response;
+                }
+
+                UserModel user = profile.create();
+
+                UserResource.updateUserFromRep(profile, user, rep, session, false);
+                RepresentationToModel.createFederatedIdentities(rep, session, realm, user);
+                RepresentationToModel.createGroups(rep, realm, user);
+
+                RepresentationToModel.createCredentials(rep, session, realm, user, true);
+                adminEvent.operation(OperationType.CREATE).resourcePath(session.getContext().getUri(), user.getId()).representation(StripSecretsUtils.strip(rep)).success();
+
+                if (session.getTransactionManager().isActive()) {
+                    session.getTransactionManager().commit();
+                }
+
+                return Response.created(session.getContext().getUri().getAbsolutePathBuilder().path(user.getId()).build()).build();
             } catch (ModelDuplicateException e) {
-                throw ErrorResponse.exists("User exists with same email");
+                if (session.getTransactionManager().isActive()) {
+                    session.getTransactionManager().setRollbackOnly();
+                }
+                logger.error("用户名或邮箱已存在");
+                throw ErrorResponse.exists("User exists with same username or email");
+            } catch (PasswordPolicyNotMetException e) {
+                if (session.getTransactionManager().isActive()) {
+                    session.getTransactionManager().setRollbackOnly();
+                }
+                logger.error("密码异常");
+                throw ErrorResponse.error("Password policy not met", Response.Status.BAD_REQUEST);
+            } catch (ModelException me) {
+                if (session.getTransactionManager().isActive()) {
+                    session.getTransactionManager().setRollbackOnly();
+                }
+                logger.error("无法创建用户", me);
+                throw ErrorResponse.error("Could not create user", Response.Status.BAD_REQUEST);
             }
-        }
-
-        UserProfileProvider profileProvider = session.getProvider(UserProfileProvider.class);
-
-        UserProfile profile = profileProvider.create(USER_API, rep.toAttributes());
-
-        try {
-            Response response = UserResource.validateUserProfile(profile, session, auth.adminAuth());
-            if (response != null) {
-                return response;
-            }
-
-            UserModel user = profile.create();
-
-            UserResource.updateUserFromRep(profile, user, rep, session, false);
-            RepresentationToModel.createFederatedIdentities(rep, session, realm, user);
-            RepresentationToModel.createGroups(rep, realm, user);
-
-            RepresentationToModel.createCredentials(rep, session, realm, user, true);
-            adminEvent.operation(OperationType.CREATE).resourcePath(session.getContext().getUri(), user.getId()).representation(StripSecretsUtils.strip(rep)).success();
-
-            if (session.getTransactionManager().isActive()) {
-                session.getTransactionManager().commit();
-            }
-
-            return Response.created(session.getContext().getUri().getAbsolutePathBuilder().path(user.getId()).build()).build();
-        } catch (ModelDuplicateException e) {
-            if (session.getTransactionManager().isActive()) {
-                session.getTransactionManager().setRollbackOnly();
-            }
-            throw ErrorResponse.exists("User exists with same username or email");
-        } catch (PasswordPolicyNotMetException e) {
-            if (session.getTransactionManager().isActive()) {
-                session.getTransactionManager().setRollbackOnly();
-            }
-            throw ErrorResponse.error("Password policy not met", Response.Status.BAD_REQUEST);
-        } catch (ModelException me){
-            if (session.getTransactionManager().isActive()) {
-                session.getTransactionManager().setRollbackOnly();
-            }
-            logger.warn("Could not create user", me);
+        } catch (Exception e) {
+            logger.error("无法创建用户", e);
             throw ErrorResponse.error("Could not create user", Response.Status.BAD_REQUEST);
         }
     }
