@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8" />
-        <title>超·自合</title>
+        <title>数据安全检查评估系统</title>
         <link rel="stylesheet" href="/resources/jxuks/login/keycloak/css/element-ui.css" />
         <script src="/resources/jxuks/login/keycloak/js/vue.min.js"></script>
         <script src="/resources/jxuks/login/keycloak/js/index.js"></script>
@@ -19,7 +19,9 @@
             .login-container {
                 height: 100%;
                 min-height: 550px;
-                background-image: url('/resources/jxuks/login/keycloak/img/keycloak-super-com-bg.gif');
+                /* background-image: url('/resources/jxuks/login/keycloak/img/keycloak-super-com-bg.gif'); */
+                /* background-image: url('./assets/keycloak-bg.png'); */
+                background-image: url('/resources/jxuks/login/keycloak/img/keycloak-leftbg.png');
                 background-size: 100% 100%;
                 background-size: cover;
             }
@@ -40,10 +42,27 @@
             }
 
             .login-left {
-                width: 800px;
-                margin-right: 10px;
-                padding-top: 300px;
-                padding-left: 275px;
+                /* width: 800px; */
+                /* margin-right: 10px; */
+                /* padding-top: 300px; */
+                /* padding-left: 275px; */
+                flex: 1;
+                position: relative;
+            }
+            .login-left-img {
+                width: 576px;
+                height: 593px;
+                position: absolute;
+                top: 14%;
+                left: 50%;
+                margin-left: -288px;
+            }
+            .login-left-text {
+                width: 680px;
+                position: absolute;
+                bottom: 4%;
+                left: 50%;
+                margin-left: -340px;
             }
 
             .login-form {
@@ -105,7 +124,7 @@
             .form-group .pf-m-primary {
                 text-indent: 0;
                 cursor: pointer;
-                background: #0068a9;
+                background: #085aff;
                 border-radius: 4px;
                 color: #fff;
                 height: 40px;
@@ -188,9 +207,10 @@
                 width: 100%;
                 height: 241px;
                 background: url('/resources/jxuks/login/keycloak/img/keycloak-top-bg.png');
+                /* background: url('./assets/keycloak-top-bg.png'); */
                 background-size: cover;
                 position: relative;
-                box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.1);
+                /* box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.1); */
             }
 
             .login-form-right {
@@ -277,8 +297,20 @@
             <div class="login-container flx-center">
                 <div class="login-box">
                     <div class="login-left">
-                        <div class="left-text">数据安全检查评估系统</div>
-                        <div class="left-subtext">让信任成为你的竞争优势</div>
+                        <img
+                            src="/resources/jxuks/login/keycloak/img/keycloak-bgTop.png"
+                            class="login-left-img"
+                            alt=""
+                        />
+                        <img
+                            class="login-left-text"
+                            src="/resources/jxuks/login/keycloak/img/keycloak-text.png"
+                            alt=""
+                        />
+                        <!-- <img src="./assets/keycloak-bgTop.png" class="login-left-img" alt="" />
+                        <img class="login-left-text" src="./assets/keycloak-text.png" alt="" /> -->
+                        <!-- <div class="left-text">数据安全检查评估系统</div>
+                        <div class="left-subtext">让信任成为你的竞争优势</div> -->
                     </div>
                     <div class="login-form-right">
                         <div class="login-logo"></div>

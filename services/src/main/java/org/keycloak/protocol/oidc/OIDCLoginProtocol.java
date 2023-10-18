@@ -378,6 +378,7 @@ public class OIDCLoginProtocol implements LoginProtocol {
     @Override
     public Response finishBrowserLogout(UserSessionModel userSession, AuthenticationSessionModel logoutSession) {
         event.event(EventType.LOGOUT);
+        event.client(logoutSession.getClient().getClientId());
 
         String redirectUri = logoutSession.getAuthNote(OIDCLoginProtocol.LOGOUT_REDIRECT_URI);
         if (redirectUri != null) {
