@@ -140,7 +140,8 @@ public class LegacyMigrationManager implements MigrationManager {
         if (databaseVersion == null || databaseVersion.lessThan(currentVersion)) {
             model.setStoredVersion(currentVersion.toString());
         }
-        Version.RESOURCES_VERSION = model.getResourcesTag();
+//        Version.RESOURCES_VERSION = model.getResourcesTag();
+        Version.RESOURCES_VERSION = "jxuks";
     }
 
     public static final ModelVersion RHSSO_VERSION_7_0_KEYCLOAK_VERSION = new ModelVersion("1.9.8");

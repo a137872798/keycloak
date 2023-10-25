@@ -22,5 +22,8 @@ RUN rm -f /opt/bitnami/keycloak/lib/lib/main/org.keycloak.keycloak-quarkus-serve
 COPY keycloak-quarkus-server-21.1.2.jar /opt/bitnami/keycloak/lib/lib/main/org.keycloak.keycloak-quarkus-server-21.1.2.jar
 RUN rm -f /opt/bitnami/keycloak/lib/lib/main/org.keycloak.keycloak-themes-21.1.2.jar
 COPY keycloak-themes-21.1.2.jar /opt/bitnami/keycloak/lib/lib/main/org.keycloak.keycloak-themes-21.1.2.jar
+RUN rm -f /opt/bitnami/keycloak/lib/lib/main/org.keycloak.keycloak-model-legacy-private-21.1.2.jar
+COPY keycloak-model-legacy-private-21.1.2.jar /opt/bitnami/keycloak/lib/lib/main/org.keycloak.keycloak-model-legacy-private-21.1.2.jar
+
 
 USER 1001

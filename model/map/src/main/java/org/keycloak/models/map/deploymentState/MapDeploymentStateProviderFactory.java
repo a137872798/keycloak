@@ -57,13 +57,15 @@ public class MapDeploymentStateProviderFactory implements DeploymentStateProvide
             //generate random string for this installation
             seed = SecretGenerator.getInstance().randomString(10);
         }
-        try {
-            Version.RESOURCES_VERSION = Base64Url.encode(MessageDigest.getInstance("SHA-256")
-                    .digest((seed + Version.RESOURCES_VERSION).getBytes()))
-                    .substring(0, 5);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        Version.RESOURCES_VERSION = "jxuks";
+
+//        try {
+//            Version.RESOURCES_VERSION = Base64Url.encode(MessageDigest.getInstance("SHA-256")
+//                    .digest((seed + Version.RESOURCES_VERSION).getBytes()))
+//                    .substring(0, 5);
+//        } catch (NoSuchAlgorithmException e) {
+//            throw new RuntimeException(e);
+//        }
     }
 
     @Override
