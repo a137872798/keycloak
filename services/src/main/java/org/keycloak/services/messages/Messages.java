@@ -28,6 +28,8 @@ public class Messages {
 
     public static final String INVALID_USER = "invalidUserMessage";
 
+    public static final String USER_LOCK = "userLockMessage";
+
     public static final String INVALID_USERNAME = "invalidUsernameMessage";
 
     public static final String INVALID_USERNAME_OR_EMAIL = "invalidUsernameOrEmailMessage";

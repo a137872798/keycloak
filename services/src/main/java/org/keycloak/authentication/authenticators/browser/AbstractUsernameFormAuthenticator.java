@@ -84,7 +84,7 @@ public abstract class AbstractUsernameFormAuthenticator extends AbstractFormAuth
     }
 
     protected String disabledByBruteForceError() {
-        return Messages.INVALID_USER;
+        return Messages.USER_LOCK;
     }
 
     protected String disabledByBruteForceFieldError(){

@@ -7,11 +7,14 @@
         <script src="/resources/jxuks/login/keycloak/js/vue.min.js"></script>
         <script src="/resources/jxuks/login/keycloak/js/index.js"></script>
         <script src="/resources/jxuks/login/keycloak/js/axios.min.js"></script>
+        <script src="/resources/jxuks/login/keycloak/js/jsencrypt.min.js"></script>
 
-        <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css" />
-        <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
-        <script src="https://unpkg.com/element-ui/lib/index.js"></script>
-        <script src="./axios.min.js"></script> -->
+
+<!--        <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css" />-->
+<!--        <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>-->
+<!--        <script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
+<!--        <script src="./axios.min.js"></script>-->
+<!--        <script src="./jsencrypt.min.js"></script>-->
         <style>
             html,
             body,
@@ -79,7 +82,7 @@
             }
             .login-left-img {
                 width: 40%;
-                height: auto;
+                height: 62%;
                 position: absolute;
                 left: 50%;
                 margin-left: -20%;
@@ -123,7 +126,6 @@
                     width: 97% !important;
                 }
             }
-
             .form-group input {
                 width: 100%;
                 height: 30px;
@@ -153,6 +155,7 @@
                 font-family: PingFangSC-Medium, PingFang SC;
                 font-weight: 500;
                 color: #ffffff;
+                text-align: center;
             }
 
             .usernameError,
@@ -226,11 +229,12 @@
 
             .login-logo {
                 width: 100%;
-                height: 241px;
+                height: 26%;
                 background: url('/resources/jxuks/login/keycloak/img/keycloak-top-bg.png');
                 /* background: url('./assets/keycloak-top-bg.png'); */
-                background-size: cover;
+                /* background-size: cover; */
                 position: relative;
+                background-size: 100% 100%;
                 /* box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.1); */
             }
 
@@ -243,10 +247,11 @@
                 display: flex;
                 flex-wrap: wrap;
                 width: 100%;
-                height: calc(100% - 251px);
+                /* height: calc(100% - 251px); */
                 justify-content: space-around;
                 flex-direction: column;
                 position: relative;
+                height: 74%;
             }
 
             #kc-form-login {
@@ -417,9 +422,9 @@
                     <div class="login-form-right">
                         <div class="login-logo"></div>
                         <div class="login-inner" v-if="type">
+                            <!-- onsubmit="login.disabled = true; return true;" -->
                             <form
                                 id="kc-form-login"
-                                onsubmit="login.disabled = true; return true;"
                                 :action="reqUrl + '&session_code=' + formSessionCode"
                                 method="post"
                             >
@@ -497,14 +502,13 @@
                                     <div class=""></div>
                                 </div>
 
-                                <div id="kc-form-buttons" class="form-group">
+                                <div id="kc-form-buttons" class="form-group" @click="handleLogin">
                                     <input type="hidden" id="id-hidden-input" name="credentialId" />
                                     <input
                                         tabindex="4"
                                         class="pf-c-button pf-m-primary pf-m-block btn-lg"
                                         name="login"
                                         id="kc-login"
-                                        type="submit"
                                         value="登 录"
                                     />
                                 </div>
@@ -601,6 +605,14 @@
                 file: '',
             },
             methods: {
+                handleLogin() {
+                    const encryptor = new JSEncrypt()  // 创建加密对象实例
+                    const pubKey = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCHnRTKkf5AtVqOCHkW/Ihn0D+h/YGi8KTXdP/DZxKcGYYMZaAU3z8Z2DbZg+tWlIkS9FomPEi1QNxpVyKiMb10Amw4dDq6lzk1yK9MNviShqO+T9ITnwnpYLSHdwohYf+58biEqnIz6E1vUIoH+XV5zLNWfeiHq7yt5dLSEJdiowIDAQAB'
+                    encryptor.setPublicKey(pubKey)//设置公钥
+                    document.getElementById('password').value = encryptor.encrypt(document.getElementById('password').value)
+
+                    document.getElementById('kc-form-login').submit()
+                },
                 changeCodeImg(val) {
                     if (val === 1) {
                         this.sessionCode = this.getCookie('session_code');
@@ -626,14 +638,13 @@
                 check() {
                     const axiosInstance = axios.create({
                         baseURL: 'http://192.168.0.121:8080',
-                        // baseURL: 'http://192.168.0.234:8080',
                         timeout: 5000,
                         withCredentials: false,
                     });
                     axiosInstance.get('/license/check').then((response) => {
                         if (response.data.code == 300) {
                             this.type = false;
-                            // window.location.replace('http://192.168.0.121:8088');
+
                             let { data } = response.data;
                             this.sbm = data.macheCode;
                             this.yzm = data.checkCode;
@@ -667,10 +678,11 @@
                     let formData = new FormData();
                     formData.append('licfile', this.file);
                     axiosInstance.post('/license/upload', formData).then((res) => {
-                        console.log(res);
                         if (res.data.code == 200) {
                             this.type = true;
-                            // window.location.reload();
+                            this.changeCodeImg();
+                        } else {
+                            alert(res.data.message);
                         }
                     });
                 },
@@ -684,8 +696,8 @@
                 },
             },
             mounted() {
-                this.changeCodeImg();
                 this.check();
+                this.changeCodeImg();
             },
         });
     </script>

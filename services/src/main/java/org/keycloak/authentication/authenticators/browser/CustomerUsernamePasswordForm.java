@@ -1,16 +1,23 @@
 package org.keycloak.authentication.authenticators.browser;
 
+import org.apache.commons.codec.binary.Base64;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.models.KeycloakContext;
 import org.keycloak.services.managers.AuthenticationManager;
+import org.keycloak.services.messages.Messages;
 import org.keycloak.services.util.CookieHelper;
 import org.keycloak.services.validation.Validation;
 import org.keycloak.theme.Theme;
 import org.keycloak.utils.CaptchaUtils;
 import org.keycloak.utils.MediaType;
+import org.keycloak.utils.StringUtil;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.imageio.ImageIO;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
@@ -18,6 +25,13 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
 import java.net.URL;
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -34,6 +48,13 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
 
     private String loginHtmlName = "";
 
+    private static final String RSA_PRI_KEY = "MIICXQIBAAKBgQCHnRTKkf5AtVqOCHkW/Ihn0D+h/YGi8KTXdP/DZxKcGYYMZaAU3z8Z2DbZg+tWlIkS9FomPEi1QNxpVyKiMb10Amw4dDq6lzk1yK9MNviShqO+T9ITnwnpYLSHdwohYf+58biEqnIz6E1vUIoH+XV5zLNWfeiHq7yt5dLSEJdiowIDAQABAoGAXNeCe2hVm3FM7H4KgF0k+YWNetY2IRoEkGjODLWM/QdQST5tyLxJ0+S9ME7rF9wat7pH2XNeB5C/FPMNh+Lrovc9mGGcIQP5InbtWL5lK1nOHpiu40IZhDYwblDvrof/i0+wTWSwdzfEyctDcF15YwwPiXjrjmXtgeNMY7TaO9ECQQDLu87zmCC6AkV67hoPo3egrVdy3uPvpPUuSbkj4GQ7+1B0twdkbxhSlt7ve0HIS4r9h9UKSpECsbP3X1h2RNHbAkEAqmd+qIJ/NM2BWuJ6vO0l0EQ8xdsjCRn6gOP1gobJHYPmTlc2TLeao6EiuzxdglRdEgPkrvfWtgea8XTYKDyA2QJAN3o+0opcbwprTRxFMHj8/F33cCpNu1YaBa7BoYlbAhJfSEkG1EyEPQkkT+YqdZZMlNlGI/VGI4usS/JErn/y/QJBAIbxnJjfdtMe5xBNB/uzJV3Pm/znc9BSVVFatOKf0IZiHLDvWZ3ZTEnGYlW6EScTnfyVPrTcqZjPXwFVkZQTjckCQQCNdSCCtEfS6M3ctHZJ9zbLhzQZxjEnEOkFJIPmrpH7jLqigHk1KMCE+PnDBqnaeXA0pE/JQrlIo8CuXYQeOy+r";
+
+    static {
+        java.security.Security.addProvider(
+                new org.bouncycastle.jce.provider.BouncyCastleProvider()
+        );
+    }
 
     protected void setLoginHtmlName(String loginHtmlName) {
         this.loginHtmlName = loginHtmlName;
@@ -52,8 +73,39 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
         super.action(context);
     }
 
+    /**
+     * RSA私钥解密
+     * @param str  解密字符串
+     * @param privateKey  私钥
+     * @return 明文
+     */
+    private String decrypt(String str, String privateKey) {
+        //64位解码加密后的字符串
+        byte[] inputByte;
+        String outStr = "";
+        try {
+            inputByte = Base64.decodeBase64(str.getBytes("UTF-8"));
+            //base64编码的私钥
+            byte[] decoded = Base64.decodeBase64(privateKey);
+            RSAPrivateKey priKey = (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(decoded));
+            //RSA解密
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.DECRYPT_MODE, priKey);
+            outStr = new String(cipher.doFinal(inputByte));
+        } catch (UnsupportedEncodingException | NoSuchPaddingException | InvalidKeyException |
+                 IllegalBlockSizeException | BadPaddingException | InvalidKeySpecException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return outStr;
+    }
 
     protected boolean validateForm(AuthenticationFlowContext context, MultivaluedMap<String, String> formData) {
+
+        String encodePwd = formData.get("password").get(0);
+        if (StringUtil.isNotBlank(encodePwd)) {
+            formData.replace("password", Collections.singletonList(decrypt(encodePwd, RSA_PRI_KEY)));
+        }
+
         String checkCaptcha = context.getAuthenticationSession().getClientNote("checkCaptcha");
 
         logger.info("checkCaptcha: " + checkCaptcha);
@@ -175,12 +227,12 @@ public class CustomerUsernamePasswordForm extends UsernamePasswordForm {
 
         if (Validation.FIELD_CAPTCHA.equals(field)) {
             errorMsg = "验证码错误";
-        } else if (Validation.FIELD_USERNAME.equals(field)) {
-            errorMsg = "用户名不存在";
-        } else if (Validation.FIELD_PASSWORD.equals(field)) {
-            errorMsg = "密码错误";
+        } else if (Messages.USER_LOCK.equals(error)) {
+            errorMsg = "当前登录密码错误多次被锁定，请稍后登录";
+        } else if (Validation.FIELD_PASSWORD.equals(field) || Validation.FIELD_USERNAME.equals(field)) {
+            errorMsg = "用户名或密码错误";
         } else {
-            errorMsg = "登录失败, 请检查用户名和密码";
+            errorMsg = "登录失败, 请联系管理员";
         }
 
         return loadHtml(context, line -> {
