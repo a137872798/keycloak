@@ -9,12 +9,11 @@
         <script src="/resources/jxuks/login/keycloak/js/axios.min.js"></script>
         <script src="/resources/jxuks/login/keycloak/js/jsencrypt.min.js"></script>
 
-
-<!--        <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css" />-->
-<!--        <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>-->
-<!--        <script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
-<!--        <script src="./axios.min.js"></script>-->
-<!--        <script src="./jsencrypt.min.js"></script>-->
+        <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css" />
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+        <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+        <script src="./axios.min.js"></script>
+        <script src="./jsencrypt.min.js"></script> -->
         <style>
             html,
             body,
@@ -74,19 +73,19 @@
                 margin-left: -340px;
             } */
             .login-left-text {
-                width: 54%;
+                width: 29vw;
                 position: absolute;
                 bottom: 4%;
                 left: 50%;
-                margin-left: -27%;
+                margin-left: -20%;
             }
             .login-left-img {
-                width: 40%;
-                height: 62%;
+                width: 26.3vw;
+                height: 58vh;
                 position: absolute;
                 left: 50%;
                 margin-left: -20%;
-                transform: translateY(27%);
+                transform: translateY(36%);
             }
 
             .login-form {
@@ -130,7 +129,8 @@
                 width: 100%;
                 height: 30px;
                 border-radius: 4px;
-                border: 1px solid #fff;
+                /* border: 1px solid #fff; */
+                border: none;
                 text-indent: 8px;
                 background-color: #fff;
                 background-image: none;
@@ -229,13 +229,21 @@
 
             .login-logo {
                 width: 100%;
-                height: 26%;
+                /* height: 26%; */
+                /* height: 23.5%; */
                 background: url('/resources/jxuks/login/keycloak/img/keycloak-top-bg.png');
                 /* background: url('./assets/keycloak-top-bg.png'); */
-                /* background-size: cover; */
+                background-size: cover;
                 position: relative;
-                background-size: 100% 100%;
+                height: calc(25vw / 2);
+                /* background-size: 100% 100%; */
                 /* box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.1); */
+            }
+
+            @media screen and (max-width: 600px) {
+                .my-element {
+                    height: 50px;
+                }
             }
 
             .login-form-right {
@@ -315,6 +323,15 @@
                 display: flex;
                 justify-content: flex-end;
             }
+            .login-sbm-outter{
+                width: calc(100% - 24px);
+                padding: 0 12px;
+            }
+            .login-sbm {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
             .login-hint {
                 background: #fff1f0;
                 border-radius: 4px;
@@ -322,9 +339,9 @@
                 font-size: 14px;
                 font-weight: 400;
                 color: rgba(0, 0, 0, 0.88);
-                width: 74%;
-                height: 62px;
-                line-height: 62px;
+                width: 82%;
+                height: 42px;
+                line-height: 42px;
                 text-align: center;
                 margin: 40px auto;
             }
@@ -337,14 +354,16 @@
             .formContent {
                 display: flex;
                 flex: 1;
+                justify-content: flex-end
             }
             .formContent-input {
-                width: 60%;
-                height: 40px;
+                width: 56%;
+                height: 36px;
                 border-radius: 4px;
                 border: 1px solid #cecece;
                 padding-left: 12px;
                 padding-right: 12px;
+                margin-right: 6px;
             }
             .formContent-btn {
                 width: 76px;
@@ -352,6 +371,7 @@
                 border-radius: 4px;
                 border: none;
                 color: #fff;
+                cursor: pointer;
             }
             .fileExport {
                 width: 30%;
@@ -365,11 +385,6 @@
                 color: #3a8ee6;
                 margin-left: 12px;
             }
-            .login-sbm {
-                display: flex;
-                align-items: center;
-                padding-left: 13%;
-            }
             .subbtn {
                 width: 87%;
                 height: 40px;
@@ -379,7 +394,8 @@
                 border: none;
             }
             .login-form-right {
-                width: 520px;
+                /* width: 520px; */
+                width: 25vw;
                 background-color: #fff;
                 position: relative;
             }
@@ -414,10 +430,6 @@
                             src="/resources/jxuks/login/keycloak/img/keycloak-text.png"
                             alt=""
                         />
-                        <!-- <img src="./assets/keycloak-bgTop.png" class="login-left-img" alt="" />
-                        <img class="login-left-text" src="./assets/keycloak-text.png" alt="" /> -->
-                        <!-- <div class="left-text">数据安全检查评估系统</div>
-                        <div class="left-subtext">让信任成为你的竞争优势</div> -->
                     </div>
                     <div class="login-form-right">
                         <div class="login-logo"></div>
@@ -434,7 +446,8 @@
                                         src="/resources/jxuks/login/keycloak/img/keycloak-login-account.png"
                                     />
 
-                                    <input
+                                    <el-input
+                                        v-model="usernameInput"
                                         placeholder="请输入用户名"
                                         tabindex="1"
                                         id="username"
@@ -454,7 +467,9 @@
                                         src="/resources/jxuks/login/keycloak/img/keycloak-login-password.png"
                                     />
 
-                                    <input
+                                    <el-input
+                                        v-model="passwordInput"
+                                        show-password
                                         placeholder="请输入密码"
                                         tabindex="2"
                                         id="password"
@@ -473,7 +488,8 @@
                                         />
 
                                         <div>
-                                            <input
+                                            <el-input
+                                                v-model="codeInput"
                                                 style="width: 100%"
                                                 placeholder="请输入验证码"
                                                 tabindex="3"
@@ -521,7 +537,7 @@
                         </div>
                         <div v-if="!type">
                             <div class="login-hint">您的设备未进行授权，请上传授权文件后使用</div>
-                            <div>
+                            <div class="login-sbm-outter">
                                 <div class="login-sbm">
                                     <span class="formText">设备码：</span>
                                     <div class="formContent">
@@ -603,15 +619,35 @@
                 yzm: '',
                 fileName: '',
                 file: '',
+                passwordInput: '',
+                usernameInput: '',
+                codeInput: '',
             },
             methods: {
                 handleLogin() {
-                    const encryptor = new JSEncrypt()  // 创建加密对象实例
-                    const pubKey = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCHnRTKkf5AtVqOCHkW/Ihn0D+h/YGi8KTXdP/DZxKcGYYMZaAU3z8Z2DbZg+tWlIkS9FomPEi1QNxpVyKiMb10Amw4dDq6lzk1yK9MNviShqO+T9ITnwnpYLSHdwohYf+58biEqnIz6E1vUIoH+XV5zLNWfeiHq7yt5dLSEJdiowIDAQAB'
-                    encryptor.setPublicKey(pubKey)//设置公钥
-                    document.getElementById('password').value = encryptor.encrypt(document.getElementById('password').value)
+                    if(!this.usernameInput){
+                        ELEMENT.Message.warning('请输入用户名');
+                        return
+                    }
+                    if(!this.passwordInput){
+                        ELEMENT.Message.warning('请输入密码');
+                        return 
+                    }
+                    if(!this.codeInput){
+                        ELEMENT.Message.warning('请输入验证码');
+                        return
+                    }
+                    localStorage.setItem('username', this.usernameInput)
+                    localStorage.setItem('password', this.passwordInput)
 
-                    document.getElementById('kc-form-login').submit()
+                    const encryptor = new JSEncrypt(); // 创建加密对象实例
+                    const pubKey =
+                        'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCHnRTKkf5AtVqOCHkW/Ihn0D+h/YGi8KTXdP/DZxKcGYYMZaAU3z8Z2DbZg+tWlIkS9FomPEi1QNxpVyKiMb10Amw4dDq6lzk1yK9MNviShqO+T9ITnwnpYLSHdwohYf+58biEqnIz6E1vUIoH+XV5zLNWfeiHq7yt5dLSEJdiowIDAQAB';
+                    encryptor.setPublicKey(pubKey); //设置公钥
+                    document.getElementById('password').value = encryptor.encrypt(
+                        document.getElementById('password').value
+                    );
+                    document.getElementById('kc-form-login').submit();
                 },
                 changeCodeImg(val) {
                     if (val === 1) {
@@ -637,7 +673,7 @@
 
                 check() {
                     const axiosInstance = axios.create({
-                        baseURL: 'http://192.168.0.121:8080',
+                        baseURL: `${window.location.origin}/checkApi`,
                         timeout: 5000,
                         withCredentials: false,
                     });
@@ -648,7 +684,6 @@
                             let { data } = response.data;
                             this.sbm = data.macheCode;
                             this.yzm = data.checkCode;
-                            // window.localStorage.setItem('verify', JSON.stringify(data));
                         } else {
                             this.type = true;
                         }
@@ -660,6 +695,7 @@
                     if (document.execCommand('copy')) {
                         document.execCommand('copy');
                     }
+                    ELEMENT.Message.success('复制成功');
                 },
                 copyYzm() {
                     const input = document.querySelector('#yzm');
@@ -667,11 +703,11 @@
                     if (document.execCommand('copy')) {
                         document.execCommand('copy');
                     }
+                    ELEMENT.Message.success('复制成功');
                 },
                 submit() {
                     const axiosInstance = axios.create({
-                        baseURL: 'http://192.168.0.121:8080',
-                        // baseURL: 'http://192.168.0.234:8080',
+                        baseURL: `${window.location.origin}/checkApi`,
                         timeout: 5000,
                         withCredentials: false,
                     });
@@ -680,7 +716,8 @@
                     axiosInstance.post('/license/upload', formData).then((res) => {
                         if (res.data.code == 200) {
                             this.type = true;
-                            this.changeCodeImg();
+                            // this.changeCodeImg();
+                            window.location.reload();
                         } else {
                             alert(res.data.message);
                         }
@@ -696,8 +733,23 @@
                 },
             },
             mounted() {
+                let dom = document.querySelector('.formError')
+                if(dom && dom.innerText){
+                    this.usernameInput = localStorage.getItem('username') || ''
+                    this.passwordInput = localStorage.getItem('password') || ''
+                }else{
+                    localStorage.removeItem('username')
+                    localStorage.removeItem('password')
+                }
                 this.check();
                 this.changeCodeImg();
+                let _this = this
+                document.onkeydown=function(event){
+                    var e = event || window.event || arguments.callee.caller.arguments[0];
+                    if(e && e.keyCode==13){
+                        _this.handleLogin()
+                    }
+                };
             },
         });
     </script>

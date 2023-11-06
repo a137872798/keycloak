@@ -16,6 +16,7 @@
  */
 package org.keycloak.models;
 
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.spi.ResteasyUriBuilder;
 import org.keycloak.urls.HostnameProvider;
 import org.keycloak.urls.UrlType;
@@ -24,6 +25,7 @@ import org.keycloak.utils.StringUtil;
 import javax.ws.rs.core.*;
 import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 
 public class KeycloakUriInfo implements UriInfo {
 
@@ -36,6 +38,9 @@ public class KeycloakUriInfo implements UriInfo {
     private URI absolutePath;
     private URI requestURI;
     private URI baseURI;
+
+    private static final Logger logger = Logger.getLogger(KeycloakUriInfo.class);
+
 
     public KeycloakUriInfo(KeycloakSession session, UrlType type, UriInfo delegate) {
         this.delegate = delegate;
@@ -54,8 +59,15 @@ public class KeycloakUriInfo implements UriInfo {
             port = hostArr[1];
         }
 
+        if (StringUtil.isNotBlank(port)) {
+            this.port = Integer.parseInt(port);
+        } else if (Objects.nonNull(hostnameProvider.getPort(delegate, type)) && -1 != hostnameProvider.getPort(delegate, type)) {
+            this.port = hostnameProvider.getPort(delegate, type);
+        } else  {
+            this.port = Integer.valueOf(System.getProperty("default_port", "8888"));
+        }
+
         this.hostname = StringUtil.isBlank(hostname) ? hostnameProvider.getHostname(delegate, type) : hostname;
-        this.port = StringUtil.isBlank(port) ? hostnameProvider.getPort(delegate, type) : Integer.valueOf(port);
         this.scheme = StringUtil.isBlank(schema) ? hostnameProvider.getScheme(delegate, type) : schema;
         this.contextPath = hostnameProvider.getContextPath(delegate, type);
     }

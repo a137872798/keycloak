@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <title>超·视界</title>
     <script src="/resources/jxuks/login/keycloak/js/vue.min.js"></script>
+    <script src="/resources/jxuks/login/keycloak/js/jsencrypt.min.js"></script>
     <style>
         html,
         body,
@@ -172,6 +173,7 @@
             font-weight: 500;
             color: #FFFFFF;
             margin-top: 75px;
+            text-align: center;
         }
 
         .form-bottom {
@@ -244,8 +246,8 @@
                 </div>
 
                 <div class="form-middle">
-                    <form id="kc-form-login" onsubmit="login.disabled = true; return true;"
-                        :action="reqUrl + '&session_code=' + formSessionCode" method="post">
+                    <!-- onsubmit="login.disabled = true; return true;" -->
+                    <form id="kc-form-login" :action="reqUrl + '&session_code=' + formSessionCode" method="post">
                         <div class="form-group form-input-out">
                             <!-- <label for="username" class="pf-c-form__label pf-c-form__label-text">Username or email</label> -->
                             <img class="input-icon" src="/resources/jxuks/login/keycloak/img/username.png" />
@@ -283,10 +285,10 @@
 
                         </div>
 
-                        <div id="kc-form-buttons" class="form-group">
+                        <div id="kc-form-buttons" class="form-group" @click="handleLogin">
                             <input type="hidden" id="id-hidden-input" name="credentialId" />
                             <input tabindex="4" class="pf-c-button pf-m-primary pf-m-block btn-lg" name="login"
-                                id="kc-login" type="submit" value="登 录" />
+                                id="kc-login" value="登 录" />
 
                         </div>
                     </form>
@@ -316,6 +318,16 @@
                 formSessionCode: '',
             },
             methods: {
+                handleLogin() {
+                    const encryptor = new JSEncrypt()  // 创建加密对象实例
+                    const pubKey =
+                        'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCHnRTKkf5AtVqOCHkW/Ihn0D+h/YGi8KTXdP/DZxKcGYYMZaAU3z8Z2DbZg+tWlIkS9FomPEi1QNxpVyKiMb10Amw4dDq6lzk1yK9MNviShqO+T9ITnwnpYLSHdwohYf+58biEqnIz6E1vUIoH+XV5zLNWfeiHq7yt5dLSEJdiowIDAQAB';
+                    encryptor.setPublicKey(pubKey)//设置公钥
+                    document.getElementById('username').value = document.getElementById('username').value
+                    document.getElementById('password').value = encryptor.encrypt(document.getElementById('password').value)
+
+                    document.getElementById('kc-form-login').submit()
+                },
                 changeCodeImg(val) {
                     if (val === 1) {
                         this.sessionCode = this.getCookie('session_code')
