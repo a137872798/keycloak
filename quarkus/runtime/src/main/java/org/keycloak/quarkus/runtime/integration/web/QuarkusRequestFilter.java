@@ -19,6 +19,8 @@ package org.keycloak.quarkus.runtime.integration.web;
 
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
+
+import org.jboss.logging.Logger;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.util.Resteasy;
 import org.keycloak.models.KeycloakSession;
@@ -27,6 +29,8 @@ import org.keycloak.quarkus.runtime.transaction.TransactionalSessionHandler;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.web.RoutingContext;
+import org.keycloak.storage.ldap.LDAPUtils;
+import org.keycloak.utils.StringUtil;
 
 /**
  * <p>This filter is responsible for managing the request lifecycle as well as setting up the necessary context to process incoming
@@ -45,6 +49,8 @@ import io.vertx.ext.web.RoutingContext;
  * @see org.keycloak.quarkus.runtime.integration.jaxrs.TransactionalResponseFilter
  */
 public class QuarkusRequestFilter implements Handler<RoutingContext>, TransactionalSessionHandler {
+
+    private static final Logger log = Logger.getLogger(QuarkusRequestFilter.class);
 
     private final ExecutorService executor;
 
@@ -110,6 +116,10 @@ public class QuarkusRequestFilter implements Handler<RoutingContext>, Transactio
         return new ClientConnection() {
             @Override
             public String getRemoteAddr() {
+                String realIps = request.getHeader("X-Forwarded-For");
+                if (StringUtil.isNotBlank(realIps)) {
+                    return realIps.split(",")[0];
+                }
                 return request.remoteAddress().host();
             }
 
