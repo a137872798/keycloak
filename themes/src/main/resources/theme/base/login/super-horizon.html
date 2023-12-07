@@ -70,14 +70,35 @@
             top: 0px;
             right: 0px;
             min-width: 320px;
-            box-shadow: 0px 4px 10px 0px rgba(190, 190, 190, 0.302);
+            background: rgba(4, 8, 16, 0.4);
+            box-shadow: -4px 0px 4px 0px rgba(2, 7, 22, 0.3);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .form-top {
             width: 100%;
-            height: 234px;
+            height: 300px;
             position: relative;
 
+        }
+
+        .form-title {
+            font-size: 28px;
+            margin-left: 48px;
+            margin-bottom: 20px;
+            font-family: Source Han Sans, Source Han Sans;
+            font-weight: 400;
+            color: #FFFFFF;
+            line-height: 24px;
+        }
+
+        .form-test {
+            margin-left: 48px;
+            font-size: 18px;
+            font-family: Source Han Sans, Source Han Sans;
+            font-weight: 350;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 16px;
         }
 
         .corporation-img {
@@ -90,8 +111,8 @@
 
         .line-box {
             width: 100%;
-            height: 100%;
-            /* background: url('./assets/bg.png') no-repeat; */
+            /* height: 100%; */
+            padding-top: 215px;
             background-size: cover;
             position: relative;
         }
@@ -101,7 +122,7 @@
             height: 76px;
             position: absolute;
             left: 48px;
-            bottom: 31px;
+            top: 100px;
         }
 
         .form-middle {
@@ -153,6 +174,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: relative;
         }
 
         .code-out-div .form-input-out {
@@ -163,13 +185,15 @@
             width: 30%;
             display: flex;
             justify-content: flex-end;
+            position: absolute;
+            right: 0;
         }
 
         .form-group .pf-m-primary {
             border: none;
             text-indent: 0;
             cursor: pointer;
-            background: #A3AFF1;
+            background: #2C42B7;
             border-radius: 4px;
             color: #fff;
             height: 40px;
@@ -232,14 +256,14 @@
     <div id="app">
         <div class="login-container">
 
-            <video src="/resources/jxuks/login/keycloak/img/csj_bg_video.mp4" autoplay="autoplay" loop="loop" muted="muted">
+            <video src="/resources/jxuks/login/keycloak/mp4/csj_bg_video.mp4" autoplay="autoplay" muted="muted">
             </video>
 
             <div class="description-container">
-                <div class="title">数字资产风险监测平台</div>
+                <!-- <div class="title">数字资产风险监测平台</div>
                 <div class="sub-title">解析流量行为数据，预见趋势变迁</div>
                 <div class="description">智能分析数据，全面评估资产风险。采用自主研发引擎，实现精准的异常检测。构建动态风险防控体系，持续提升资产管理能力。更多详情请访问</div>
-                <u class="link">产品介绍页</u>
+                <u class="link">产品介绍页</u> -->
             </div>
 
             <div class="form-container">
@@ -248,6 +272,8 @@
                     <img src="/resources/jxuks/login/keycloak/img/csj-corporation.png" class="corporation-img">
                     <div class="line-box">
                         <img src="/resources/jxuks/login/keycloak/img/csj-title.png" class="title-img">
+                        <div class="form-title">数字资产风险监测平台</div>
+                        <div class="form-test">主动感知数据，智能守护价值</div>
                     </div>
                 </div>
 
@@ -258,7 +284,8 @@
                             <!-- <label for="username" class="pf-c-form__label pf-c-form__label-text">Username or email</label> -->
                             <img class="input-icon" src="/resources/jxuks/login/keycloak/img/csj_username.png" />
                             <input placeholder="请输入用户名" tabindex="1" id="username" class="pf-c-form-control"
-                                name="username" value="" type="text" autofocus autocomplete="off" aria-invalid="" />
+                                name="username" value="" type="text" autofocus autocomplete="off" aria-invalid=""
+                                @keyup.enter="handleLogin" @input="changeColor" />
                         </div>
                         <div style="position: relative;">
                             <div class="formError" style="position: absolute; top: -40px;">{{username}}</div>
@@ -266,18 +293,19 @@
                         <div class="form-group form-input-out">
                             <img class="input-icon" src="/resources/jxuks/login/keycloak/img/csj_password.png" />
                             <input placeholder="请输入密码" tabindex="2" id="password" class="pf-c-form-control"
-                                name="password" type="password" autocomplete="off" aria-invalid="" />
+                                name="password" type="password" autocomplete="off" aria-invalid=""
+                                @keyup.enter="handleLogin" @input="changeColor" />
                         </div>
                         <div style="position: relative;">
                             <div class="formError" style="position: absolute; top: -40px;">{{psw}}</div>
                         </div>
                         <div class="code-out-div">
-                            <div class="form-group form-input-out" style="width: 70%;">
+                            <div class="form-group form-input-out" style="width: 100%;">
                                 <img class="input-icon" src="/resources/jxuks/login/keycloak/img/csj-code.png" />
                                 <div>
                                     <input style="width: 100%;" placeholder="请输入验证码" tabindex="3" id="captcha"
                                         class="pf-c-form-control" name="captcha" type="text" autocomplete="off"
-                                        aria-invalid="" />
+                                        aria-invalid="" @keyup.enter="handleLogin" @input="changeColor" />
                                 </div>
                             </div>
                             <div class="code-div">
@@ -300,8 +328,8 @@
                         <div id="kc-form-buttons" class="form-group" @click="handleLogin">
                             <input type="hidden" id="id-hidden-input" name="credentialId" />
                             <input tabindex="4" class="pf-c-button pf-m-primary pf-m-block btn-lg" name="login"
-                                id="kc-login" value="登 录" />
-
+                                id="kc-login" value="登 录" :style="{background: color? '#2C42B7': '#A3AFF1'}" />
+                            <!-- <button style="display: none;" type="submit" @click="handleLogin"></button> -->
                         </div>
                     </form>
                 </div>
@@ -331,9 +359,20 @@
                 captchaUrl: '',
                 sessionCode: '',
                 formSessionCode: '',
+                color: false,
             },
             methods: {
+                changeColor() {
+                    if (document.getElementById('username').value && document.getElementById('password').value && document.getElementById('captcha').value) {
+                        this.color = true
+                    } else {
+                        this.color = false
+                    }
+                },
                 handleLogin() {
+                    if (!this.color) {
+                        return false
+                    }
                     if (!document.getElementById('username').value) {
                         this.username = '请输入用户名'
                         this.timer = setTimeout(() => {
@@ -356,7 +395,8 @@
                         return false
                     }
                     const encryptor = new JSEncrypt()  // 创建加密对象实例
-                    const pubKey = '-----BEGIN PUBLIC KEY-----MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC1QQRl0HlrVv6kGqhgonD6A9SU6ZJpnEN+Q0blT/ue6Ndt97WRfxtSAs0QoquTreaDtfC4RRX4o+CU6BTuHLUm+eSvxZS9TzbwoYZq7ObbQAZAY+SYDgAA5PHf1wNN20dGMFFgVS/y0ZWvv1UNa2laEz0I8Vmr5ZlzIn88GkmSiQIDAQAB-----END PUBLIC KEY-----'
+                    const pubKey =
+                        'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCHnRTKkf5AtVqOCHkW/Ihn0D+h/YGi8KTXdP/DZxKcGYYMZaAU3z8Z2DbZg+tWlIkS9FomPEi1QNxpVyKiMb10Amw4dDq6lzk1yK9MNviShqO+T9ITnwnpYLSHdwohYf+58biEqnIz6E1vUIoH+XV5zLNWfeiHq7yt5dLSEJdiowIDAQAB';
                     encryptor.setPublicKey(pubKey)//设置公钥
                     document.getElementById('username').value = document.getElementById('username').value
                     document.getElementById('password').value = encryptor.encrypt(document.getElementById('password').value)
